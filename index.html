@@ -88,9 +88,9 @@
       }
 
       @keyframes float-dmg {
-        0% { opacity: 0; transform: translateY(6px) scale(0.8) rotate(-3deg); }
-        15% { opacity: 1; transform: translateY(0) scale(1.15) rotate(2deg); }
-        100% { opacity: 0; transform: translateY(-46px) scale(1) rotate(0deg); }
+        0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(0.8) rotate(-3deg); }
+        15% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.15) rotate(2deg); }
+        100% { opacity: 0; transform: translateX(-50%) translateY(-46px) scale(1) rotate(0deg); }
       }
       @keyframes summon-pop {
         0% { opacity: 0; transform: scale(0.5) rotateY(80deg) rotate(-4deg); }
@@ -175,11 +175,16 @@
       .cur-floor { color: var(--dim); font-weight: 700; }
       @media (max-width: 480px) { .cur-floor { display: none; } }
       nav.tabs { display: flex; gap: 0.375rem; }
-      .tabbtn { border-radius: 999px; padding: 0.375rem 0.75rem; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; border: 2px solid var(--border); background: var(--surface); }
-      .tabbtn.active { border: none; }
+      .tabbtn { border-radius: 999px; padding: 0.375rem 0.75rem; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--text); }
+      /* Selected tab: the pink primary gradient with dark plum text.
+         (.tabbtn's own background used to win the cascade over
+         .anime-btn-primary, leaving the primary's dark text sitting
+         on the dark surface — unreadable. The two-class selector
+         below outranks both single-class rules.) */
+      .tabbtn.active { background: linear-gradient(92deg, #ff7eb6, #f472b6 45%, #a78bfa); color: #2b0a2e; border: 2px solid transparent; box-shadow: 0 4px 0 #7e2a5e, 0 10px 22px rgba(255, 126, 182, 0.35); }
       nav.subtabs { display: flex; gap: 0.375rem; flex-wrap: wrap; margin-top: 0.75rem; scroll-margin-top: 9rem; }
       .subtabbtn { border-radius: 999px; padding: 0.4375rem 0.875rem; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--ink); cursor: pointer; }
-      .subtabbtn.active { border: none; }
+      .subtabbtn.active { background: linear-gradient(92deg, #ff7eb6, #f472b6 45%, #a78bfa); color: #2b0a2e; border: 2px solid transparent; box-shadow: 0 4px 0 #7e2a5e, 0 10px 22px rgba(255, 126, 182, 0.35); }
       .upg-list { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
       .upg-row { display: flex; align-items: center; gap: 0.625rem; border: 2px solid var(--border); border-radius: 18px; background: var(--surface); padding: 0.5rem 0.625rem; }
       .upg-row.selected { border-color: #ffd94d; }
@@ -251,14 +256,26 @@
         padding: 1rem 0.75rem 0.5rem;
         box-shadow: inset 0 0 40px rgba(125,211,252,0.12);
       }
-      .bf-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 0.25rem; }
-      .party-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.5rem 0.375rem; list-style: none; margin: 0; padding: 0; }
+      /* Stacked battle stage at every width: the boss stands centered
+         on top and the party fights as one row along the bottom. (The
+         old side-by-side row squeezed the party into whatever width
+         the boss left over — on a phone that became a skinny vertical
+         column down the left edge.) */
+      .bf-row { display: flex; flex-direction: column; align-items: center; gap: 0.625rem; }
+      .party-row { order: 2; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: center; gap: 0.5rem 0.375rem; list-style: none; margin: 0; padding: 0; width: 100%; }
       @media (min-width: 640px) { .party-row { gap: 0.5rem 0.75rem; } }
-      .chibi-slot { width: 3.5rem; text-align: center; }
+      .chibi-slot { width: 3.5rem; text-align: center; flex-shrink: 1; min-width: 0; }
       @media (min-width: 640px) { .chibi-slot { width: 4rem; } }
+      @media (max-width: 480px) { .party-row { gap: 0.5rem 0.25rem; } .chibi-slot { width: 3.05rem; } }
       .chibi-slot .nm { margin: 0.125rem 0 0; font-size: 10px; font-weight: 900; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .chibi-slot .lv { margin: 0; font-size: 9px; font-weight: 700; line-height: 1.15; color: var(--dim); }
-      .monster-box { position: relative; flex-shrink: 0; padding-bottom: 0.25rem; text-align: center; }
+      /* Full-width and centered, above the party row. */
+      .monster-box { position: relative; order: 1; width: 100%; padding-bottom: 0.25rem; text-align: center; }
+      /* Only the Tower boss box (the one carrying the floats layer)
+         reserves a 2.5rem strip on top, where floating reward /
+         damage text appears ABOVE the boss instead of across its
+         face (see addFloat). The dungeon's monster box is untouched. */
+      .monster-box:has(#floats-layer) { padding-top: 2.5rem; }
       .monster-orb {
         display: flex; height: 6rem; width: 6rem; align-items: center; justify-content: center;
         border-radius: 999px; font-size: 3rem; margin: 0 auto;
@@ -390,6 +407,11 @@
       .hero-card .hname { display: block; font-family: var(--font-display); font-size: 15px; font-weight: 600; line-height: 1.2; }
       .hero-card .hcls { display: block; font-size: 0.75rem; }
       .hero-card .hmeta { display: block; margin-top: 0.25rem; font-size: 11px; font-weight: 600; color: var(--dim); }
+      .hero-card .eff-line { display: block; margin-top: 0.3125rem; font-size: 12px; font-weight: 900; line-height: 1.25; }
+      .hero-card .eff-line .eff-base { font-size: 11px; font-weight: 700; color: var(--dim); }
+      .eff-pill { display: inline-flex; align-items: center; gap: 0.375rem; border-radius: 999px; border: 1px solid; padding: 0.25rem 0.625rem; font-size: 12px; font-weight: 900; background: rgba(27,18,53,0.55); white-space: nowrap; }
+      .eff-pill .eff-base { font-size: 11px; font-weight: 700; color: var(--dim); }
+      .synth-preview { margin: 0.5rem 0 0; border-radius: 12px; border: 1px dashed rgba(255,217,77,0.55); background: rgba(255,217,77,0.08); padding: 0.5rem 0.625rem; font-size: 0.8125rem; font-weight: 800; }
 
       /* ---------- detail panel ---------- */
       .detail-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
@@ -568,7 +590,7 @@
         blurb: "Summoned as a farm girl with a bow, Arden turned out to be a once-in-a-generation marksman — and the heart of every party she joins." },
       { id: "han", name: "Soren Ashford", title: "The 1-Star Who Wouldn't Die", cls: "Swordsman", stars: 1, color: "#e5484d", baseHp: 520, baseAtk: 52, atkSpeed: 1.0,
         blurb: "A max-level ranker trapped inside his own gacha game as its weakest pull — a genuine 1-star, the lowest the circle can give. No talent, no luck — just ten years of game knowledge and a refusal to be synthesized. He starts at the very bottom, and that is the point: no 1-star in Echoria climbs higher. Six syntheses deep, all the way to 7★, if a Master believes in him long enough — the 1-star who wouldn't die, and wouldn't stay one either." },
-      { id: "luna", name: "Luna", title: "The Moonlit Guide", cls: "Lunar Oracle", stars: 7, color: "#c9b8ff", baseHp: 1350, baseAtk: 80, atkSpeed: 0.9,
+      { id: "luna", name: "Luna", title: "The Moonlit Guide", cls: "Lunar Oracle", stars: 7, color: "#c9b8ff", baseHp: 1350, baseAtk: 120, atkSpeed: 0.9,
         blurb: "She appeared on the first floor of Echoria one night and never left. Luna remembers every hero who ever climbed, every floor ever cleared, every Master who ever fell — and she fights so no one climbs alone. No summoning circle can call her; she chooses her own Master." },
       { id: "aaron", name: "Rhys Calder", title: "The Loyal Spear", cls: "Spearman", stars: 2, color: "#7cc7ff", baseHp: 660, baseAtk: 66, atkSpeed: 0.85,
         blurb: "A spearman of unshakeable loyalty. Holds the line, skewers the first thing that crosses it, and would charge the tower boss himself if ordered." },
@@ -606,7 +628,7 @@
         blurb: "A prince of the old dragon clan, all cyan scales and calm disdain, robed in white and gold with a single wing folded over one shoulder and runes of the first language drifting around him like patient fireflies. Six stars — a rank the summoning circle was never built to reach, and it shows: where other heroes were pulled into Echoria, Draven simply allowed himself to be noticed. His breath is a furnace with manners." },
       { id: "rurik", name: "Rurik Ashford", title: "The Cinder Knight", cls: "Dragonkin", stars: 4, color: "#e2543e", baseHp: 680, baseAtk: 86, atkSpeed: 0.95,
         blurb: "Draven's hot-headed rival from the same dragon clan — crimson scales, black horns, black armor chased with gold flame, and a temper that sets his own pauldrons smoldering. Where the Ember Prince is a held breath, Rurik is the exhale: a frontline brawler who treats every floor like a personal insult. The clan sent one dragon to Echoria as a diplomat and the other as the argument." },
-      { id: "aurelia", name: "Aurelia Vey", title: "The Golden Weaver", cls: "Weaver", stars: 7, color: "#e0a92e", baseHp: 1300, baseAtk: 120, atkSpeed: 1.0,
+      { id: "aurelia", name: "Aurelia Vey", title: "The Golden Weaver", cls: "Weaver", stars: 7, color: "#e0a92e", baseHp: 1300, baseAtk: 155, atkSpeed: 1.0,
         blurb: "She was already seated at the center of the web when the summoning circle found her — black hair bound in a high bun threaded with gold, eight slender legs arching around her like a living throne, and a hundred tiny golden spiders converging along her silk toward whoever had called. Seven stars: the rarest answer the circle can give, earned thread by patient thread. Aurelia does not chase her prey, Master. She weaves, she smiles, and she waits for it to come to her." },
       { id: "vesper", name: "Vesper Quill", title: "The Midnight Puppeteer", cls: "Puppeteer", stars: 4, color: "#7a7de0", baseHp: 700, baseAtk: 88, atkSpeed: 1.0,
         blurb: "A street performer from the tower's lower floors, all midnight-blue curls and gold thread, whose little wooden puppets began moving on their own the night Echoria's magic touched her strings. Now she climbs to learn who is pulling hers. Four stars today — but her threads are still lengthening: just three syntheses refine her to a 7★ effective rank, a puppeteer whose stage is the whole tower." },
@@ -639,10 +661,12 @@
       for (var i = 0; i < RUN2_LOCKED_HEROES.length; i++) if (RUN2_LOCKED_HEROES[i].id === id) return RUN2_LOCKED_HEROES[i];
       return null;
     }
-    /* Heroes the summoning circle can NEVER call: Luna chooses her own
-       Master (Floor 25), and the Cantors will be granted directly by
-       boss-saving on run 2 — never by random pull, pity, or starter. */
-    var SUMMON_EXCLUDED = { luna: true, silas: true, mara: true };
+    /* Heroes the summoning circle can NEVER call: the Cantors will be
+       granted directly by boss-saving on run 2 — never by random pull,
+       pity, or starter. Luna is NOT excluded: she is in the 7★ pool
+       like Aurelia Vey, and Floor 25 remains her story-grant fallback
+       for Masters who haven't summoned her by then. */
+    var SUMMON_EXCLUDED = { silas: true, mara: true };
     /* Portrait & banner art is embedded directly in this file as data URIs,
        so the game stays fully self-contained as a single HTML file —
        no separate assets folder is needed for the pictures to load. */
@@ -2282,10 +2306,10 @@
             break;
           case "mira": gold += 0.04 * lv; break;
           /* Luna's Moonbeam Guidance heals at +210% per skill level:
-             her skill level is permanently 1 (story-granted, never
-             summonable, no synthesis), so she alone gives healMult
-             3.10 — exactly on par with a max-synthesized Wren
-             (skill Lv 7 × +30% = +210%). */
+             at skill Lv 1 she alone gives healMult 3.10 — exactly on
+             par with a max-synthesized Wren (skill Lv 7 × +30% =
+             +210%) — and like any natural 7★, synthesis raises her
+             skill level from there. */
           case "luna": crit += 0.04 * lv; dps += 0.04 * lv; heal += 2.10 * lv; def += 0.02 * lv; break;
         }
       });
@@ -2799,8 +2823,8 @@
 
     /* ============================== GACHA ============================== */
     var RATES = [
-      { stars: 7, pct: 0.01 }, { stars: 6, pct: 0.1 }, { stars: 5, pct: 0.5 },
-      { stars: 4, pct: 3 }, { stars: 3, pct: 10 }, { stars: 2, pct: 25 }, { stars: 1, pct: 61.39 }
+      { stars: 7, pct: 0.1 }, { stars: 6, pct: 0.5 }, { stars: 5, pct: 1.5 },
+      { stars: 4, pct: 5 }, { stars: 3, pct: 13 }, { stars: 2, pct: 25 }, { stars: 1, pct: 54.9 }
     ];
     /* New Master boost: a save's first NEWBIE_LIMIT summons roll on the
        original, friendlier table; from summon 101 onward the standard
@@ -2829,9 +2853,11 @@
       return 1;
     }
     function rollHero(stars) {
-      // Luna is story-granted only, and the run-2 Cantors (Silas/Mara)
-      // will be granted directly by boss-saving — the circle can never
-      // call any of them (see SUMMON_EXCLUDED).
+      // The run-2 Cantors (Silas/Mara) will be granted directly by
+      // boss-saving — the circle can never call them (see
+      // SUMMON_EXCLUDED). Every other hero in the rolled star tier —
+      // Luna included at 7★, alongside Aurelia Vey — is picked
+      // uniformly at random from the pool.
       var pool = HEROES.filter(function (h) { return h.stars === stars && !SUMMON_EXCLUDED[h.id]; });
       return pool[Math.floor(Math.random() * pool.length)] || HEROES[0];
     }
@@ -4423,7 +4449,7 @@
         h += '<li><span style="color:' + starColor(r.stars) + '">' + starsStr(r.stars) + " " + esc(names) + "</span><span>" + r.pct + "%</span></li>";
       });
       h += "</ul>";
-      h += '<p style="margin-top:0.75rem;font-size:11px;font-weight:600;color:#c9b8ff">🌙 Rumor: a 7★ guide walks Echoria — but no summoning circle can call her. She chooses her own Master at Floor 25.</p>';
+      h += '<p style="margin-top:0.75rem;font-size:11px;font-weight:600;color:#c9b8ff">🌙 Rumor: the 7★ Lunar Oracle answers the circle like any hero — and if she still hasn\'t by Floor 25, she comes to find her Master herself.</p>';
       h += "</div></div>";
       /* --- Redeem Code box --- */
       var claimed = Array.isArray(s.redeemedCodes) ? s.redeemedCodes : [];
@@ -4599,9 +4625,13 @@
         var slotIdx = s.party.indexOf(hd.id);
         h += '<div class="hero-cell" role="listitem">';
         h += '<button type="button" class="hero-card' + (selectedHero === hd.id ? " selected" : "") + (o && selectedSlot >= 0 && slotIdx === selectedSlot ? " in-slot" : "") + '" ' + (o ? 'data-team-pick="' + hd.id + '"' : 'data-hero="' + hd.id + '"') + ' style="background:linear-gradient(160deg,' + hd.color + "30 0%, var(--surface) 62%)\" aria-label=\"" +
-          (o ? esc(hd.name) + ", level " + o.level + (inParty ? ", in party slot " + (slotIdx + 1) : "") + (selectedSlot >= 0 && slotIdx !== selectedSlot ? " — tap to place in slot " + (selectedSlot + 1) : inParty ? " — tap to select their slot" : " — tap to add to the party") : esc(hd.name) + ", not yet summoned — view details") + '">';
+          (o ? esc(hd.name) + ", level " + o.level + ", effective rank " + effRank(hd, o) + " stars" + (inParty ? ", in party slot " + (slotIdx + 1) : "") + (selectedSlot >= 0 && slotIdx !== selectedSlot ? " — tap to place in slot " + (selectedSlot + 1) : inParty ? " — tap to select their slot" : " — tap to add to the party") : esc(hd.name) + ", not yet summoned — view details") + '">';
         h += '<span class="portrait"><img src="' + AVATARS[hd.id] + '" alt="Anime portrait of ' + esc(hd.name) + ", " + esc(hd.title) + '" class="' + (o ? "" : "unowned") + '" loading="lazy" /><span class="shade" aria-hidden="true"></span>';
-        h += '<span class="stars-badge" style="color:' + starColor(hd.stars) + '" aria-label="' + hd.stars + ' star rarity">' + starsStr(hd.stars) + "</span>";
+        if (o && o.asc > 0) {
+          h += '<span class="stars-badge" aria-label="Effective ' + effRank(hd, o) + ' stars — ' + hd.stars + ' star base plus ' + o.asc + ' synthesis"><span style="color:' + starColor(hd.stars) + ';opacity:.7;font-size:9px" aria-hidden="true">' + starsStr(hd.stars) + '</span><span style="color:var(--dim);font-size:9px" aria-hidden="true"> → </span><span style="color:' + starColor(effRank(hd, o)) + '" aria-hidden="true">' + starsStr(effRank(hd, o)) + "</span></span>";
+        } else {
+          h += '<span class="stars-badge" style="color:' + starColor(hd.stars) + '" aria-label="' + hd.stars + ' star rarity">' + starsStr(hd.stars) + "</span>";
+        }
         if (!o) h += '<span class="tag-badge tag-lock">🔒 NOT SUMMONED</span>';
         if (inParty) h += '<span class="tag-badge tag-party">⚔ IN PARTY</span>';
         if (o && questingHeroIds(s, Date.now())[hd.id]) h += '<span class="tag-badge tag-quest">📜 ON QUEST</span>';
@@ -4609,12 +4639,13 @@
         h += '<span class="body"><span class="hname">' + (o ? esc(hd.name) : hd.id === "luna" ? esc(hd.name) : "???") + '</span>';
         h += '<span class="hcls" style="color:' + hd.color + '">' + esc(hd.cls) + " · " + esc(hd.title) + "</span>";
         if (o) {
-          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps</span>";
+          h += '<span class="eff-line" style="color:' + starColor(effRank(hd, o)) + '">Effective ★' + effRank(hd, o) + (o.asc > 0 ? ' <span class="eff-base">' + hd.stars + "★ base + " + o.asc + " Syn</span>" : "") + "</span>";
+          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps</span>";
           var gearBits = [];
           GEAR_SLOTS.forEach(function (sl) { var gg = equippedGear(hd.id, sl); if (gg) gearBits.push(GEAR_SLOT_ICON[sl] + " " + gg.stars + "★"); });
           if (gearBits.length) h += '<span class="hero-gear-line" aria-label="Equipped gear">' + gearBits.join(" · ") + "</span>";
         } else {
-          h += '<span class="hmeta">' + (hd.id === "luna" ? "🌙 Awaits on Floor 25" : "Not yet summoned") + "</span>";
+          h += '<span class="hmeta">' + (hd.id === "luna" ? "🌙 Summonable — also awaits on Floor 25" : "Not yet summoned") + "</span>";
         }
         h += "</span></button>";
         h += '<button type="button" class="hero-details-btn" data-hero="' + hd.id + '" aria-label="View details for ' + esc(hd.name) + '">ⓘ Details</button>';
@@ -4652,21 +4683,19 @@
         h += '<div class="upg-wrap' + (open ? " open" : "") + '">';
         h += '<div class="upg-row' + (open ? " selected" : "") + '">';
         h += '<button type="button" class="upg-view" data-upg-toggle="' + def.id + '" aria-expanded="' + open + '" aria-label="' + (open ? "Hide" : "Show") + ' upgrade options for ' + esc(def.name) + '"><span class="upg-face"><img src="' + AVATARS[def.id] + '" alt="" loading="lazy" /></span>' +
-          '<span class="upg-info"><span class="upg-name">' + esc(def.name) + ' <span style="color:' + starColor(def.stars) + '">' + starsStr(def.stars) + '</span></span>' +
-          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
+          '<span class="upg-info"><span class="upg-name">' + esc(def.name) + ' <span style="color:' + starColor(def.stars) + '">' + starsStr(def.stars) + '</span>' + (o.asc > 0 ? ' <span style="color:' + starColor(effRank(def, o)) + ';font-size:12px">Effective ★' + effRank(def, o) + "</span>" : "") + '</span>' +
+          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + " (" + effRank(def, o) + "★ cap)" + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
           (onQuest ? '<span class="upg-quest">📜 ON QUEST</span>' : "") +
           '<span class="upg-chev" aria-hidden="true">' + (open ? "▾" : "▸") + "</span></button>";
         h += '<span class="upg-actions">';
         h += '<button type="button" class="btn-pill anime-btn-gold" data-upgrade="' + def.id + '" ' + (s.gold < cost || capped ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize to raise it" : "Level up " + esc(def.name) + " for " + fmt(cost) + " gold") + '">' +
           (capped ? "⬆ MAX LEVEL" : "⬆ Lv Up — 🪙 " + fmt(cost)) + "</button>";
-        if (def.id !== "luna") {
-          if (o.asc >= maxAsc(def)) {
-            h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
-          } else {
-            var stB = synthStatus(def, o);
-            h += '<button type="button" class="btn-pill ' + (stB.allOk ? "anime-btn-primary" : "btn-ghost") + '" data-synth="' + def.id + '" aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) : "Synthesize " + esc(def.name) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
-              (stB.allOk ? "✦ Synthesize! → Rank " + (o.asc + 1) + " ✦" : "✦ Synthesize → Rank " + (o.asc + 1) + " 🔒") + "</button>";
-          }
+        if (o.asc >= maxAsc(def)) {
+          h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
+        } else {
+          var stB = synthStatus(def, o);
+          h += '<button type="button" class="btn-pill ' + (stB.allOk ? "anime-btn-primary" : "btn-ghost") + '" data-synth="' + def.id + '" aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
+            (stB.allOk ? "✦ Synthesize! → Effective ★" + (effRank(def, o) + 1) + " ✦" : "✦ Synthesize → Effective ★" + (effRank(def, o) + 1) + " 🔒") + "</button>";
         }
         h += "</span></div>";
         if (open) h += '<div class="upg-panel">' + detailHTMLFor(def.id) + "</div>";
@@ -4692,13 +4721,16 @@
       h += '<span class="detail-portrait" style="border-color:' + def.color + '"><img src="' + AVATARS[def.id] + '" alt="Anime portrait of ' + esc(def.name) + ", " + esc(def.title) + '" class="' + (o ? "" : "unowned") + '" /><span class="sticker" style="border-color:' + def.color + '" aria-hidden="true">' + chibiSVG(def, 33) + "</span></span>";
       h += '<div class="detail-info"><h3>' + (o ? esc(def.name) : def.id === "luna" ? esc(def.name) : "???") + "</h3>";
       h += '<p class="small" style="color:' + def.color + '">' + esc(def.title) + " · " + esc(def.cls) + ' · <span style="color:' + starColor(def.stars) + '">' + starsStr(def.stars) + "</span></p>";
+      if (o) {
+        h += '<p style="margin:0.375rem 0 0"><span class="eff-pill" style="border-color:' + starColor(effRank(def, o)) + ';color:' + starColor(effRank(def, o)) + '">Effective ★' + effRank(def, o) + (o.asc > 0 ? ' <span class="eff-base">' + def.stars + "★ base + " + o.asc + " Syn</span>" : ' <span class="eff-base">' + def.stars + "★ base</span>") + "</span></p>";
+      }
       h += '<p class="sprite-note"><span class="sprite-face" style="border-color:' + def.color + '" aria-hidden="true">' + chibiSVG(def, 40) + "</span>Battle sprite — matched to the portrait: hair, outfit &amp; weapon.</p>";
       h += "</div></div>";
       h += '<button type="button" class="close-btn" id="detail-close" aria-label="Close hero details">✕</button></div>';
       h += '<p class="small dim" style="margin-top:0.5rem">' + esc(def.blurb) + "</p>";
       if (skill) {
         h += '<div class="skill-box"><p class="sk-name">✦ ' + esc(skill.name) + (o ? ' <span class="bold dim" style="font-weight:700"> · Skill Lv ' + skillLevel(o) + "</span>" : "") + "</p>";
-        h += '<p class="sk-desc">' + esc(skill.desc) + (o && def.id !== "luna" ? " Each synthesis raises its level by 1." : "") + "</p>";
+        h += '<p class="sk-desc">' + esc(skill.desc) + (o ? " Each synthesis raises its level by 1." : "") + "</p>";
         var hiddenMore = 0;
         (skill.more || []).forEach(function (m) {
           if (m.unlock && (!o || effRank(def, o) < m.unlock)) { hiddenMore++; return; }
@@ -4715,8 +4747,9 @@
         if (questRun) {
           h += '<p class="small" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(125,211,252,0.4);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700;color:#7dd3fc">📜 Away on ' + esc(questById(questRun.questId).name) + " — back in " + fmtClock((questRun.endsAt - Date.now()) / 1000) + ". They can't join the tower party until they return (or recall the quest from the Quests tab).</p>";
         }
+        var effD = effRank(def, o);
         h += '<div class="stat-grid">';
-        h += '<div class="stat-cell"><p class="v">' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL · ' + effD + '★ CAP</p></div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p></div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
         h += "</div>";
@@ -4732,20 +4765,17 @@
           }
         });
         h += "</div>";
-        if (def.id === "luna") {
-          h += '<p class="xs dim" style="margin-top:0.5rem">A 7★ the summoning circle can never call — a rank at the very top of the tower\'s scale, so her star rank alone caps her level at ' + maxLevel(def, o) + ". Luna cannot be summoned or synthesized: she chose this party herself on Floor 25.</p>";
+        h += '<p class="xs dim" style="margin-top:0.5rem">Effective rank ' + effD + "★ caps level at " + maxLevel(def, o) + " — that's " + def.stars + "★ base" + (o.asc > 0 ? " + " + o.asc + " synthesis" : "") + ", and every synthesis adds +10 to the cap. Synthesis " + o.asc + "/" + maxAsc(def) + " — synthesis is in your hands now, Master: duplicates bank as spare copies and nothing fuses on its own. Max out this rank's level, gather the copies, gems, and (from synthesis #3) dungeon materials listed below, then tap Synthesize. Each rank adds +25% stats, +10 level cap, +1 skill level.</p>";
+        if (o.asc < maxAsc(def)) {
+          var st = synthStatus(def, o);
+          h += '<div class="synth-box" role="group" aria-label="Requirements for synthesis ' + (o.asc + 1) + ' of ' + maxAsc(def) + '"><p class="small bold" style="margin:0">✦ Synthesis #' + (o.asc + 1) + " of " + maxAsc(def) + " — requirements</p>";
+          h += '<p class="synth-preview">Synthesize → Effective ★' + (effD + 1) + ", level cap " + ((effD + 1) * 10) + ' <span class="dim">· +25% stats · Skill Lv ' + (skillLevel(o) + 1) + "</span></p>";
+          st.reqs.forEach(function (rq) {
+            h += '<p class="synth-req ' + (rq.ok ? "ok" : "miss") + '"><span class="st">' + (rq.ok ? "✓" : "✗") + "</span> " + esc(rq.label) + "</p>";
+          });
+          h += '<p class="xs" style="margin:0.4rem 0 0;font-weight:800;color:' + (st.allOk ? "#5eead4" : "#fb7185") + '">' + (st.allOk ? "✦ Everything is ready — hit Synthesize below!" : "Still missing: " + esc(st.missing.join(" · "))) + "</p></div>";
         } else {
-          h += '<p class="xs dim" style="margin-top:0.5rem">Star rank caps level at ' + (10 * def.stars) + ". Synthesis " + o.asc + "/" + maxAsc(def) + " — synthesis is in your hands now, Master: duplicates bank as spare copies and nothing fuses on its own. Max out this rank's level, gather the copies, gems, and (from synthesis #3) dungeon materials listed below, then tap Synthesize. Each rank adds +25% stats, +10 level cap, +1 skill level.</p>";
-          if (o.asc < maxAsc(def)) {
-            var st = synthStatus(def, o);
-            h += '<div class="synth-box" role="group" aria-label="Requirements for synthesis ' + (o.asc + 1) + ' of ' + maxAsc(def) + '"><p class="small bold" style="margin:0">✦ Synthesis #' + (o.asc + 1) + " of " + maxAsc(def) + " — requirements</p>";
-            st.reqs.forEach(function (rq) {
-              h += '<p class="synth-req ' + (rq.ok ? "ok" : "miss") + '"><span class="st">' + (rq.ok ? "✓" : "✗") + "</span> " + esc(rq.label) + "</p>";
-            });
-            h += '<p class="xs" style="margin:0.4rem 0 0;font-weight:800;color:' + (st.allOk ? "#5eead4" : "#fb7185") + '">' + (st.allOk ? "✦ Everything is ready — hit Synthesize below!" : "Still missing: " + esc(st.missing.join(" · "))) + "</p></div>";
-          } else {
-            h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#ffd94d">✦ MAX SYNTHESIS RANK — fully refined!</p>';
-          }
+          h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#ffd94d">✦ MAX SYNTHESIS RANK — fully refined!</p>';
         }
         if (def.id === "han") {
           var erH = effRank(def, o);
@@ -4776,20 +4806,20 @@
         h += '<div class="detail-actions">';
         h += '<button type="button" class="btn-pill anime-btn-gold" id="upgrade-btn" ' + (s.gold < cost || capped ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize duplicates to raise it" : "Level up " + esc(def.name) + " for " + fmt(cost) + " gold") + '">' +
           (capped ? "⬆ MAX LEVEL — Synthesize to raise cap" : "⬆ Level Up! — 🪙 " + fmt(cost)) + "</button>";
-        if (def.id !== "luna") {
-          if (o.asc >= maxAsc(def)) {
-            h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
-          } else {
-            var stB = synthStatus(def, o);
-            h += '<button type="button" class="btn-pill anime-btn-primary" id="synth-btn" ' + (stB.allOk ? "" : "disabled") + ' aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) : "Synthesize " + esc(def.name) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
-              (stB.allOk ? "✦ Synthesize! → Rank " + (o.asc + 1) + " ✦" : "✦ Synthesize → Rank " + (o.asc + 1) + " 🔒") + "</button>";
-          }
+        if (o.asc >= maxAsc(def)) {
+          h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
+        } else {
+          var stB = synthStatus(def, o);
+          h += '<button type="button" class="btn-pill anime-btn-primary" id="synth-btn" ' + (stB.allOk ? "" : "disabled") + ' aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
+            (stB.allOk ? "✦ Synthesize! → Effective ★" + (effRank(def, o) + 1) + " ✦" : "✦ Synthesize → Effective ★" + (effRank(def, o) + 1) + " 🔒") + "</button>";
         }
         var inParty = s.party.indexOf(def.id) >= 0;
         h += '<button type="button" class="btn-ghost" id="party-btn" style="border-radius:999px" aria-label="' + (inParty ? "Remove " + esc(def.name) + " from party" : "Add " + esc(def.name) + " to party") + '">' + (inParty ? "Remove from Party" : "Add to Party ♪") + "</button>";
         h += "</div>";
       } else if (def.id === "luna") {
-        h += '<p class="small" style="margin-top:0.75rem;font-weight:600;color:#c9b8ff">🌙 Luna cannot be summoned — no circle can call her. She joins the party of any Master who clears Floor 25. She is already watching yours.</p>';
+        var rateL = null;
+        activeRates(s.totalSummons).forEach(function (r) { if (r.stars === def.stars) rateL = r.pct; });
+        h += '<p class="small" style="margin-top:0.75rem;font-weight:600;color:#c9b8ff">🌙 Luna answers the Summoning Circle like any hero — ' + def.stars + "★ rate " + rateL + '%. And if she still hasn\'t joined you by Floor 25, she comes to find you herself. She is already watching your climb.</p>';
       } else {
         var rate = null;
         activeRates(s.totalSummons).forEach(function (r) { if (r.stars === def.stars) rate = r.pct; });
@@ -5033,7 +5063,6 @@
       var o = s.heroes[id];
       if (!o) return;
       var def = heroById(id);
-      if (def.id === "luna") { setNotice("🌙 Luna cannot be synthesized — she chose this party herself."); return; }
       if (o.asc >= maxAsc(def)) { setNotice(def.name + " is already at maximum synthesis rank."); return; }
       var st = synthStatus(def, o);
       if (!st.allOk) {
@@ -5696,7 +5725,7 @@
       h += "<p style=\"margin:0\">“You cleared Floor 25. Most Masters never do.”</p>";
       h += "<p style=\"margin:0\">“I am Luna. I appeared on the first floor of Echoria one night, and I never left. I remember every hero who ever climbed, every floor ever cleared, every Master who ever fell.”</p>";
       h += '<p style="margin:0;color:var(--text)">“Let me climb with your party. I fight so no one climbs alone.”</p></div>';
-      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(201,184,255,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">🌙 Luna — the only 7★ hero in Echoria — has joined your ' + (inParty ? "party" : "roster (your party was full — swap her in from the Heroes tab)") + "! She cannot be summoned; she chose you.</p>";
+      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(201,184,255,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">🌙 Luna has joined your ' + (inParty ? "party" : "roster (your party was full — swap her in from the Heroes tab)") + "! The circle might have called her eventually — she chose you first.</p>";
       h += '<button type="button" class="btn-wide" id="luna-close" style="background:linear-gradient(to right,#c9b8ff,#ff9ecf);color:#241547;border:none;box-shadow:0 4px 0 #6d5aa8" aria-label="Welcome Luna and close">🌙 WELCOME, LUNA ♪</button>';
       h += "</div></div>";
       root.innerHTML = h;
@@ -5834,8 +5863,14 @@
       if (!layer) return;
       var span = document.createElement("span");
       span.className = "float-dmg anim-float-dmg";
-      span.style.left = Math.max(0, xPct - 40) + "%";
-      span.style.top = "4%";
+      /* Floats live in the reserved strip above the centered boss:
+         remap the caller's old right-side x onto a band around the
+         middle of the now full-width monster box, and center the
+         text on that point (translateX(-50%) in the animation). */
+      var fx = 50 + (xPct - 60) * 0.45;
+      fx = Math.max(24, Math.min(76, fx));
+      span.style.left = fx + "%";
+      span.style.top = "0.2rem";
       span.style.color = big ? "#ffd94d" : "#f3ecd9";
       span.style.fontSize = big ? "17px" : "13px";
       span.textContent = text;
@@ -5848,8 +5883,11 @@
       if (!slot) return;
       var span = document.createElement("span");
       span.className = "spark anim-spark";
-      span.style.left = "-12px";
-      span.style.top = "8px";
+      /* Impact spark lands on the centered boss: its orb starts below
+         the monster box's 2.5rem float strip, so aim at its upper
+         right from the box's horizontal center. */
+      span.style.left = "calc(50% + 1.6rem)";
+      span.style.top = "4.4rem";
       span.textContent = "💥";
       span.setAttribute("aria-hidden", "true");
       slot.innerHTML = "";
