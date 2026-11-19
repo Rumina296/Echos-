@@ -699,8 +699,9 @@
          flat auras: thorns that bite back, a freeze earned stack by stack,
          a puppet who turns the enemy's strings against it, a tide that
          swallows blows, a mountain that will not fall, and a sage who
-         reads the fated blow in the stars. Ilya, Nix and Mari (5★, cap 2) and Amara and Orien (6★, cap 1)
-         all grow to an effective 7★, while Durnan (6★, cap 2)
+         reads the fated blow in the stars. Ilya (5★, cap 3) grows to an effective 8★, Nix and Mari (5★, cap 2)
+         to an effective 7★; Amara (6★, cap 5) reaches 11★ and Orien
+         (6★, cap 4) reaches 10★, while Durnan (6★, cap 2)
          reaches 8★ (see maxAsc), and their skills live in the
          battle loop, not in
          partyMods: their power is in what they DO, not what they add. */
@@ -723,7 +724,7 @@
       { id: "vesper", name: "Vesper Quill", title: "The Midnight Puppeteer", cls: "Puppeteer", stars: 4, color: "#7a7de0", baseHp: 700, baseAtk: 88, atkSpeed: 1.0,
         blurb: "A street performer from the tower's lower floors, all midnight-blue curls and gold thread, whose little wooden puppets began moving on their own the night Echoria's magic touched her strings. Now she climbs to learn who is pulling hers. Four stars today — but her threads are still lengthening: just four syntheses refine her to an 8★ effective rank, a puppeteer whose stage is the whole tower." },
       { id: "orin", name: "Orin Vale", title: "The Last Songkeeper", cls: "Bard", stars: 3, color: "#e09a3e", baseHp: 620, baseAtk: 70, atkSpeed: 1.0,
-        blurb: "A wandering musician with warm copper hair in a loose topknot and a single feather, a patchwork traveling coat stitched with little stars, and a battered lute older than the tower itself. Cheerful, scruffy, always humming — and untouched by time, as if the years simply forgot him, his smile sweet and a little sad. He carries the last songs of the paradise from before it became the tower: the foreign entity can corrupt memories, but it cannot erase a song, so Orin climbs to keep the paradise alive the only way it still survives — by singing it. Three stars today — but a song is never finished while someone still sings it: seven syntheses carry the songkeeper to an effective 10★, verse by remembered verse, until the Paradise Requiem itself returns." },
+        blurb: "A wandering musician with warm copper hair in a loose topknot and a single feather, a patchwork traveling coat stitched with little stars, and a battered lute older than the tower itself. Cheerful, scruffy, always humming — and untouched by time, as if the years simply forgot him, his smile sweet and a little sad. He carries the last songs of the paradise from before it became the tower: the foreign entity can corrupt memories, but it cannot erase a song, so Orin climbs to keep the paradise alive the only way it still survives — by singing it. Three stars today — but a song is never finished while someone still sings it: five syntheses carry the songkeeper to an effective 8★, verse by remembered verse, until the Paradise Requiem itself returns." },
       { id: "nia", name: "Nia Marrow", title: "The Hearth Cook", cls: "Cook", stars: 1, color: "#d96a3f", baseHp: 500, baseAtk: 44, atkSpeed: 0.9,
         blurb: "The paradise's feasts never really ended — Nia kept them, recipe by recipe, in the only place the Unmaking couldn't eat: a cook's memory. Her stews taste like home to anyone who has ever had one." },
       { id: "dun", name: "Dunstan Cole", title: "The Blacksmith", cls: "Blacksmith", stars: 1, color: "#6e6a7a", baseHp: 520, baseAtk: 48, atkSpeed: 0.85,
@@ -2384,9 +2385,9 @@
     ];
     function materialById(id) { for (var i = 0; i < MATERIALS.length; i++) if (MATERIALS[i].id === id) return MATERIALS[i]; return MATERIALS[0]; }
     var DUNGEONS = [
-      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, hpMult: 0.55, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)", gold: 240 },
-      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, hpMult: 0.8, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales", gold: 560 },
-      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, hpMult: 1.1, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence", gold: 1200 }
+      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, powerFloor: 6, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)", gold: 240 },
+      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, powerFloor: 18, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales", gold: 560 },
+      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, powerFloor: 35, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence", gold: 1200 }
     ];
     /* ---------- Dungeon luck ----------
        Every cleared run rolls its luck once, when the last wave falls:
@@ -2606,7 +2607,7 @@
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * (def.stars + o.asc); }
     function effRank(def, o) { return def.stars + o.asc; }
-    function maxAsc(def) { if (def.id === "han") return 11; /* 1★ → 12★, the absolute max, tying Luna */ if (def.id === "orin") return 7; /* 3★ → 10★ */ if (def.id === "jenna") return 6; /* 3★ → 9★ */ if (def.id === "morrigan") return 5; /* 4★ → 9★ */ if (def.id === "vesper") return 4; /* 4★ → 8★ */ if (def.id === "wren") return 6; /* 1★ → 7★ */ if (def.id === "diddle") return 1; /* 6★ → 7★ */ if (def.id === "amara" || def.id === "orien") return 1; /* 6★ → 7★ */ if (def.id === "draven" || def.id === "durnan" || def.id === "lyra" || def.id === "brynn" || def.id === "faye" || def.id === "ilya" || def.id === "nix" || def.id === "mari") return 2; /* 5★ → 7★, 6★ → 8★ */ if (def.id === "nerissa" || def.id === "nyx" || def.id === "kael" || def.id === "rurik" || def.id === "eolka") return 3; /* 4★ → 7★ */ if (def.id === "ondine" || def.id === "ysolde") return 3; /* 3★ → 6★ */ if (def.id === "tomas" || def.id === "pippa" || def.id === "brann") return 2; /* 1★ → 3★ */ /* Everyday heroes: cap = max effective stars - base stars. Lena's 5 is the default, so she needs no entry. */ if (def.id === "nia" || def.id === "marlo" || def.id === "iris" || def.id === "yara" || def.id === "cassian" || def.id === "straw") return 4; if (def.id === "dun" || def.id === "bram" || def.id === "greta" || def.id === "hugo" || def.id === "odo" || def.id === "ruth" || def.id === "petra" || def.id === "ivo" || def.id === "eamon") return 3; if (def.id === "tam" || def.id === "anselm" || def.id === "joss" || def.id === "ash" || def.id === "milo" || def.id === "zinnia" || def.id === "hilda" || def.id === "agatha" || def.id === "rook" || def.id === "eldric" || def.id === "juno" || def.id === "yurneth") return 2; return 5; }
+    function maxAsc(def) { if (def.id === "han") return 11; /* 1★ → 12★, the absolute max, tying Luna */ if (def.id === "orin") return 5; /* 3★ → 8★ */ if (def.id === "jenna") return 4; /* 3★ → 7★ */ if (def.id === "morrigan") return 5; /* 4★ → 9★ */ if (def.id === "vesper") return 4; /* 4★ → 8★ */ if (def.id === "wren") return 6; /* 1★ → 7★ */ if (def.id === "diddle") return 3; /* 6★ → 9★ */ if (def.id === "amara") return 5; /* 6★ → 11★ */ if (def.id === "orien") return 4; /* 6★ → 10★ */ if (def.id === "ilya") return 3; /* 5★ → 8★ */ if (def.id === "draven" || def.id === "durnan" || def.id === "lyra" || def.id === "brynn" || def.id === "faye" || def.id === "nix" || def.id === "mari") return 2; /* 5★ → 7★, 6★ → 8★ */ if (def.id === "nerissa" || def.id === "nyx" || def.id === "kael" || def.id === "rurik" || def.id === "eolka") return 3; /* 4★ → 7★ */ if (def.id === "ondine" || def.id === "ysolde") return 3; /* 3★ → 6★ */ if (def.id === "tomas" || def.id === "pippa" || def.id === "brann") return 2; /* 1★ → 3★ */ /* Everyday heroes: cap = max effective stars - base stars. Lena's 5 is the default, so she needs no entry. */ if (def.id === "nia" || def.id === "marlo" || def.id === "iris" || def.id === "yara" || def.id === "cassian" || def.id === "straw") return 4; if (def.id === "dun" || def.id === "bram" || def.id === "greta" || def.id === "hugo" || def.id === "odo" || def.id === "ruth" || def.id === "petra" || def.id === "ivo" || def.id === "eamon") return 3; if (def.id === "tam" || def.id === "anselm" || def.id === "joss" || def.id === "ash" || def.id === "milo" || def.id === "zinnia" || def.id === "hilda" || def.id === "agatha" || def.id === "rook" || def.id === "eldric" || def.id === "juno" || def.id === "yurneth") return 2; return 5; }
     function skillLevel(o) { return 1 + o.asc; }
     function selfSkillMult(def, o) {
       var lv = skillLevel(o);
@@ -3231,11 +3232,16 @@
       return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
     }
     function monsterMaxHp(f) {
-      var base = 130 * Math.pow(1.18, f - 1);
+      // HP flattens after Floor 30 so a boss 10 floors up is ~2×, not ~5×:
+      // ×1.18/floor for floors 1–30, then ×1.072/floor for floors 31+.
+      var base = f <= 30 ? 130 * Math.pow(1.18, f - 1) : 130 * Math.pow(1.18, 29) * Math.pow(1.072, f - 30);
       return Math.round(isLordFloor(f) ? base * 6 : isGateFloor(f) ? base * 2.5 : base);
     }
     function monsterAtk(f) {
-      return 14 * Math.pow(1.19, f - 1) * (isLordFloor(f) ? 2.2 : isGateFloor(f) ? 1.5 : 1);
+      // Attack flattens after Floor 30 so a boss 10 floors up hits ~3×, not ~5.7×:
+      // ×1.19/floor for floors 1–30, then ×1.116/floor for floors 31+.
+      var base = f <= 30 ? 14 * Math.pow(1.19, f - 1) : 14 * Math.pow(1.19, 29) * Math.pow(1.116, f - 30);
+      return base * (isLordFloor(f) ? 2.2 : isGateFloor(f) ? 1.5 : 1);
     }
 
     /* ============================== TOWER MEMORY ==============================
@@ -3308,16 +3314,19 @@
        (normal floors pay 🪙 664 at Floor 19, 14,825 at 34, 330,800 at 49)
        — gold per clear is unchanged by the gem rebalance below. Gems grow
        ×1.20 per floor (was ×1.08) while monster HP grows ×1.18 per floor
-       (was ×1.24, see monsterMaxHp), so gems PER HOUR now rise slightly as
-       you climb instead of collapsing: each floor pays ≈1.7% more gems per
-       hour than the one below (×1.20 ÷ ×1.18). To keep the steeper payouts
+       up to Floor 30, then ×1.072 per floor above it (see monsterMaxHp),
+       so gems PER HOUR now rise as you climb instead of collapsing:
+       each floor pays ≈1.7% more gems per hour than the one below up to
+       Floor 30 (×1.20 ÷ ×1.18), and ≈11.9% more above it (×1.20 ÷ ×1.072).
+       To keep the steeper payouts
        from flooding the summon economy, the gem BASES were lowered (first
        clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal / gate /
        lord floors, repeats floored at 1 💎): a Floor 20 grind clear pays
        16 💎 but the monster has ~2.6× less HP, so the hourly rate lands
        close to the old Floor 20 rate while Floor 30 finally pays more.
-       The tower still climbs hard — HP ×5.2 per ten floors, and monster
-       attack growth (×1.19 per floor) is untouched. Offline earnings ride
+       The tower still climbs hard — HP ×5.2 per ten floors up to Floor 30,
+       then ×2.0 per ten floors above it, and monster attack ×3.0 per ten
+       floors above Floor 30 (see monsterAtk). Offline earnings ride
        these same per-clear numbers via goldForClear / gemsForClear. */
     var GEM_GROWTH = 1.2;
     function clearGold(f) { return Math.round(16 * Math.pow(1.23, f - 1) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
@@ -3351,7 +3360,8 @@
       return { to: Infinity, name: "Beyond the Heart", desc: "Past the hundredth floor, Echoria simply keeps going. So do you." };
     }
     function nextBossFloor(f) { return Math.floor(f / 5) * 5 + 5; }
-    function upgradeCost(def, o) { return Math.round(28 * Math.pow(def.stars, 1.6) * Math.pow(1.16, o.level - 1)); }
+    // Level-up gold costs (Nov 19, 2026): stars scale linearly (1★ pays 1×, 7★ pays 7×), and levels 70–120 get a 10% discount (the post-7★ climb); levels 1–69 stay full price.
+    function upgradeCost(def, o) { return Math.round(28 * def.stars * Math.pow(1.16, o.level - 1) * (o.level >= 70 ? 0.9 : 1)); }
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
        (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems
        20 × (r + 1) (so 💎 20, 40, 60, 80, 100, 120 … up to 220 at #11),
@@ -3365,7 +3375,19 @@
        max level of its current rank. Nothing fuses automatically —
        duplicates bank until the player taps Synthesize. */
     function ascCost(o) { return o.asc + 2; }
-    function synthGemCost(o) { return 20 * (o.asc + 1); }
+    /* Gem cost keyed on TARGET effective rank (base stars + current asc + 1),
+       like the Starlight Essence ladder: each higher rank costs more. */
+    var SYNTH_GEM_COST = {
+      2: 20, 3: 50, 4: 100, 5: 200, 6: 500, 7: 1000,
+      8: 2500, 9: 5000, 10: 10000, 11: 20000, 12: 40000
+    };
+    function synthGemCost(def, o) { return SYNTH_GEM_COST[def.stars + o.asc + 1] || 40000; }
+    /* "Spends …" line for the Synthesize button, mirroring the main game:
+       duplicate copies, gems (by the target-rank ladder), and materials. */
+    function synthSpendsText(def, o) {
+      var mr = synthMatReq(def, o);
+      return "spends " + ascCost(o) + " duplicate copies, " + fmt(synthGemCost(def, o)) + " gems" + (mr ? ", and " + mr.count + " " + materialById(mr.id).name + (mr.count > 1 ? "s" : "") : "");
+    }
     function synthMatReq(def, o) {
       // Material ladder keyed on TARGET effective rank (base stars + current asc + 1):
       // 4★ → 2 Moonstones; 5★ → 5 Dragon Scales; 6★ → 10 Dragon Scales;
@@ -3388,7 +3410,7 @@
       reqs.push({ ok: o.level >= cap, label: "Max level for current rank — Lv " + o.level + " / " + cap + (o.level >= cap ? " · at cap!" : " · level up " + (cap - o.level) + " more") });
       var need = ascCost(o);
       reqs.push({ ok: o.dupes >= need, label: "Spare copies — you hold " + o.dupes + " / " + need + " needed" });
-      var gc = synthGemCost(o);
+      var gc = synthGemCost(def, o);
       reqs.push({ ok: save && save.gems >= gc, label: "Gems — 💎 " + fmt(save ? save.gems : 0) + " / " + fmt(gc) + " needed" });
       var mr = synthMatReq(def, o);
       if (mr) {
@@ -4185,6 +4207,7 @@
     var dungeonTimer = null;
     var lastDungeonReward = null;
     var lastDungeonLuck = null;
+    var lastDungeonLost = null;
     var forgeGame = null;
     var forgeTimer = null;
 
@@ -4888,7 +4911,7 @@
       var s = save;
       var h = '<section aria-label="Dungeons and the Forge">';
       h += '<div class="anime-card mt4 card-pad"><h2 class="font-display" style="font-size:1.375rem;font-weight:700;margin:0">🗺️ Dungeons — Delve for Materials</h2>';
-      h += '<p class="small dim" style="margin-top:0.375rem">Send your current party on a quick auto-battle delve — a few waves, fought with the same party damage, HP and crit (gear included) as the Tower. Each dungeon is free, up to <span class="bold" style="color:var(--text)">3 runs per day</span>. Clear a run to haul out crafting materials and gold — and every clear rolls its luck.</p>';
+      h += '<p class="small dim" style="margin-top:0.375rem">Send your current party on a quick auto-battle delve — a few waves, fought with the same party damage, HP and crit (gear included) as the Tower — and your DoTs and status effects work here just like there: waves can be poisoned, bled, chilled, stunned, frozen and rooted. Each dungeon is free, up to <span class="bold" style="color:var(--text)">3 runs per day</span>. Clear a run to haul out crafting materials and gold — and every clear rolls its luck.</p>';
       h += materialsHTML();
       h += '<p class="small" style="margin-top:0.5rem;font-weight:800">Party DPS ' + fmt(effectivePartyDps(s)) + " · Party HP " + fmt(partyMaxHp(s)) + "</p></div>";
 
@@ -4905,7 +4928,10 @@
         });
         h += '</ul><div class="monster-box"><div class="anim-bob"><div class="monster-orb" aria-hidden="true">👾</div></div><p class="monster-tag">Dungeon Monster</p></div></div></div>';
         h += '<div class="bar-outer bar-enemy" role="progressbar" aria-label="Dungeon monster health"><div class="bar-inner" id="dg-enemy-bar"></div></div><p class="bar-label" id="dg-enemy-text"></p>';
-        h += '<p class="party-status" id="dg-status">Delving… wave ' + dungeonBattle.wave + " of " + dungeonBattle.waves + "</p>";
+        h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dungeonBattle.partyHp) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run doesn't count — only clears do).</p>";
+        h += '<p class="xs" id="dg-wave-line" style="margin-top:0.375rem;font-weight:700;color:var(--dim)">' + dungeonWaveLine(dg0, dungeonBattle.wave, dungeonFoeHeld(dungeonBattle.fx)) + "</p>";
+        h += '<div id="dg-status-badges" style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.375rem">' + dungeonStatusBadges(dungeonBattle.fx) + "</div>";
+        h += '<p class="party-status" id="dg-status">' + dungeonStatusLine() + "</p>";
         h += "</div>";
       } else if (lastDungeonReward) {
         var lk = lastDungeonLuck ? LUCK_INFO[lastDungeonLuck.tier] : null;
@@ -4916,6 +4942,9 @@
           h += '<p class="font-display" style="margin-top:0.5rem;font-size:1.25rem;font-weight:700;color:' + lkColor + '">' + lk.emoji + " " + esc(lk.label) + '</p><p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + esc(lk.blurb) + "</p>";
         }
         h += '<p class="small" style="margin-top:0.375rem;font-weight:800">You hauled out: ' + esc(lastDungeonReward) + '</p><button type="button" class="btn-pill anime-btn-gold" id="dg-reward-ok" style="margin-top:0.5rem">Nice!</button></div>';
+      } else if (lastDungeonLost) {
+        h += '<div class="anime-card mt4 card-pad center" aria-label="Dungeon run lost"><p style="font-size:2rem;margin:0" aria-hidden="true">💫</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">The depths win this time…</h3>';
+        h += '<p class="small dim" style="margin-top:0.375rem;font-weight:600">The party regroups at the mouth of ' + esc(lastDungeonLost) + ", empty-handed. Level up, forge better gear, and try again — the run doesn't count, only clears do.</p><button type=\"button\" class=\"btn-pill anime-btn-primary\" id=\"dg-lost-ok\" style=\"margin-top:0.5rem\">REGROUP</button></div>";
       }
 
       h += '<div class="dungeon-grid">';
@@ -4932,6 +4961,21 @@
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
         h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + " · 🪙 " + dg.gold.toLocaleString("en-US") + " gold</p>";
         h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + JACKPOT_GEMS + "💎</span></p>";
+        /* Wave-by-wave incoming damage vs the party's healer trickle,
+           priced with the exact formulas the run loop applies — so a
+           wave that out-damages the healing (the point party HP starts
+           draining) is visible before the run, not a surprise mid-delving. */
+        var trickle = dungeonHealPerSec(s);
+        var dmods = partyMods(s);
+        h += '<div style="margin-top:0.5rem;border:2px solid var(--border);border-radius:1rem;background:#1b123580;padding:0.5rem 0.75rem" aria-label="' + esc(dg.name) + ': wave damage versus your party healing">';
+        h += '<p class="xs bold dim" style="margin:0">⚔ WAVE DAMAGE vs 💚 YOUR HEALING ' + (trickle > 0 ? fmt(trickle) + "/s" : "— NONE (NO HEALER)") + "</p>";
+        h += '<div style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.25rem">';
+        for (var w = 1; w <= dg.waves; w++) {
+          var inc = dungeonWaveAtk(dg, w) * dmods.enemyAtkMult;
+          var covered = inc <= trickle;
+          h += '<span style="border-radius:999px;border:1px solid ' + (covered ? "#2dd4bf88" : "#fb718588") + ";background:" + (covered ? "#2dd4bf14" : "#fb718514") + ";color:" + (covered ? "#5eead4" : "#fda4af") + ';padding:0.125rem 0.5rem;font-size:11px;font-weight:900">W' + w + " " + fmt(inc) + "/s" + (covered ? " ✓" : " · net −" + fmt(inc - trickle) + "/s") + "</span>";
+        }
+        h += '</div><p class="xs dim" style="margin:0.25rem 0 0;font-weight:600">A ✓ wave is fully mended by your healers; a net − wave drains party HP every second it lasts.</p></div>';
         if (!unlocked) {
           h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#fda4af">🔒 Unlocks at Tower Floor ' + dg.unlock + " (you're on " + s.floor + ")</p>";
         } else {
@@ -4943,7 +4987,7 @@
         h += "</div>";
       });
       h += "</div>";
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills and synergies all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills, synergies, damage-over-time and status effects all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
 
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
@@ -4981,7 +5025,16 @@
       var w = document.getElementById("dg-wave");
       if (w) w.textContent = dungeonBattle.wave + "/" + dungeonBattle.waves;
       var st = document.getElementById("dg-status");
-      if (st) st.textContent = "Delving… wave " + dungeonBattle.wave + " of " + dungeonBattle.waves + " · Party DPS " + fmt(effectivePartyDps(save));
+      if (st) st.textContent = dungeonStatusLine();
+      var pb = document.getElementById("dg-party-bar");
+      if (pb) pb.style.width = Math.max(0, Math.min(100, dungeonBattle.partyHp / dungeonBattle.partyMax * 100)) + "%";
+      var pt = document.getElementById("dg-party-text");
+      if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dungeonBattle.partyHp)) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run doesn't count — only clears do).";
+      var fx = dungeonBattle.fx;
+      var wl = document.getElementById("dg-wave-line");
+      if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx));
+      var badges = document.getElementById("dg-status-badges");
+      if (badges) badges.innerHTML = dungeonStatusBadges(fx);
     }
 
     /* ============================== RENDER: QUESTS TAB ============================== */
@@ -5626,7 +5679,7 @@
           h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
         } else {
           var stB = synthStatus(def, o);
-          h += '<button type="button" class="btn-pill ' + (stB.allOk ? "anime-btn-primary" : "btn-ghost") + '" data-synth="' + def.id + '" aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
+          h += '<button type="button" class="btn-pill ' + (stB.allOk ? "anime-btn-primary" : "btn-ghost") + '" data-synth="' + def.id + '" aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) + ": " + synthSpendsText(def, o) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
             (stB.allOk ? "✦ Synthesize! → Effective ★" + (effRank(def, o) + 1) + " ✦" : "✦ Synthesize → Effective ★" + (effRank(def, o) + 1) + " 🔒") + "</button>";
         }
         h += "</span></div>";
@@ -5728,10 +5781,10 @@
         }
         if (def.id === "orin") {
           var erOr = effRank(def, o);
-          h += '<p class="wren-box" style="border-color:rgba(224,154,62,0.5)">🎵 Effective rank <span style="' + starTextStyle(erOr) + '">' + starsStr(erOr) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>10★</span> · Ballad of the Paradise ✓ healing + party damage +3%/level · Verse of Light " +
+          h += '<p class="wren-box" style="border-color:rgba(224,154,62,0.5)">🎵 Effective rank <span style="' + starTextStyle(erOr) + '">' + starsStr(erOr) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>8★</span> · Ballad of the Paradise ✓ healing + party damage +3%/level · Verse of Light " +
             (erOr >= 5 ? "✓ active (party crit +3%/level)" : "🔒 unlocks at rank 5★") + " · Paradise Requiem " +
             (erOr >= 7 ? "✓ SUNG WHOLE (party damage +6%/level, healing +30%/level)" : "🔒 unlocks at rank 7★") +
-            (erOr >= 10 ? " · 🌟 10★ REACHED — the paradise sings again, all of it, and the Unmaking still cannot eat a single note." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 10★") + "</p>";
+            (erOr >= 8 ? " · 🌟 8★ REACHED — the paradise sings again, all of it, and the Unmaking still cannot eat a single note." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 8★") + "</p>";
         }
         var cost = upgradeCost(def, o);
         var capped = o.level >= maxLevel(def, o);
@@ -5750,7 +5803,7 @@
           h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
         } else {
           var stB = synthStatus(def, o);
-          h += '<button type="button" class="btn-pill anime-btn-primary" id="synth-btn" ' + (stB.allOk ? "" : "disabled") + ' aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
+          h += '<button type="button" class="btn-pill anime-btn-primary" id="synth-btn" ' + (stB.allOk ? "" : "disabled") + ' aria-label="' + (stB.allOk ? "Synthesize " + esc(def.name) + " to synthesis rank " + (o.asc + 1) + " — Effective ★" + (effRank(def, o) + 1) + ", level cap " + ((effRank(def, o) + 1) * 10) + ": " + synthSpendsText(def, o) : "Synthesize " + esc(def.name) + " to Effective ★" + (effRank(def, o) + 1) + " — requirements not met yet: " + esc(stB.missing.join("; "))) + '">' +
             (stB.allOk ? "✦ Synthesize! → Effective ★" + (effRank(def, o) + 1) + " ✦" : "✦ Synthesize → Effective ★" + (effRank(def, o) + 1) + " 🔒") + "</button>";
         }
         var inParty = s.party.indexOf(def.id) >= 0;
@@ -5948,6 +6001,8 @@
       });
       var dgOk = document.getElementById("dg-reward-ok");
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
+      var dgLost = document.getElementById("dg-lost-ok");
+      if (dgLost) dgLost.addEventListener("click", function () { lastDungeonLost = null; renderMain(); });
     }
 
     /* The Gem Exchange stays locked until the climb reaches this floor:
@@ -6214,7 +6269,7 @@
       var next = JSON.parse(JSON.stringify(s));
       var no = next.heroes[id];
       no.dupes -= ascCost(o);
-      next.gems -= synthGemCost(o);
+      next.gems -= synthGemCost(def, o);
       if (mr) {
         if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
         next.materials[mr.id] = (next.materials[mr.id] || 0) - mr.count;
@@ -6616,6 +6671,93 @@
     }
 
     /* ---- Dungeon runs: quick auto-battle, waves ticked on a timer ---- */
+    /* ---------- Dungeon wave attack & healer trickle ----------
+       The wave's incoming damage and the party's healer trickle,
+       priced with the exact formulas the dungeon run loop applies —
+       the Dungeon tab's wave preview and the live run card read the
+       same numbers, so the two can never drift apart. Wave attack is
+       the monster's attack at the dungeon's unlock floor, growing
+       +25% per wave, exactly like the main game's dungeonWaveAtk
+       (the main game prices attack off powerFloor; here the attack
+       stays on the unlock floor — only the wave HP was aligned to
+       powerFloor). */
+    function dungeonWaveAtk(dg, wave) {
+      return monsterAtk(dg.unlock) * (1 + 0.25 * (wave - 1));
+    }
+    /* Wave HP, priced the main game's way — off the dungeon's
+       powerFloor (the tower-floor equivalent the wave stats are
+       scaled from), not the unlock floor. Growth stays +25% per
+       wave here; the main game uses +40% in its dungeonWaveHp. */
+    function dungeonWaveHp(dg, wave) {
+      return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.25 * (wave - 1)));
+    }
+    function dungeonHealPerSec(s) {
+      var hasHealer = s.party.some(function (id) { return isHealerDef(heroById(id)) && s.heroes[id]; });
+      return hasHealer ? partyMaxHp(s) * 0.012 * 4 * partyMods(s).healMult : 0;
+    }
+    /* The DoT slice for dungeons — the same raw DoTs the tower folds
+       in (poison, bleed, chill, burn, snare, tidal, comet), WITHOUT
+       the floor-priced Thornmail reflect / Cut Strings (tower-only:
+       they are priced off a floor's monster attack, which dungeons
+       don't have) and without the tower's Dirge / sticky shaves. */
+    function dungeonDotDps(s) {
+      return venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s);
+    }
+    /* Per-wave status-effect state for a dungeon run — the dungeon
+       mirror of the tower battle loop's status timers. Every timer
+       runs on `clock`, the seconds fought against the CURRENT wave:
+       a fresh wave is a fresh foe, so the whole state resets on each
+       wave advance, exactly as the tower resets for each new monster. */
+    function freshDungeonStatus() {
+      return {
+        clock: 0,
+        cocoonNextAt: 15, cocoonUntil: 0,
+        entangleNextAt: 15, entangleUntil: 0,
+        eclipseNextAt: 25, eclipseUntil: 0,
+        frostFrozenUntil: 0, frostRollAt: 1,
+        nixStacks: 0, nixFrozenUntil: 0, nixHitAcc: 0,
+        hoarfrostStacks: 0, hoarfrostBeatAcc: 0,
+        swallowUntil: 0, swallowRollAt: 1
+      };
+    }
+    function dungeonFoeHeld(fx) {
+      return fx.clock < fx.cocoonUntil || fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil || fx.clock < fx.entangleUntil || fx.clock < fx.eclipseUntil || fx.clock < fx.swallowUntil;
+    }
+    /* The run card's status line, shared by the initial render and the
+       per-tick update: wave, Party DPS with the DoT share folded in. */
+    function dungeonStatusLine() {
+      if (!dungeonBattle) return "";
+      var dotDps = dungeonDotDps(save);
+      return "Delving… wave " + dungeonBattle.wave + " of " + dungeonBattle.waves + " · Party DPS " + fmt(effectivePartyDps(save) + dotDps) + (dotDps > 0 ? " (incl. " + fmt(dotDps) + "/s from DoTs)" : "");
+    }
+    /* The live wave line for the run card, shared by the initial render
+       and the per-tick update: this wave's incoming damage vs the
+       party's healer trickle, and whether the wave is held fast. */
+    function dungeonWaveLine(dg, wave, foeHeld) {
+      var waveDps = dungeonWaveAtk(dg, wave) * partyMods(save).enemyAtkMult;
+      var trickle = dungeonHealPerSec(save);
+      return "Wave " + wave + " hits for " + fmt(waveDps) + "/s · 💚 your healing " + fmt(trickle) + "/s — " + (foeHeld ? "held fast right now — it can't hit back" : waveDps > trickle ? "this wave out-damages your healing, so party HP drains" : "your healing covers this wave");
+    }
+    /* Live status badges for the run card — the same holds the dungeon
+       loop is applying this tick. Returns "" when nothing is up. */
+    function dungeonStatusBadges(fx) {
+      var foeStunned = fx.clock < fx.cocoonUntil;
+      var foeFrozen = fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil;
+      var foeRooted = fx.clock < fx.entangleUntil;
+      var foeEclipsed = fx.clock < fx.eclipseUntil;
+      var foeSwallowed = fx.clock < fx.swallowUntil;
+      var hoarfrostPct = fx.hoarfrostStacks * 2;
+      if (!foeStunned && !foeFrozen && !foeRooted && !foeEclipsed && !foeSwallowed && hoarfrostPct <= 0) return "";
+      var pill = "display:inline-block;white-space:nowrap;border-radius:999px;border:2px solid;padding:0.125rem 0.625rem;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;";
+      var b = "";
+      if (foeStunned) b += '<span style="' + pill + 'border-color:#f0abfc;background:#4a044e;color:#fae8ff">🕸 Stunned</span>';
+      if (foeFrozen) b += '<span style="' + pill + 'border-color:#7dd3fc;background:#082f49;color:#e0f2fe">❄ Frozen</span>';
+      if (foeRooted) b += '<span style="' + pill + 'border-color:#4ade80;background:#052e16;color:#bbf7d0">🌿 Rooted</span>';
+      if (foeEclipsed) b += '<span style="' + pill + 'border-color:#a78bfa;background:#1e1b4b;color:#ddd6fe">🌑 Eclipse</span>';
+      if (foeSwallowed) b += '<span style="' + pill + 'border-color:#2dd4bf;background:#042f2e;color:#ccfbf1">🌊 Swallowed</span>';
+      if (hoarfrostPct > 0) b += '<span style="' + pill + 'border-color:#bae6fd;background:#0c2d48;color:#e0f2fe">❄ Hoarfrost −' + hoarfrostPct + '% attack</span>';
+      return b;
+    }
     function startDungeonRun(dgId) {
       if (dungeonBattle) return;
       normalizeDungeon();
@@ -6630,10 +6772,10 @@
           : "🌙 " + dg.name + " is exhausted for today — " + allowedRuns + " runs a day (including every extra run), and the depths need their rest. Come back tomorrow!");
         return;
       }
-      var baseHp = monsterMaxHp(dg.unlock);
-      dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: Math.round(baseHp * dg.hpMult), enemyHp: Math.round(baseHp * dg.hpMult), lastTick: performance.now(), atkTimers: {} };
+      dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1), enemyHp: dungeonWaveHp(dg, 1), partyHp: partyMaxHp(save), partyMax: partyMaxHp(save), status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {} };
       lastDungeonReward = null;
       lastDungeonLuck = null;
+      lastDungeonLost = null;
       renderMain();
       setNotice(dg.icon + " Your party delves into " + dg.name + " — " + dg.waves + " waves. Fight!");
       if (dungeonTimer) window.clearInterval(dungeonTimer);
@@ -6670,24 +6812,137 @@
       renderMain();
     }
     function dungeonTick() {
-      if (!dungeonBattle || !save) { if (dungeonTimer) window.clearInterval(dungeonTimer); dungeonTimer = null; return; }
+      if (!dungeonBattle || !save || dungeonBattle.status !== "fighting") { if (dungeonTimer) window.clearInterval(dungeonTimer); dungeonTimer = null; return; }
       var now = performance.now();
       var dt = Math.min(1, (now - dungeonBattle.lastTick) / 1000);
       dungeonBattle.lastTick = now;
-      /* Party DPS does the damage (gear included); a floor under the
-         damage keeps every wave to ~8s at most, so a delve stays quick
-         even in the hard dungeon — a stronger party still clears faster. */
-      var dmg = Math.max(effectivePartyDps(save) * dt * (0.9 + Math.random() * 0.2), dungeonBattle.enemyMax * dt / 8);
+      var dg = dungeonById(dungeonBattle.dungeonId);
+      var s = save;
+      var mods = partyMods(s);
+      /* ---- Party status effects, mirrored from the tower battle loop ----
+         Every status the party's skills lay on the enemy in the tower
+         works here too, on the same numbers: all timers run on fx.clock,
+         the seconds fought against the current wave, and reset with each
+         new wave just as the tower resets them for each new monster.
+         Thornmail's reflect and Cut Strings stay tower-only (priced off
+         a floor's monster attack), as do revives and party buffs. */
+      var fx = dungeonBattle.fx;
+      fx.clock += dt;
+      var aurO = s.heroes["aurelia"]; var aurIn = !!aurO && s.party.indexOf("aurelia") >= 0;
+      var eolkaO = s.heroes["eolka"]; var eolkaIn = !!eolkaO && s.party.indexOf("eolka") >= 0;
+      var nixIn = !!s.heroes["nix"] && s.party.indexOf("nix") >= 0;
+      var ilyaIn = !!s.heroes["ilya"] && s.party.indexOf("ilya") >= 0;
+      var orienIn = !!s.heroes["orien"] && s.party.indexOf("orien") >= 0;
+      var amaraO = s.heroes["amara"]; var amaraIn = !!amaraO && s.party.indexOf("amara") >= 0;
+      var durnanIn = !!s.heroes["durnan"] && s.party.indexOf("durnan") >= 0;
+      /* 🕸 Silk Cocoon: every 15s of the wave, Aurelia's silk wraps the
+         foe whole and STUNS it for 2s (+0.5s per skill level above 1). */
+      if (aurIn && fx.clock >= fx.cocoonNextAt) {
+        fx.cocoonUntil = fx.clock + silkCocoonDuration(skillLevel(aurO));
+        fx.cocoonNextAt += 15;
+      }
+      /* 🌿 Entangle: every 15s, Ilya's roots hold the foe for 2s. */
+      if (ilyaIn && fx.clock >= fx.entangleNextAt) {
+        fx.entangleUntil = fx.clock + 2;
+        fx.entangleNextAt += 15;
+      }
+      /* 🌑 Eclipse: every 25s, Orien's darkness falls for 4s. */
+      if (orienIn && fx.clock >= fx.eclipseNextAt) {
+        fx.eclipseUntil = fx.clock + 4;
+        fx.eclipseNextAt += 25;
+      }
+      /* ❄ Frostbite's freeze: the chill already ticks as a DoT (below);
+         each second it holds, it has a 10% chance to FREEZE the foe for
+         2s (+0.5s per skill level above 1), refreshing the hold. */
+      if (eolkaIn) {
+        while (fx.clock >= fx.frostRollAt) {
+          fx.frostRollAt += 1;
+          if (Math.random() < 0.10) fx.frostFrozenUntil = fx.clock + frostFreezeDuration(skillLevel(eolkaO));
+        }
+      }
+      /* ❄ Glacial Edge: each of Nix's strikes (on her real atkSpeed
+         cadence) stacks a chill — at 5 stacks the foe freezes for 3s. */
+      if (nixIn) {
+        var nixPeriod = 1 / heroById("nix").atkSpeed;
+        fx.nixHitAcc += dt;
+        while (fx.nixHitAcc >= nixPeriod) {
+          fx.nixHitAcc -= nixPeriod;
+          fx.nixStacks += 1;
+          if (fx.nixStacks >= 5) {
+            fx.nixStacks = 0;
+            fx.nixFrozenUntil = fx.clock + 3;
+          }
+        }
+      }
+      /* 🌊 Sunken Guard: each second, a 10%-per-skill-level chance the
+         tide swallows the foe's blows for that second. */
+      if (amaraIn) {
+        while (fx.clock >= fx.swallowRollAt) {
+          fx.swallowRollAt += 1;
+          if (Math.random() < 0.10 * skillLevel(amaraO)) fx.swallowUntil = fx.clock + 1;
+        }
+      }
+      var foeStunned = fx.clock < fx.cocoonUntil;
+      var foeFrozen = fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil;
+      var foeRooted = fx.clock < fx.entangleUntil;
+      var foeEclipsed = fx.clock < fx.eclipseUntil;
+      var foeSwallowed = fx.clock < fx.swallowUntil;
+      var foeHeld = dungeonFoeHeld(fx);
+      /* ❄ Hoarfrost: every blow the foe throws into Nix's frost (one
+         beat ~1.4s, slowed by Durnan like the tower's lunge beat) costs
+         it another 2% of its attack, stacking to −20%. A held foe throws
+         no blows, so the frost stops growing while it hangs fast. */
+      if (nixIn && !foeStunned && !foeFrozen && !foeRooted && !foeEclipsed) {
+        fx.hoarfrostBeatAcc += dt;
+        var beat = durnanIn ? 1.4 / 0.85 : 1.4;
+        while (fx.hoarfrostBeatAcc >= beat) {
+          fx.hoarfrostBeatAcc -= beat;
+          if (fx.hoarfrostStacks < 10) fx.hoarfrostStacks += 1;
+        }
+      }
+      var durnanSlow = durnanIn ? 0.85 : 1; /* Mountain's Weight — the foe attacks 15% less often */
+      var hoarfrostMult = 1 - 0.02 * fx.hoarfrostStacks;
+      /* Damage: hit DPS with the run's variance roll, plus the party's
+         skill DoTs ticking on top — exactly as the tower folds them in.
+         No floor under the damage (unlike the old dungeon tick): waves
+         last as long as the party's DPS dictates, so the 15s/25s status
+         timers above actually get to fire — as in the main game. */
+      var dotDps = dungeonDotDps(s);
+      var dmgPerSec = effectivePartyDps(s) * (0.9 + Math.random() * 0.2) + dotDps;
+      /* 🕷 Widow's Feast: while the cocoon holds the foe fast, the whole
+         party deals +10% damage per skill level — as in the tower. */
+      if (foeStunned && aurIn) dmgPerSec *= 1 + 0.10 * skillLevel(aurO);
+      /* 🌑 Eclipse: while Orien's darkness holds, the party hits +20%. */
+      if (foeEclipsed) dmgPerSec *= 1.20;
+      var dmg = dmgPerSec * dt;
       dungeonBattle.enemyHp -= dmg;
+      /* The wave fights back only while it can move: a held foe deals
+         nothing, and a free one is blunted by the party's enemy-attack
+         modifiers, Durnan's slow, and Nix's Hoarfrost — the tower's own
+         mAtk line, priced off the wave's attack instead of a floor's.
+         The healer trickle mends the party each second, and party HP
+         carries across waves; a wipe ends the run. */
+      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave) * mods.enemyAtkMult * durnanSlow * hoarfrostMult;
+      var heal = dungeonHealPerSec(s) * dt;
+      dungeonBattle.partyHp = Math.min(dungeonBattle.partyMax, dungeonBattle.partyHp - waveDmg * dt + heal);
+      if (dungeonBattle.partyHp <= 0) {
+        dungeonBattle.partyHp = 0;
+        if (dungeonTimer) window.clearInterval(dungeonTimer);
+        dungeonTimer = null;
+        lastDungeonLost = dg.name;
+        dungeonBattle = null;
+        renderMain();
+        setNotice("💫 The depths win this time… the party regroups at the dungeon mouth, empty-handed. The run doesn't count — only clears do.");
+        return;
+      }
       if (dungeonBattle.enemyHp <= 0) {
         /* Grave Tithe (Ossian, Floor 90): dungeon kills feed him too. */
         feedGraveTitheDungeon();
         if (dungeonBattle.wave >= dungeonBattle.waves) { finishDungeonRun(); return; }
         dungeonBattle.wave += 1;
-        var dg = dungeonById(dungeonBattle.dungeonId);
-        var baseHp = monsterMaxHp(dg.unlock);
-        dungeonBattle.enemyMax = Math.round(baseHp * dg.hpMult * (1 + 0.25 * (dungeonBattle.wave - 1)));
+        dungeonBattle.enemyMax = dungeonWaveHp(dg, dungeonBattle.wave);
         dungeonBattle.enemyHp = dungeonBattle.enemyMax;
+        dungeonBattle.fx = freshDungeonStatus(); /* a new wave is a new foe — every status timer starts over */
         playHitSfx();
       }
       /* Visual only: on their own attack cadence (the same period the
