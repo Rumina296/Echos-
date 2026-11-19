@@ -1266,8 +1266,15 @@
         var inv = [];
         if (Array.isArray(p.gearInv)) {
           p.gearInv.forEach(function (g) {
-            if (g && typeof g.uid === "string" && (g.slot === "weapon" || g.slot === "armor" || g.slot === "accessory") && typeof g.stars === "number" && g.stars >= 1 && g.stars <= 5) {
-              inv.push({ uid: g.uid, slot: g.slot, stars: Math.floor(g.stars) });
+            if (g && typeof g.uid === "string" && (g.slot === "weapon" || g.slot === "armor" || g.slot === "accessory") && typeof g.stars === "number" && g.stars >= 1 && g.stars <= 7) {
+              var piece = { uid: g.uid, slot: g.slot, stars: Math.floor(g.stars) };
+              /* Recipe / custom name / attunement ride along when present
+                 (pieces forged before those systems existed have none). */
+              if (typeof g.recipe === "string" && ["iron", "moon", "scale", "essence"].indexOf(g.recipe) >= 0) piece.recipe = g.recipe;
+              if (typeof g.name === "string" && g.name.trim()) piece.name = g.name.trim().slice(0, 40);
+              if (typeof g.attunedClass === "string" && g.attunedClass.trim()) piece.attunedClass = g.attunedClass.trim().slice(0, 30);
+              if (typeof g.fatedHero === "string" && HEROES.some(function (hd) { return hd.id === g.fatedHero; })) piece.fatedHero = g.fatedHero;
+              inv.push(piece);
             }
           });
         }
@@ -2368,15 +2375,23 @@
     var GEAR_SLOTS = ["weapon", "armor", "accessory"];
     var GEAR_SLOT_LABEL = { weapon: "Weapon", armor: "Armor", accessory: "Accessory" };
     var GEAR_SLOT_ICON = { weapon: "⚔️", armor: "🛡️", accessory: "💍" };
-    var GEAR_ATK = [0, 15, 35, 60, 95, 140];
-    var GEAR_HP = [0, 120, 260, 430, 650, 920];
-    var GEAR_CRIT = [0, 0.02, 0.045, 0.075, 0.11, 0.15];
-    var GEAR_SELL = [0, 100, 250, 600, 1500, 4000];
+    /* Gear bonuses are flat and scale linearly with the star rating —
+       the main game's tables, across the full 1★–7★ range: Weapon
+       +14 ATK per ★, Armor +90 HP per ★, Accessory +1.5% crit per ★. */
+    function gearAtkBonus(stars) { return stars * 14; }
+    function gearHpBonus(stars) { return stars * 90; }
+    function gearCritBonus(stars) { return stars * 0.015; }
+    var GEAR_SELL_GOLD = { 1: 100, 2: 250, 3: 600, 4: 1500, 5: 4000 };
+    function gearSellGold(stars) { return GEAR_SELL_GOLD[stars] || 100; }
     var GEAR_NAMES = {
-      weapon: ["", "Rusty Blade", "Iron Sword", "Knight's Blade", "Dragonfang Sword", "Starforged Blade"],
-      armor: ["", "Cloth Garb", "Iron Mail", "Knight's Plate", "Dragonscale Armor", "Starlight Aegis"],
-      accessory: ["", "Wooden Charm", "Moonstone Ring", "Crystal Amulet", "Dragon Eye Pendant", "Starlight Diadem"]
+      weapon: ["Chipped Blade", "Iron Sword", "Knight's Edge", "Runed Longblade", "Dragonslayer", "Starforged Blade", "Seraphina's Heartblade"],
+      armor: ["Padded Vest", "Iron Mail", "Knight's Plate", "Runed Aegis", "Dragonscale Armor", "Starforged Aegis", "Seraphina's Embrace"],
+      accessory: ["Copper Ring", "Silver Charm", "Moonstone Amulet", "Runed Pendant", "Starlight Diadem", "Starforged Sigil", "Seraphina's Tear"]
     };
+    function gearDefaultName(g) { return GEAR_NAMES[g.slot][Math.max(1, Math.min(7, g.stars)) - 1] || "Forged Gear"; }
+    /* The one-of-a-kind rule: a slot's 7★ can only ever exist once. */
+    function gearSevenExists(inv, slot) { return (inv || []).some(function (g) { return g.slot === slot && g.stars >= 7; }); }
+    function slotHasSevenStar(s, slot) { return gearSevenExists(s ? s.gearInv : [], slot); }
     var MATERIALS = [
       { id: "iron", name: "Iron Shard", icon: "🔩" },
       { id: "moon", name: "Moonstone", icon: "🌙" },
@@ -2444,16 +2459,16 @@
     function dungeonRunsAllowed(s, dgId) { return DUNGEON_RUNS_PER_DAY + dungeonExtraPurchased(s, dgId); }
     function dungeonRunsLeft(s, dgId) { return dungeonRunsAllowed(s, dgId) - (((s.dungeonRuns || {})[dgId]) || 0); }
     /* Forge recipes: cost is fixed; the STAR result comes from the
-       hammer-timing game, floored by the recipe (see forgeStarsFor).
+       hammer-timing game, floored by the recipe (see forgeResultStars).
        Hammer speed is per-recipe and constant for all 3 strikes —
        it steps up gradually with the recipe tier: Iron 65%/s (Slow),
        Moonstone 95%/s (Steady), Dragonscale 125%/s (Fast),
        Starlight 170%/s (Very Fast). */
     var FORGE_RECIPES = [
-      { id: "iron", name: "Iron Forge", mat: "iron", matCount: 5, gold: 500, floor: 1, speed: 65, speedLabel: "Slow", blurb: "Hammer skill decides: 1★–5★ possible" },
-      { id: "moon", name: "Moonstone Forge", mat: "moon", matCount: 3, gold: 2000, floor: 2, speed: 95, speedLabel: "Steady", blurb: "Guaranteed 2★ or better" },
-      { id: "scale", name: "Dragonscale Forge", mat: "scale", matCount: 2, gold: 5000, floor: 3, speed: 125, speedLabel: "Fast", blurb: "Guaranteed 3★ or better" },
-      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Guaranteed 4★ or better" }
+      { id: "iron", name: "Iron Forge", mat: "iron", matCount: 5, gold: 500, floor: 1, speed: 65, speedLabel: "Slow", blurb: "Humble stock — but a master's hammer can coax 5★ out of scrap." },
+      { id: "moon", name: "Moonstone Forge", mat: "moon", matCount: 3, gold: 2000, floor: 2, speed: 95, speedLabel: "Steady", blurb: "Moonstone holds an edge beautifully. Guaranteed 2★ or better." },
+      { id: "scale", name: "Dragonscale Forge", mat: "scale", matCount: 2, gold: 5000, floor: 3, speed: 125, speedLabel: "Fast", blurb: "Scale-forged gear never comes out dull. Guaranteed 3★ or better." },
+      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Pure condensed starlight. Guaranteed 4★ — and a flawless game (3 Perfects) forges the one-of-a-kind 7★, once per slot." }
     ];
     function recipeById(id) { for (var i = 0; i < FORGE_RECIPES.length; i++) if (FORGE_RECIPES[i].id === id) return FORGE_RECIPES[i]; return FORGE_RECIPES[0]; }
     function gearByUid(uid, ctx) {
@@ -2480,13 +2495,78 @@
       }
       return null;
     }
-    function gearName(g) { return GEAR_NAMES[g.slot][g.stars] || (GEAR_SLOT_LABEL[g.slot] + " " + g.stars + "★"); }
+    function gearName(g) {
+      var custom = typeof g.name === "string" ? g.name.trim() : "";
+      return custom || gearDefaultName(g);
+    }
     function gearBonusText(g) {
-      if (g.slot === "weapon") return "+" + GEAR_ATK[g.stars] + " ATK";
-      if (g.slot === "armor") return "+" + GEAR_HP[g.stars] + " HP";
-      return "+" + Math.round(GEAR_CRIT[g.stars] * 1000) / 10 + "% crit chance";
+      if (g.slot === "weapon") return "+" + gearAtkBonus(g.stars) + " ATK";
+      if (g.slot === "armor") return "+" + gearHpBonus(g.stars) + " HP";
+      return "+" + Math.round(gearCritBonus(g.stars) * 1000) / 10 + "% crit chance";
     }
     function gearUidNew() { return "g" + Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36); }
+    /* ---------- Gear synergy (recipe sets) & attunement ----------
+       Pieces forged from the same recipe form a set on the hero wearing
+       them: 2 pieces of a set boost those pieces' bonuses by +15%, a
+       full 3-piece set by +35%. Separately, every newly forged (or
+       combined) piece is attuned to a class (+50% bonuses when the
+       wearer's class matches), and rarely fated for one specific hero
+       (bonuses ×2 on that hero INSTEAD of the class boost). The two
+       multipliers stack. Pieces forged before these systems existed
+       carry neither field and get neither bonus. */
+    var RECIPE_SET_NAMES = { iron: "Iron Set", moon: "Moonstone Set", scale: "Dragonscale Set", essence: "Starlight Set" };
+    function recipeSetName(recipe) { return RECIPE_SET_NAMES[recipe] || "Forged Set"; }
+    function equippedPiecesOf(heroId, ctx) {
+      var out = [];
+      GEAR_SLOTS.forEach(function (sl) { var p = equippedGear(heroId, sl, ctx); if (p) out.push(p); });
+      return out;
+    }
+    function gearSetCount(heroId, recipe, ctx) {
+      return equippedPiecesOf(heroId, ctx).filter(function (p) { return p.recipe === recipe; }).length;
+    }
+    function gearSetMult(count) { return count >= 3 ? 1.35 : count === 2 ? 1.15 : 1; }
+    function heroGearSynergies(heroId, ctx) {
+      var counts = {};
+      equippedPiecesOf(heroId, ctx).forEach(function (p) { if (p.recipe) counts[p.recipe] = (counts[p.recipe] || 0) + 1; });
+      var out = [];
+      for (var r in counts) if (counts[r] >= 2) out.push({ recipe: r, count: counts[r], pct: Math.round((gearSetMult(counts[r]) - 1) * 100) });
+      return out;
+    }
+    /* "fated" | "attuned" | null — which attunement state a piece is in
+       on this hero (fated takes precedence; it replaces the class boost). */
+    function gearAttuneState(heroId, p) {
+      if (p.fatedHero) return p.fatedHero === heroId ? "fated" : null;
+      if (p.attunedClass) return p.attunedClass === heroById(heroId).cls ? "attuned" : null;
+      return null;
+    }
+    function gearAttuneMult(heroId, p) {
+      var state = gearAttuneState(heroId, p);
+      return state === "fated" ? 2 : state === "attuned" ? 1.5 : 1;
+    }
+    /* The full effective multiplier on one equipped piece's bonuses for
+       one hero: recipe set synergy × attunement. */
+    function gearPieceMult(heroId, p, ctx) {
+      var setMult = p.recipe ? gearSetMult(gearSetCount(heroId, p.recipe, ctx)) : 1;
+      return setMult * gearAttuneMult(heroId, p);
+    }
+    /* Short display suffixes for inventory rows and pickers. */
+    function gearAttuneSuffix(g) {
+      if (g.fatedHero) return " · 🌟 Fated: " + heroById(g.fatedHero).name;
+      if (g.attunedClass) return " · Attuned: " + g.attunedClass;
+      return "";
+    }
+    /* The attunement roll every new piece gets at the forge (and at the
+       combine tray): attuned to a random class — or, 10% of the time,
+       fated for one specific hero instead. */
+    function rollGearAttunement() {
+      if (Math.random() < 0.1) {
+        var fated = HEROES[Math.floor(Math.random() * HEROES.length)];
+        return { fatedHero: fated.id };
+      }
+      var pool = [];
+      HEROES.forEach(function (hd) { if (pool.indexOf(hd.cls) < 0) pool.push(hd.cls); });
+      return { attunedClass: pool[Math.floor(Math.random() * pool.length)] };
+    }
     function normalizeDungeon() {
       if (!save) return;
       var today = dailyDateStr(new Date());
@@ -2597,12 +2677,12 @@
     function heroAtk(def, o, ctx) {
       var base = def.baseAtk * (1 + 0.09 * (o.level - 1)) * (1 + 0.25 * o.asc);
       var g = equippedGear(def.id, "weapon", ctx);
-      return base + (g ? GEAR_ATK[g.stars] : 0);
+      return base + (g ? gearAtkBonus(g.stars) * gearPieceMult(def.id, g, ctx) : 0);
     }
     function heroHp(def, o, ctx) {
       var base = def.baseHp * (1 + 0.11 * (o.level - 1)) * (1 + 0.25 * o.asc);
       var g = equippedGear(def.id, "armor", ctx);
-      return base + (g ? GEAR_HP[g.stars] : 0);
+      return base + (g ? gearHpBonus(g.stars) * gearPieceMult(def.id, g, ctx) : 0);
     }
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * (def.stars + o.asc); }
@@ -2694,7 +2774,7 @@
         var o = s.heroes[id];
         if (!o) return;
         var acc = equippedGear(id, "accessory", s);
-        if (acc) crit += GEAR_CRIT[acc.stars];
+        if (acc) crit += gearCritBonus(acc.stars) * gearPieceMult(id, acc, s);
         var lv = skillLevel(o);
         switch (id) {
           case "jenna": crit += 0.03 * lv; def += 0.02 * lv; break;
@@ -3310,35 +3390,86 @@
       var pool = total >= 12 ? MEMORY_HINTS_HIGH : total >= 5 ? MEMORY_HINTS_MID : MEMORY_HINTS_LOW;
       return pool[(m.deaths * 3 + m.reClears + f) % pool.length];
     }
-    /* Per-clear rewards scale with the floor. Gold grows ×1.23 per floor
-       (normal floors pay 🪙 664 at Floor 19, 14,825 at 34, 330,800 at 49)
-       — gold per clear is unchanged by the gem rebalance below. Gems grow
-       ×1.20 per floor (was ×1.08) while monster HP grows ×1.18 per floor
-       up to Floor 30, then ×1.072 per floor above it (see monsterMaxHp),
-       so gems PER HOUR now rise as you climb instead of collapsing:
-       each floor pays ≈1.7% more gems per hour than the one below up to
-       Floor 30 (×1.20 ÷ ×1.18), and ≈11.9% more above it (×1.20 ÷ ×1.072).
-       To keep the steeper payouts
-       from flooding the summon economy, the gem BASES were lowered (first
-       clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal / gate /
-       lord floors, repeats floored at 1 💎): a Floor 20 grind clear pays
-       16 💎 but the monster has ~2.6× less HP, so the hourly rate lands
-       close to the old Floor 20 rate while Floor 30 finally pays more.
-       The tower still climbs hard — HP ×5.2 per ten floors up to Floor 30,
-       then ×2.0 per ten floors above it, and monster attack ×3.0 per ten
-       floors above Floor 30 (see monsterAtk). Offline earnings ride
-       these same per-clear numbers via goldForClear / gemsForClear. */
+    /* Per-clear rewards scale with the floor. Gold growth is piecewise
+       (flattened Nov 19, 2026, to match the AFK gold targets — see
+       goldGrowthFactor): ×1.23 per floor through Floor 30, then ≈×1.0342
+       per floor through Floor 40, then ×1.015 per floor past Floor 40, so
+       per-clear gold grows slowly and consistently with idle earnings
+       instead of jumping ≈8× from Floor 30 to 40 the way the unbroken
+       ×1.23 curve did (checked: Floor 30 Lord first clear 32,385 🪙 —
+       unchanged; Floor 40 Lord 45,338, was 256,678; Floor 50 Lord
+       52,617). Floors 1–30 pay exactly what they paid before the
+       flattening. Gem growth is piecewise too (flattened Nov 19, 2026,
+       to match the AFK targets — see gemGrowthFactor): ×1.20 per floor
+       through Floor 30, then ≈×1.0342 per floor through Floor 40, then
+       ×1.015 per floor past Floor 40, so per-clear gems grow slowly and
+       consistently with idle earnings instead of jumping ≈6× from
+       Floor 30 to 40 the way the unbroken ×1.20 curve did. The gem BASES
+       (first clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal /
+       gate / lord floors, repeats floored at 1 💎) are unchanged by the
+       flattening, and floors 1–30 pay exactly what they paid before it.
+       Offline gold and offline gems each follow their own AFK per-floor
+       curve on these same growth rates (see idleGoldPerSec /
+       idleGemsPerSec); neither rides the per-clear payouts anymore. */
     var GEM_GROWTH = 1.2;
-    function clearGold(f) { return Math.round(16 * Math.pow(1.23, f - 1) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
-    function clearGems(f) { return Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * Math.pow(GEM_GROWTH, f - 1)); }
+    /* Flattened gem growth (Nov 19, 2026): past Floor 30 the per-clear gem
+       curve eases to the same pace as the AFK curve — ×1.4 total from
+       Floor 30 to Floor 40 (≈×1.0342 per floor), then a ×1.015-per-floor
+       taper past Floor 40. A Floor Lord repeat clear therefore pays
+       84 💎 on Floor 30 (unchanged) and 118 💎 on Floor 40 (was 521 💎),
+       and a Floor Lord first clear pays 1,009 💎 on Floor 30 (unchanged)
+       and 1,412 💎 on Floor 40 (was 6,247 💎). The 15% income cut
+       (GEM_INCOME_MULT) and the 1 💎 minimum per clear are kept. */
+    var GEM_GROWTH_MID = Math.pow(1.4, 1 / 10); // ≈1.0342, floors 31–40
+    var GEM_GROWTH_LATE = 1.015; // floors 41+ — the taper
+    /** Cumulative per-clear gem growth factor for a floor, relative to
+        Floor 1: the piecewise curve described above. */
+    function gemGrowthFactor(f) {
+      if (f <= 30) return Math.pow(GEM_GROWTH, f - 1);
+      if (f <= 40) return Math.pow(GEM_GROWTH, 29) * Math.pow(GEM_GROWTH_MID, f - 30);
+      return Math.pow(GEM_GROWTH, 29) * 1.4 * Math.pow(GEM_GROWTH_LATE, f - 40);
+    }
+    /* Gem income cut (Nov 19, 2026): stage-clear gem earnings pay 15%
+       less — gems were flowing too freely. Applied inside clearGems /
+       repeatGems so live clears and every displayed clear reward agree.
+       (Offline/AFK gems originally rode gemsForClear and took the same
+       cut; since the Nov 19 AFK retune they follow their own per-floor
+       curve instead — see idleGemsPerSec — and this multiplier no longer
+       touches them.) A first clear still always pays at least
+       1 💎, as it did before the cut. Summon costs, forge costs, Gem
+       Exchange rates, gold earnings, and material drop rates are
+       untouched. */
+    var GEM_INCOME_MULT = 0.85;
+    /* Flattened gold growth (Nov 19, 2026): past Floor 30 the per-clear
+       gold curve eases to the same pace as the AFK gold curve — ×1.4 total
+       from Floor 30 to Floor 40 (≈×1.0342 per floor), then a ×1.015-per-
+       floor taper past Floor 40. A Floor Lord first clear therefore pays
+       32,385 🪙 on Floor 30 (unchanged) and 45,338 🪙 on Floor 40 (was
+       256,678 🪙), and a Floor Lord repeat clear pays 27,527 🪙 on
+       Floor 30 and 38,537 🪙 on Floor 40. The gold base (16) and the
+       floor-type multipliers (lord ×5, gate ×2) are unchanged. */
+    var GOLD_GROWTH = 1.23;
+    var GOLD_GROWTH_MID = Math.pow(1.4, 1 / 10); // ≈1.0342, floors 31–40
+    var GOLD_GROWTH_LATE = 1.015; // floors 41+ — the taper
+    /** Cumulative per-clear gold growth factor for a floor, relative to
+        Floor 1: the piecewise curve described above. */
+    function goldGrowthFactor(f) {
+      if (f <= 30) return Math.pow(GOLD_GROWTH, f - 1);
+      if (f <= 40) return Math.pow(GOLD_GROWTH, 29) * Math.pow(GOLD_GROWTH_MID, f - 30);
+      return Math.pow(GOLD_GROWTH, 29) * 1.4 * Math.pow(GOLD_GROWTH_LATE, f - 40);
+    }
+    function clearGold(f) { return Math.round(16 * goldGrowthFactor(f) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
+    function clearGems(f) { return Math.max(1, Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * gemGrowthFactor(f) * GEM_INCOME_MULT)); }
     function repeatGold(f) { return Math.round(clearGold(f) * 0.85); }
     function repeatGems(f) {
       // Bases were lowered in the gem rebalance (see GEM_GROWTH) and the
       // result is floored at 1 💎 so a grind clear never pays nothing: a
-      // normal grind clear pays 1 💎 on Floor 1, 3 on Floor 20, 49 on
-      // Floor 35, 759 on Floor 50 under the ×1.20 growth; a Floor Lord
-      // grind clear pays 1 💎 on Floor 1, 16 on Floor 20, 99 on Floor 30.
-      return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * Math.pow(GEM_GROWTH, f - 1)));
+      // normal grind clear pays 1 💎 on Floor 1 and 3 on Floor 20; a Floor
+      // Lord grind clear pays 1 💎 on Floor 1, 14 on Floor 20, 84 on
+      // Floor 30, 118 on Floor 40 and 137 on Floor 50 under the flattened
+      // growth (see gemGrowthFactor) and the ×0.85 income cut (see
+      // GEM_INCOME_MULT).
+      return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f) * GEM_INCOME_MULT));
     }
     function goldForClear(f, isRepeat) { return isRepeat ? repeatGold(f) : clearGold(f); }
     function gemsForClear(f, isRepeat) { return isRepeat ? repeatGems(f) : clearGems(f); }
@@ -3363,14 +3494,14 @@
     // Level-up gold costs (Nov 19, 2026): stars scale linearly (1★ pays 1×, 7★ pays 7×), and levels 70–120 get a 10% discount (the post-7★ climb); levels 1–69 stay full price.
     function upgradeCost(def, o) { return Math.round(28 * def.stars * Math.pow(1.16, o.level - 1) * (o.level >= 70 ? 0.9 : 1)); }
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
-       (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems
-       20 × (r + 1) (so 💎 20, 40, 60, 80, 100, 120 … up to 220 at #11),
-       plus dungeon materials, keyed on the TARGET effective rank of the
-       synthesis: below 8★ the old schedule holds (#3 → 2 Moonstones,
-       #4 → 2 Dragon Scales, #5 → 1 Starlight Essence, #6 → 2 Starlight
-       Essence), but every synthesis landing at 8★ or higher costs
-       Starlight Essence by target rank (8★ → 10, 9★ → 15, 10★ → 20,
-       11★ → 25, 12★ → 30), so the 8★→12★ climb totals exactly 100.
+       (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems keyed
+       on the TARGET effective rank (2★ → 20, 3★ → 50, 4★ → 100, 5★ → 200,
+       6★ → 500, 7★ → 1,000, 8★ → 2,500, 9★ → 5,000, 10★ → 10,000,
+       11★ → 20,000, 12★ → 40,000), plus dungeon materials, also keyed on
+       the TARGET effective rank: ≤3★ none, 4★ 2 Moonstones, 5★ 5 Dragon
+       Scales, 6★ 10 Dragon Scales, 7★ 20 Dragon Scales, 8★ → 10, 9★ → 15,
+       10★ → 20, 11★ → 25, 12★ → 30 Starlight Essence, so the 8★→12★ climb
+       totals exactly 100 Starlight and Starlight is never charged below 8★.
        The hero must also be at the
        max level of its current rank. Nothing fuses automatically —
        duplicates bank until the player taps Synthesize. */
@@ -3391,17 +3522,15 @@
     function synthMatReq(def, o) {
       // Material ladder keyed on TARGET effective rank (base stars + current asc + 1):
       // 4★ → 2 Moonstones; 5★ → 5 Dragon Scales; 6★ → 10 Dragon Scales;
-      // 7★ → 1 Starlight Essence; 8★ → 10, 9★ → 15, 10★ → 20, 11★ → 25, 12★ → 30 Starlight,
-      // so the full 8★→12★ climb totals exactly 100. At or below 3★ no materials.
+      // 7★ → 20 Dragon Scales; 8★ → 10, 9★ → 15, 10★ → 20, 11★ → 25, 12★ → 30 Starlight,
+      // so the full 8★→12★ climb totals exactly 100 Starlight and Starlight is never
+      // charged below 8★. At or below 3★ no materials.
       var target = def.stars + o.asc + 1;
-      // Soren-only exception: his 7★ step costs 20 Dragon Scales, not 1 Starlight,
-      // so his lifetime Starlight total to 12★ stays exactly 100 (not 101).
-      if (def.id === "han" && target === 7) return { id: "scale", count: 20 };
       if (target >= 8) return { id: "essence", count: (target - 7) * 5 + 5 };
       if (target === 4) return { id: "moon", count: 2 };
       if (target === 5) return { id: "scale", count: 5 };
       if (target === 6) return { id: "scale", count: 10 };
-      if (target === 7) return { id: "essence", count: 1 };
+      if (target === 7) return { id: "scale", count: 20 };
       return null;
     }
     function synthStatus(def, o) {
@@ -3422,15 +3551,91 @@
       reqs.forEach(function (rq) { if (!rq.ok) missing.push(rq.label); });
       return { reqs: reqs, allOk: missing.length === 0, missing: missing };
     }
+    /* Offline / AFK gold earnings (retuned Nov 19, 2026): idle gold no
+       longer rides the per-clear payout (goldForClear) the way it used to.
+       It follows its own per-floor AFK curve, anchored on one concrete
+       target: a full 8 hours of idle (the OFFLINE_CAP_SEC window) at
+       Floor 40 pays exactly enough gold to level one 6★ hero — Torin —
+       from level 70 to 80. That cost is computed from the live
+       upgradeCost formula (28 × stars × 1.16^(level−1), with the ×0.9
+       discount at level 70+), summed level by level over levels 70–79
+       exactly as bulkUpgradeCost charges it: 90,358,743 🪙. Floor 30 pays
+       that target ÷ 1.4 (≈64,541,959 🪙 per 8h) — the same 1.4× ratio the
+       AFK gem curve uses between Floors 30 and 40. The curve is
+       piecewise: floors 1–30 climb ×1.23 per floor (gold's familiar
+       growth, the same rate per-clear gold uses through Floor 30) up to
+       the Floor 30 anchor; floors 31–40 ease to ≈×1.0342 per floor
+       (exactly the pace that lands on the Floor 40 anchor, 1.4× over ten
+       floors); past Floor 40 the growth tapers to ×1.015 per floor, so
+       idle gold keeps rising gently instead of compounding steeply —
+       ≈91.7M per 8h at Floor 41, ≈104.9M at Floor 50, ≈121.7M at
+       Floor 60, ≈220.8M at Floor 100 (continuing the 31–40 pace to
+       Floor 100 would have paid ≈680M). The rate is a property of the
+       floor being idled on: it does not scale with party DPS (a party with
+       no DPS at all still earns nothing) and does not distinguish a grind
+       floor from the frontier — offline, the party is never landing a
+       "first clear" over and over. The party's gold multiplier (partyMods
+       goldMult) still applies on top at grant time, exactly as it did
+       before. The AFK growth rates past Floor 30 (≈×1.0342, then ×1.015)
+       are the same rates the flattened per-clear curve uses (see
+       goldGrowthFactor), so idle and active earnings grow consistently;
+       gold costs (level-up, forge, exchange), gem earnings, and exchange
+       rates are untouched. */
+    var TORIN_70_TO_80_COST = 90358743; // exact Σ upgradeCost(6★, levels 70→79), see above
+    var AFK_GOLD_PER_SEC_40 = TORIN_70_TO_80_COST / (8 * 3600); // ≈3,137.46 🪙/s at Floor 40
+    var AFK_GOLD_PER_SEC_30 = AFK_GOLD_PER_SEC_40 / 1.4; // ≈2,241.04 🪙/s at Floor 30
+    var AFK_GOLD_GROWTH_EARLY = 1.23; // floors 1–30
+    var AFK_GOLD_GROWTH_MID = Math.pow(1.4, 1 / 10); // ≈1.0342, floors 31–40
+    var AFK_GOLD_GROWTH_LATE = 1.015; // floors 41+ — the taper
+
+    /** Idle gold-per-second for offline / AFK earnings: the per-floor AFK
+        curve above. `dps` only gates the rate (no party, no earnings);
+        `isRepeat` is kept for signature parity with the old estimate and is
+        deliberately unused — AFK gold pays the floor's rate either way. */
     function idleGoldPerSec(dps, floor, isRepeat) {
-      if (dps <= 0) return 0;
-      var killsPerSec = Math.min(dps / monsterMaxHp(floor), 0.5);
-      return killsPerSec * goldForClear(floor, !!isRepeat);
+      if (dps <= 0 || floor < 1) return 0;
+      if (floor <= 30) return AFK_GOLD_PER_SEC_30 / Math.pow(AFK_GOLD_GROWTH_EARLY, 30 - floor);
+      if (floor <= 40) return AFK_GOLD_PER_SEC_30 * Math.pow(AFK_GOLD_GROWTH_MID, floor - 30);
+      return AFK_GOLD_PER_SEC_40 * Math.pow(AFK_GOLD_GROWTH_LATE, floor - 40);
     }
+    /* Offline / AFK gem earnings (retuned Nov 19, 2026): idle gems no longer
+       ride the per-clear payout (gemsForClear) the way idle gold does. They
+       follow their own per-floor AFK curve, anchored on two targets: a full
+       8 hours of idle (the OFFLINE_CAP_SEC window) pays ≈250,000 💎 at
+       Floor 30 and ≈350,000 💎 at Floor 40. The curve is piecewise:
+       floors 1–30 climb ×1.20 per floor (the game's familiar gem growth)
+       up to the Floor 30 anchor; floors 31–40 ease to ≈×1.0342 per floor
+       (exactly the pace that lands on the Floor 40 anchor, 350 ÷ 250 over
+       ten floors); past Floor 40 the growth tapers to ×1.015 per floor, so
+       idle gems keep rising gently instead of compounding steeply —
+       ≈355,000 per 8h at Floor 41, ≈406,000 at Floor 50, ≈471,000 at
+       Floor 60, ≈855,000 at Floor 100 (continuing the 31–40 pace to
+       Floor 100 would have paid ≈2.6M). The rate is a property of the
+       floor being idled on: it does not scale with party DPS (a party with
+       no DPS at all still earns nothing) and does not distinguish a grind
+       floor from the frontier — offline, the party is never landing a
+       "first clear" over and over, so the old first-clear/repeat split no
+       longer applies to AFK gems. The AFK growth rates past Floor 30
+       (≈×1.0342, then ×1.015) are the same rates the flattened per-clear
+       curve uses (see gemGrowthFactor), so idle and active earnings grow
+       consistently; gem costs and exchange rates are untouched. (Idle
+       gold follows its own AFK curve on the same rates — see
+       idleGoldPerSec above.) */
+    var AFK_GEMS_PER_SEC_30 = 250000 / (8 * 3600); // ≈8.6806 💎/s at Floor 30
+    var AFK_GEMS_PER_SEC_40 = 350000 / (8 * 3600); // ≈12.1528 💎/s at Floor 40
+    var AFK_GROWTH_EARLY = 1.2; // floors 1–30
+    var AFK_GROWTH_MID = Math.pow(AFK_GEMS_PER_SEC_40 / AFK_GEMS_PER_SEC_30, 1 / 10); // ≈1.0342, floors 31–40
+    var AFK_GROWTH_LATE = 1.015; // floors 41+ — the taper
+
+    /** Idle gems-per-second for offline / AFK earnings: the per-floor AFK
+        curve above. `dps` only gates the rate (no party, no earnings);
+        `isRepeat` is kept for signature parity with idleGoldPerSec and is
+        deliberately unused — AFK gems pay the floor's rate either way. */
     function idleGemsPerSec(dps, floor, isRepeat) {
-      if (dps <= 0) return 0;
-      var killsPerSec = Math.min(dps / monsterMaxHp(floor), 0.5);
-      return killsPerSec * gemsForClear(floor, !!isRepeat);
+      if (dps <= 0 || floor < 1) return 0;
+      if (floor <= 30) return AFK_GEMS_PER_SEC_30 / Math.pow(AFK_GROWTH_EARLY, 30 - floor);
+      if (floor <= 40) return AFK_GEMS_PER_SEC_30 * Math.pow(AFK_GROWTH_MID, floor - 30);
+      return AFK_GEMS_PER_SEC_40 * Math.pow(AFK_GROWTH_LATE, floor - 40);
     }
 
     /* ============================== GACHA ============================== */
@@ -4203,6 +4408,14 @@
     var questNotified = {};
     /* Dungeon / Forge runtime (in-memory only) */
     var forgeSlot = "weapon";
+    /* Gear combining (Items tab): combine mode swaps the inventory rows'
+       Equip/Sell buttons for pick toggles; combineSel holds the picked
+       piece uids in pick order (the FIRST pick donates its recipe to the
+       result). combineName mirrors the forge's naming field (null =
+       untouched, still showing the prefilled default name). */
+    var combineMode = false;
+    var combineSel = [];
+    var combineName = null;
     var dungeonBattle = null;
     var dungeonTimer = null;
     var lastDungeonReward = null;
@@ -4642,7 +4855,7 @@
 
       /* grind panel */
       h += grindHTML();
-      h += '<p class="small dim" style="margin-top:0.75rem">Your party fights on its own, Master — even while you\'re away (offline earnings up to 8 hours, paid at your current target floor\'s rate — grind floor if you\'re grinding). First clears pay gems — and gem payouts grow with every floor, on normal floors too; gate bosses every 5 floors pay four times a normal floor\'s gems, and Floor Lords every 10 pay the most of all. Spend gold leveling heroes in the <button type="button" class="linklike" data-goto="heroes" style="font-size:0.875rem">Heroes</button> tab when a floor feels slow.</p>';
+      h += '<p class="small dim" style="margin-top:0.75rem">Your party fights on its own, Master — even while you\'re away (offline earnings up to 8 hours, paid at your current target floor\'s rate — grind floor if you\'re grinding). Every clear pays gems that grow with the floor (~20% more per floor early on, easing off past Floor 30): a normal floor pays 💎 1 on first clear, gate bosses 💎 2, and Floor Lords 💎 5 — those are the Floor 1 rates, and they climb from there. Spend gold leveling heroes in the <button type="button" class="linklike" data-goto="heroes" style="font-size:0.875rem">Heroes</button> tab when a floor feels slow.</p>';
       if (!s.heroes["luna"] && highest <= 25) {
         h += '<p class="small" style="margin-top:0.5rem;font-weight:600;color:#c9b8ff">🌙 Tower rumor: a mysterious guide waits on Floor 25, watching every party that climbs…</p>';
       }
@@ -4660,7 +4873,7 @@
       h += '<div class="panel-head"><h3>🔁 Grind Previous Floors</h3><p class="xs bold dim" style="margin:0">' +
         (grinding ? "Grinding Floor " + f + " · Highest " + highest : "Pushing Floor " + highest) +
         ((s.totalGrindClears || 0) > 0 ? " · " + s.totalGrindClears + " grind clears" : "") + "</p></div>";
-      h += '<p class="small dim" style="margin-top:0.25rem">Stuck on a floor? Drop back and farm a cleared floor on loop. Repeat clears pay <span class="bold" style="color:var(--text)">85% gold</span> and reduced gems that still grow with the floor (gate and lord floors pay extra) — great for leveling, while a brand-new floor still pays best. Your grind target is saved in this browser, and offline earnings use it too.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Stuck on a floor? Drop back and farm a cleared floor on loop. Repeat clears pay <span class="bold" style="color:var(--text)">85% gold</span> and reduced gems (1 💎 on Floor 1 for every floor type, and gems grow ~20% per floor up to Floor 30, then more slowly from there) — great for leveling, while a brand-new floor still pays best. Your grind target is saved in this browser, and offline earnings use it too.</p>';
       if (highest <= 1) {
         h += '<p class="note-box">Clear Floor 1 first — then you can come back here to grind it any time.</p>';
       } else {
@@ -4884,25 +5097,88 @@
     function gearInventoryHTML(showTitle) {
       var s = save;
       var h = '<div class="anime-card mt4 card-pad" aria-label="Gear inventory">';
-      h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell: 1★ 🪙100 · 2★ 🪙250 · 3★ 🪙600 · 4★ 🪙1,500 · 5★ 🪙4,000</p></div>';
-      h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them.</p>';
+      h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell: 1★ 🪙100 · 2★ 🪙250 · 3★ 🪙600 · 4★ 🪙1,500 · 5★ 🪙4,000 · 👑 7★ can never be sold</p></div>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
+      /* ---- Combine mode toggle ---- */
+      h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
+      h += '<button type="button" class="' + (combineMode ? "btn-pill anime-btn-primary" : "btn-pill") + '" data-combine-toggle aria-pressed="' + combineMode + '" aria-label="' + (combineMode ? "Exit combine mode" : "Enter combine mode — fuse 3 matching gear pieces into 1 of the next star rank") + '" style="' + (combineMode ? "" : "border:2px solid #ff7eb6;background:rgba(255,126,182,0.1);color:#ff9ecf") + '">' + (combineMode ? "✕ Done combining" : "🔀 Combine gear") + "</button>";
+      h += '<p class="xs dim" style="margin:0;font-weight:600">Fuse 3 pieces of the same slot &amp; star rank into 1 of the next rank up — the 3 pieces are the whole cost, no gold.</p></div>';
+      /* ---- Combine tray ---- */
+      if (combineMode) {
+        var picked = combineSel.map(function (uid) { return gearByUid(uid); }).filter(function (g) { return !!g; });
+        var first = picked[0] || null;
+        var resultStars = first ? first.stars + 1 : 0;
+        var defaultName = first ? gearDefaultName({ slot: first.slot, stars: resultStars }) : "";
+        var nameValue = combineName !== null ? combineName : defaultName;
+        h += '<div style="margin-top:0.75rem;border:2px solid #ff7eb6;background:rgba(255,126,182,0.07);border-radius:16px;padding:0.75rem" role="region" aria-label="Combine gear — pick 3 matching pieces">';
+        h += '<p class="small" style="font-weight:900;margin:0">🔀 Combine tray — ' + picked.length + ' of 3 picked</p>';
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Tap pieces below to fill the tray. All 3 must share a slot and a star rank; the FIRST piece picked lends its recipe (set) to the result, and the result rolls a fresh attunement. Equipped pieces can\'t be fodder — unequip them first. Combining tops out at 6★ (3× 5★ → 1× 6★): 6★ pieces can\'t be combined further, and 7★ pieces are never fodder — 7★ still comes only from a flawless Starlight forge.</p>';
+        h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.375rem" aria-label="Picked pieces">';
+        for (var ci = 0; ci < 3; ci++) {
+          var cp = picked[ci];
+          if (cp) h += '<span style="border:2px solid #ff7eb6;background:var(--surface);border-radius:999px;padding:0.375rem 0.75rem;font-size:0.75rem;font-weight:900">' + (ci + 1) + ". " + GEAR_SLOT_ICON[cp.slot] + " " + esc(gearName(cp)) + ' <span style="' + starTextStyle(cp.stars) + '">' + starsStr(cp.stars) + "</span>" + (ci === 0 && cp.recipe ? ' <span class="dim">· ' + esc(recipeSetName(cp.recipe)) + "</span>" : "") + "</span>";
+          else h += '<span class="dim" style="border:2px dashed var(--border);border-radius:999px;padding:0.375rem 0.75rem;font-size:0.75rem;font-weight:700">Slot ' + (ci + 1) + " — pick below</span>";
+        }
+        if (picked.length > 0) h += '<button type="button" class="btn-mini btn-ghost" data-combine-clear aria-label="Clear the combine tray">Clear</button>';
+        h += "</div>";
+        if (first) {
+          h += '<div style="margin-top:0.75rem;border:2px solid var(--border);background:var(--surface);border-radius:16px;padding:0.75rem">';
+          h += '<p class="xs bold dim" style="margin:0;letter-spacing:0.15em">RESULT PREVIEW</p>';
+          h += '<p class="font-display" style="margin-top:0.25rem;font-size:1.125rem;font-weight:600">' + GEAR_SLOT_ICON[first.slot] + " " + esc(resultStars >= 5 ? (nameValue.trim() || defaultName) : defaultName) + ' <span style="' + starTextStyle(resultStars) + '">' + starsStr(resultStars) + "</span></p>";
+          h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#5eead4">' + gearBonusText({ slot: first.slot, stars: resultStars }) + " · " + GEAR_SLOT_LABEL[first.slot] + (first.recipe ? " · " + esc(recipeSetName(first.recipe)) + " set (from the first piece)" : " · No set (first piece has no recipe)") + " · attunement rolls fresh</p>";
+          if (resultStars >= 5) {
+            h += '<div style="margin-top:0.75rem;text-align:left"><label for="combine-name" class="xs bold dim" style="letter-spacing:0.15em">✒️ NAME THE RESULT, MASTER (OPTIONAL)</label>';
+            h += '<input id="combine-name" type="text" maxlength="40" value="' + esc(nameValue) + '" placeholder="' + esc(defaultName) + '" aria-label="Name for your combined ' + resultStars + '-star ' + first.slot + ' (optional)" style="margin-top:0.375rem;width:100%;border-radius:16px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.875rem;font-size:0.875rem;font-weight:700;color:var(--text)" />';
+            h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:600">Pieces of 5★ and above may carry a name of your choosing, just like at the forge.</p></div>';
+          }
+          h += '<button type="button" class="btn-wide anime-btn-primary" data-combine-go style="margin-top:0.75rem" ' + (picked.length === 3 ? "" : "disabled") + ' aria-label="' + (picked.length === 3 ? "Combine the 3 picked pieces into a " + resultStars + "-star " + first.slot : "Combine — pick " + (3 - picked.length) + " more matching piece" + (3 - picked.length === 1 ? "" : "s") + " first") + '">🔀 Combine into ' + resultStars + "★ " + GEAR_SLOT_LABEL[first.slot] + "</button>";
+          h += "</div>";
+        }
+        h += "</div>";
+      }
       if (!s.gearInv.length) {
         h += '<p class="note-box">No gear yet. Run a dungeon for materials, then work the Forge below in the Dungeon tab — your hammer timing decides the stars!</p>';
       } else {
         h += '<ul class="gear-list">';
         s.gearInv.slice().reverse().forEach(function (g) {
           var holder = gearHolder(g.uid);
-          h += '<li class="gear-item"><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + gearBonusText(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) : " · In bag") + '</p></span><span class="gi-actions">';
-          if (holder) {
+          var pickIdx = combineMode ? combineSel.indexOf(g.uid) : -1;
+          var attState = holder ? gearAttuneState(holder, g) : null;
+          h += '<li class="gear-item"' + (pickIdx >= 0 ? ' style="border-color:#ff7eb6;box-shadow:0 0 14px rgba(255,126,182,0.35)"' : "") + '><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + "</span>" + (g.stars >= 7 ? ' <span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span>' : "") + '</p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + gearBonusText(g) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : " · No set") + gearAttuneSuffix(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) + (attState === "fated" ? " · 🌟 Fated bonus active" : attState === "attuned" ? " · ✨ Attuned bonus active" : "") : " · In bag") + '</p></span><span class="gi-actions">';
+          if (combineMode) {
+            if (pickIdx >= 0) {
+              h += '<button type="button" class="btn-mini anime-btn-primary" data-combine-pick="' + g.uid + '" aria-label="Remove ' + esc(gearName(g)) + ' from the combine tray — it is pick ' + (pickIdx + 1) + ' of 3">✓ Pick ' + (pickIdx + 1) + " — tap to remove</button>";
+            } else if (holder) {
+              h += '<span class="xs bold dim" aria-label="' + esc(gearName(g)) + ' is equipped — unequip it before it can be combined">Equipped — unequip first</span>';
+            } else if (g.stars >= 7) {
+              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is one of a kind and can never be combine fodder">👑 Never fodder</span>';
+            } else if (g.stars >= 6) {
+              h += '<span class="xs bold dim" aria-label="' + esc(gearName(g)) + ' is 6 stars — combining tops out at 6 stars, so it cannot be combined further">6★ — combine cap</span>';
+            } else {
+              var cFirst = combineSel.length ? gearByUid(combineSel[0]) : null;
+              if (cFirst && (g.slot !== cFirst.slot || g.stars !== cFirst.stars)) {
+                h += '<span class="xs bold dim" aria-label="' + esc(gearName(g)) + ' does not match the tray — the tray needs ' + cFirst.stars + '-star ' + cFirst.slot + ' pieces">Needs ' + cFirst.stars + "★ " + cFirst.slot + "</span>";
+              } else if (combineSel.length >= 3) {
+                h += '<span class="xs bold dim" aria-label="The combine tray is full — remove a pick to use ' + esc(gearName(g)) + '">Tray full</span>';
+              } else {
+                h += '<button type="button" class="btn-mini" data-combine-pick="' + g.uid + '" style="border:2px solid #ff7eb6;background:rgba(255,126,182,0.1);color:#ff9ecf" aria-label="Pick ' + esc(gearName(g)) + ' for the combine tray' + (combineSel.length === 0 ? " — as the first pick, its recipe goes to the result" : "") + '">＋ Pick' + (combineSel.length === 0 ? " (sets recipe)" : "") + "</button>";
+              }
+            }
+          } else if (holder) {
             h += '<button type="button" class="btn-mini btn-ghost" data-unequip-hero="' + holder + '" data-unequip-slot="' + g.slot + '">Unequip</button>';
           } else {
             h += '<button type="button" class="btn-mini anime-btn-sky" data-equip-pick="' + g.uid + '">Equip</button>';
-            h += '<button type="button" class="btn-mini anime-btn-gold" data-sell-gear="' + g.uid + '" aria-label="Sell ' + esc(gearName(g)) + ' for ' + GEAR_SELL[g.stars] + ' gold">Sell 🪙 ' + GEAR_SELL[g.stars].toLocaleString("en-US") + "</button>";
+            if (g.stars >= 7) {
+              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is one of a kind and cannot be sold">👑 Cannot be sold</span>';
+            } else {
+              h += '<button type="button" class="btn-mini anime-btn-gold" data-sell-gear="' + g.uid + '" aria-label="Sell ' + esc(gearName(g)) + ' for ' + gearSellGold(g.stars) + ' gold">Sell 🪙 ' + gearSellGold(g.stars).toLocaleString("en-US") + "</button>";
+            }
           }
           h += "</span></li>";
         });
         h += "</ul>";
       }
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Sell prices: 1★ 🪙100 · 2★ 🪙250 · 3★ 🪙600 · 4★ 🪙1,500 · 5★ 🪙4,000. Equipped pieces must be unequipped before they can be sold. 👑 7★ pieces are one of a kind — they can never be sold. 🔀 Combining: 3 unequipped pieces of the same slot &amp; rank fuse into 1 of the next rank (up to 6★) — no gold cost.</p>';
       h += "</div>";
       return h;
     }
@@ -4959,6 +5235,13 @@
         var canAffordExtra = s.gems >= extraPrice;
         h += '<div class="dungeon-card' + (unlocked ? "" : " locked") + '"><p class="dg-icon" aria-hidden="true">' + dg.icon + '</p><p class="dg-name">' + esc(dg.name) + '</p>';
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
+        /* Recommended BP, priced from this dungeon's own wave scaling
+           (see dungeonRecommendedBp), beside the party's live BP on the
+           same scale. */
+        var recBp = dungeonRecommendedBp(dg);
+        var myBp = partyBp(s);
+        var bpReady = myBp >= recBp;
+        h += '<p class="xs" style="margin-top:0.25rem;font-weight:900" aria-label="' + esc(dg.name) + ": recommended Battle Power " + fmt(recBp) + "; your party's Battle Power is " + fmt(myBp) + (bpReady ? " — at or above the recommendation" : " — below the recommendation") + '">⚔️ Recommended BP: ' + fmt(recBp) + ' · <span style="color:' + (bpReady ? "#5eead4" : "#fda4af") + '">Your party: ' + fmt(myBp) + " BP" + (bpReady ? " ✓" : "") + "</span></p>";
         h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + " · 🪙 " + dg.gold.toLocaleString("en-US") + " gold</p>";
         h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + JACKPOT_GEMS + "💎</span></p>";
         /* Wave-by-wave incoming damage vs the party's healer trickle,
@@ -4987,16 +5270,28 @@
         h += "</div>";
       });
       h += "</div>";
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills, synergies, damage-over-time and status effects all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills, synergies, damage-over-time and status effects all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span>: BP is your party\'s Battle Power — every hero\'s battle DPS plus 5% of their HP, the same power the quest board prices — and the recommendation is priced from that dungeon\'s own waves, enough power to bring every wave down in about 12 seconds apiece and still finish with HP to spare. Your healers and status holds make real runs kinder than that, so treat it as a comfortable target, not a hard gate.</p>';
 
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += '<p class="small dim" style="margin-top:0.25rem">Pick a slot, pick a recipe, then <span class="bold" style="color:var(--text)">time your hammer strikes</span>: a marker sweeps the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">6 → 5★ · 5 → 4★ · 4 → 3★ · 2–3 → 2★ · 0–1 → 1★</span>. Better materials raise the floor, so a great hammer can beat the recipe — but never fall below it.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">6 → 5★ · 5 → 4★ · 4 → 3★ · 2–3 → 2★ · 0–1 → 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>';
+      /* 👑 The 7★ set tracker — also the locked hint that tells players
+         the tier exists and exactly how it unlocks, long before Floor 70. */
+      h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
+      h += '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. Anything less tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>";
+      h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.375rem">';
+      GEAR_SLOTS.forEach(function (sl) {
+        var seven = null;
+        s.gearInv.forEach(function (g) { if (g.slot === sl && g.stars >= 7) seven = g; });
+        if (seven) h += '<span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + esc(gearName(seven)) + " ★★★★★★★</span>";
+        else h += '<span class="dim" style="border-radius:999px;border:1px solid var(--border);background:var(--surface);padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl] + " 7★ — not yet forged</span>";
+      });
+      h += "</div></div>";
       h += materialsHTML();
       h += '<p class="small bold" style="margin-top:0.75rem">Craft which slot?</p><div class="slot-pick" role="group" aria-label="Choose gear slot to craft">';
       GEAR_SLOTS.forEach(function (sl) {
-        h += '<button type="button" class="sp' + (forgeSlot === sl ? " on" : "") + '" data-forge-slot="' + sl + '" aria-pressed="' + (forgeSlot === sl) + '">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl] + "</button>";
+        h += '<button type="button" class="sp' + (forgeSlot === sl ? " on" : "") + '" data-forge-slot="' + sl + '" aria-pressed="' + (forgeSlot === sl) + '">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl] + ' <span style="font-size:0.75rem;font-weight:700;opacity:0.8">(' + (sl === "weapon" ? "+14 ATK/★" : sl === "armor" ? "+90 HP/★" : "+1.5% crit/★") + ")</span></button>";
       });
       h += "</div>";
       h += '<div class="forge-recipes">';
@@ -5004,8 +5299,8 @@
         var mat = materialById(rc.mat);
         var have = s.materials[rc.mat] || 0;
         var can = have >= rc.matCount && s.gold >= rc.gold;
-        h += '<div class="recipe-card"><p class="rc-name">' + esc(rc.name) + ' <span class="dim" style="font-family:var(--font-sans);font-size:0.75rem;font-weight:700">· floor ' + rc.floor + "★</span> " + '<span class="speed-badge" title="Hammer speed for this recipe">⚡ SPEED: ' + esc(rc.speedLabel) + " · " + rc.speed + "%/s</span></p>";
-        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:600">' + esc(rc.blurb) + " — a perfect 6 still forges 5★.</p>";
+        h += '<div class="recipe-card"><p class="rc-name">' + esc(rc.name) + ' <span class="dim" style="font-family:var(--font-sans);font-size:0.75rem;font-weight:700">· floor ' + rc.floor + "★</span> " + '<span class="speed-badge" title="Hammer speed for this recipe">⚡ SPEED: ' + esc(rc.speedLabel) + " · " + rc.speed + "%/s</span>" + (rc.id === "essence" ? ' <span class="speed-badge" style="background:rgba(167,139,250,0.15);color:#c4b5fd" title="Seven-star forging requirement">👑 7★ REQUIRES FLOOR ' + SEVEN_STAR_MIN_FLOOR + "+</span>" : "") + "</p>";
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:600">' + esc(rc.blurb) + "</p>";
         h += '<p class="xs" style="margin-top:0.375rem;font-weight:800">Cost: ' + mat.icon + " " + rc.matCount + " " + esc(mat.name) + " (you have " + have + ") · 🪙 " + rc.gold.toLocaleString("en-US") + "</p>";
         h += '<button type="button" class="btn-pill anime-btn-gold" data-forge-craft="' + rc.id + '" style="margin-top:0.5rem;width:100%" ' + (can ? "" : "disabled") + ' aria-label="Forge a ' + GEAR_SLOT_LABEL[forgeSlot] + ' with the ' + esc(rc.name) + ' recipe">🔨 Forge ' + GEAR_SLOT_LABEL[forgeSlot] + "</button></div>";
       });
@@ -5743,13 +6038,23 @@
         GEAR_SLOTS.forEach(function (sl) {
           var gg = equippedGear(def.id, sl);
           if (gg) {
-            h += '<button type="button" class="gear-slot filled" data-gear-slot="' + sl + '" aria-label="Unequip ' + esc(gearName(gg)) + ' from ' + esc(def.name) + '"><p class="gs-label">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl].toUpperCase() + '</p><p class="gs-name">' + esc(gearName(gg)) + ' <span style="' + starTextStyle(gg.stars) + '">' + starsStr(gg.stars) + '</span></p><p class="gs-bonus">' + gearBonusText(gg) + '</p><p class="gs-hint">Tap to unequip ↩</p></button>';
+            var gAtt = gearAttuneState(def.id, gg);
+            h += '<button type="button" class="gear-slot filled" data-gear-slot="' + sl + '" aria-label="Unequip ' + esc(gearName(gg)) + ' from ' + esc(def.name) + '"><p class="gs-label">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl].toUpperCase() + '</p><p class="gs-name">' + esc(gearName(gg)) + ' <span style="' + starTextStyle(gg.stars) + '">' + starsStr(gg.stars) + "</span></p>" +
+              (gg.stars >= 7 ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">👑 ONE OF A KIND</p>' : "") +
+              '<p class="gs-bonus">' + gearBonusText(gg) + "</p>" +
+              (gg.recipe ? '<p class="gs-hint">' + esc(recipeSetName(gg.recipe)) + "</p>" : "") +
+              (gg.fatedHero ? (gAtt === "fated" ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">🌟 FATED BONUS ACTIVE — bonuses ×2</p>' : '<p class="gs-hint">🌟 Fated: ' + esc(heroById(gg.fatedHero).name) + "</p>") : gg.attunedClass ? (gAtt === "attuned" ? '<p class="gs-hint" style="color:#5eead4;font-weight:900">✨ ATTUNED BONUS ACTIVE — +50%</p>' : '<p class="gs-hint">Attuned: ' + esc(gg.attunedClass) + "</p>") : "") +
+              '<p class="gs-hint">Tap to unequip ↩</p></button>';
           } else {
             var avail = s.gearInv.filter(function (x) { return x.slot === sl && !gearHolder(x.uid); }).length;
             h += '<button type="button" class="gear-slot" data-gear-slot="' + sl + '" aria-label="Equip a ' + GEAR_SLOT_LABEL[sl] + ' on ' + esc(def.name) + '"><p class="gs-label">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl].toUpperCase() + '</p><p class="gs-name dim">Empty</p><p class="gs-hint">' + (avail ? avail + " in bag — tap to equip ＋" : "None in bag — forge one in the Dungeon tab") + "</p></button>";
           }
         });
         h += "</div>";
+        heroGearSynergies(def.id, s).forEach(function (syn) {
+          h += '<p class="small" style="margin-top:0.5rem;border-radius:12px;border:1px solid rgba(125,211,252,0.4);background:rgba(125,211,252,0.08);padding:0.375rem 0.625rem;font-weight:900;color:#7dd3fc">✨ ' + esc(recipeSetName(syn.recipe)) + " " + syn.count + "/3 — +" + syn.pct + "% gear bonuses on this hero</p>";
+        });
+        h += '<p class="xs dim" style="margin-top:0.5rem">Weapon +14 ATK per ★ · Armor +90 HP per ★ · Accessory +1.5% crit per ★. Recipe set bonuses (2pc +15% · 3pc +35%) and attunement (+50% class · ×2 fated) stack on top. Gear only counts while its hero is in the party.</p>';
         h += '<p class="xs dim" style="margin-top:0.5rem">Effective rank ' + effD + "★ caps level at " + maxLevel(def, o) + " — that's " + def.stars + "★ base" + (o.asc > 0 ? " + " + o.asc + " synthesis" : "") + ", and every synthesis adds +10 to the cap. Synthesis " + o.asc + "/" + maxAsc(def) + " — synthesis is in your hands now, Master: duplicates bank as spare copies and nothing fuses on its own. Max out this rank's level, gather the copies, gems, and (from synthesis #3) dungeon materials listed below, then tap Synthesize. Each rank adds +25% stats, +10 level cap, +1 skill level.</p>";
         if (o.asc < maxAsc(def)) {
           var st = synthStatus(def, o);
@@ -5971,6 +6276,20 @@
       main.querySelectorAll("[data-unequip-hero]").forEach(function (el) {
         el.addEventListener("click", function () { unequipGear(el.getAttribute("data-unequip-hero"), el.getAttribute("data-unequip-slot")); });
       });
+      main.querySelectorAll("[data-combine-toggle]").forEach(function (el) {
+        el.addEventListener("click", function () { combineMode = !combineMode; combineSel = []; combineName = null; renderMain(); });
+      });
+      main.querySelectorAll("[data-combine-pick]").forEach(function (el) {
+        el.addEventListener("click", function () { toggleCombinePick(el.getAttribute("data-combine-pick")); });
+      });
+      main.querySelectorAll("[data-combine-clear]").forEach(function (el) {
+        el.addEventListener("click", function () { combineSel = []; combineName = null; renderMain(); });
+      });
+      main.querySelectorAll("[data-combine-go]").forEach(function (el) {
+        el.addEventListener("click", function () { combineGear(); });
+      });
+      var combineNameEl = document.getElementById("combine-name");
+      if (combineNameEl) combineNameEl.addEventListener("input", function () { combineName = combineNameEl.value; });
       main.querySelectorAll("[data-dungeon-run]").forEach(function (el) {
         el.addEventListener("click", function () { startDungeonRun(el.getAttribute("data-dungeon-run")); });
       });
@@ -6620,13 +6939,77 @@
       var g = gearByUid(uid);
       if (!g) return;
       if (gearHolder(uid)) { setNotice("That piece is equipped — unequip it before selling."); return; }
-      var val = GEAR_SELL[g.stars];
+      if (g.stars >= 7) {
+        setNotice("👑 " + gearName(g) + " is one of a kind — the only 7★ " + g.slot + " that can ever exist. It cannot be sold.");
+        return;
+      }
+      var val = gearSellGold(g.stars);
       var next = JSON.parse(JSON.stringify(save));
       next.gearInv = next.gearInv.filter(function (x) { return x.uid !== uid; });
       next.gold += val;
       persist(next);
       writeSave();
       setNotice("💰 Sold " + gearName(g) + " (" + starsStr(g.stars) + ") for 🪙 " + val.toLocaleString("en-US") + " gold.");
+      renderMain();
+    }
+    /* ---------- gear combining ----------
+       Fuse 3 unequipped pieces of the SAME slot and SAME star rank into
+       1 piece of the next rank up (3× 2★ weapons → 1× 3★ weapon). The
+       result keeps the slot and takes the recipe of the FIRST piece
+       picked, so set synergy is predictable; its attunement is rolled
+       fresh, exactly like a forge roll (10% fated, otherwise a random
+       class). No gold cost — the 3 pieces are the cost. Hard limits:
+       fodder must be 1★–5★, so combining tops out at 6★ (3× 5★ → 1×
+       6★); 6★ pieces can never be fodder, and 7★ pieces can never be
+       fodder either — 7★ still comes only from a flawless Starlight
+       forge. Equipped pieces must be unequipped first. A result of 5★+
+       may be named, like a forged piece. */
+    function toggleCombinePick(uid) {
+      var idx = combineSel.indexOf(uid);
+      if (idx >= 0) { combineSel.splice(idx, 1); renderMain(); return; }
+      var g = gearByUid(uid);
+      if (!g) return;
+      if (gearHolder(uid)) { setNotice("That piece is equipped — unequip it before it can be combined."); return; }
+      if (g.stars >= 7) { setNotice("👑 " + gearName(g) + " is one of a kind — it can never be combine fodder."); return; }
+      if (g.stars >= 6) { setNotice("Combining tops out at 6★ — a 6★ piece can't be combined further."); return; }
+      if (combineSel.length >= 3) { setNotice("The combine tray is full — remove a pick first."); return; }
+      var first = combineSel.length ? gearByUid(combineSel[0]) : null;
+      if (first && (g.slot !== first.slot || g.stars !== first.stars)) {
+        setNotice("The tray needs " + first.stars + "★ " + first.slot + " pieces — all 3 must share a slot and a star rank.");
+        return;
+      }
+      combineSel.push(uid);
+      renderMain();
+    }
+    function combineGear() {
+      if (combineSel.length !== 3) return;
+      var pieces = combineSel.map(function (uid) { return gearByUid(uid); });
+      var first = pieces[0];
+      if (!first || pieces.some(function (p) { return !p; })) return;
+      if (pieces.some(function (p) { return p.slot !== first.slot || p.stars !== first.stars; })) return;
+      if (first.stars < 1 || first.stars > 5) return; /* result would pass the 6★ combine cap (also bars 7★ fodder) */
+      if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
+      var stars = first.stars + 1;
+      var custom = stars >= 5 && typeof combineName === "string" ? combineName.trim().slice(0, 40) : "";
+      var att = rollGearAttunement();
+      var piece = { uid: gearUidNew(), slot: first.slot, stars: stars };
+      if (first.recipe) piece.recipe = first.recipe;
+      if (custom && custom !== gearDefaultName(piece)) piece.name = custom;
+      if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
+      var spent = {};
+      combineSel.forEach(function (uid) { spent[uid] = true; });
+      var next = JSON.parse(JSON.stringify(save));
+      next.gearInv = next.gearInv.filter(function (g) { return !spent[g.uid]; });
+      next.gearInv.push(piece);
+      persist(next);
+      writeSave();
+      combineSel = [];
+      combineName = null;
+      combineMode = false;
+      var attuneNote = piece.fatedHero
+        ? " 🌟 FATED for " + heroById(piece.fatedHero).name + " — its bonuses DOUBLE on them!"
+        : piece.attunedClass ? " Attuned: " + piece.attunedClass + " (+50% bonuses on a " + piece.attunedClass + ")." : "";
+      setNotice("🔀 Combined! 3× " + first.stars + "★ " + first.slot + "s fused into " + gearName(piece) + " — " + stars + "★ " + first.slot + " (" + gearBonusText(piece) + ")" + (first.recipe ? ", carrying the " + recipeSetName(first.recipe) + " recipe from the first piece" : "") + ". It's in your gear inventory!" + attuneNote);
       renderMain();
     }
     function showEquipPicker(heroId, slot) {
@@ -6639,7 +7022,7 @@
       } else {
         h += '<ul class="picker-list">';
         avail.forEach(function (g) {
-          h += '<li class="gear-item"><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></p><p class="gi-meta">' + gearBonusText(g) + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-equip="' + g.uid + '">Equip</button></span></li>';
+          h += '<li class="gear-item"><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></p><p class="gi-meta">' + gearBonusText(g) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : "") + gearAttuneSuffix(g) + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-equip="' + g.uid + '">Equip</button></span></li>';
         });
         h += "</ul>";
       }
@@ -6694,6 +7077,45 @@
     function dungeonHealPerSec(s) {
       var hasHealer = s.party.some(function (id) { return isHealerDef(heroById(id)) && s.heroes[id]; });
       return hasHealer ? partyMaxHp(s) * 0.012 * 4 * partyMods(s).healMult : 0;
+    }
+    /* The current party's Battle Power (BP): heroPower — a hero's battle
+       DPS plus 5% of their HP, gear and synergy included — summed over
+       the heroes who actually delve. It is the same measure the quest
+       board prices team power with. */
+    function partyBp(s) {
+      var sum = 0;
+      s.party.forEach(function (id) { sum += heroPower(s, id); });
+      return sum;
+    }
+    /* ---------- Recommended BP ----------
+       Each dungeon's recommended BP is priced from that dungeon's own
+       scaling — never a hand-picked number. A reference clear is priced
+       off the exact wave formulas the run loop uses (dungeonWaveHp /
+       dungeonWaveAtk, themselves scaled from the dungeon's powerFloor):
+       the reference party brings each wave down in about
+       DUNGEON_BP_SECONDS_PER_WAVE seconds, so its required DPS is the
+       total wave HP spread over that time; at that pace it soaks
+       Σ(waveAtk × waveHp) ÷ DPS damage across the whole run, and
+       "comfortable" means it may spend at most (1 − DUNGEON_BP_HP_RESERVE)
+       of its HP pool doing so, so the required pool is the soak divided
+       by that spendable share. The recommendation is that reference
+       party's BP on the game's own scale (DPS + 5% of HP, as in
+       heroPower). The healer trickle and the status holds are
+       deliberately NOT priced in — they only make a real run kinder than
+       the reference, so the number is a comfortable target, not a gate. */
+    var DUNGEON_BP_SECONDS_PER_WAVE = 12;
+    var DUNGEON_BP_HP_RESERVE = 0.3;
+    function dungeonRecommendedBp(dg) {
+      var totalHp = 0;
+      var soak = 0; /* Σ waveAtk × waveHp — divided by DPS below, the run's total incoming damage */
+      for (var w = 1; w <= dg.waves; w++) {
+        var hp = dungeonWaveHp(dg, w);
+        totalHp += hp;
+        soak += dungeonWaveAtk(dg, w) * hp;
+      }
+      var reqDps = totalHp / (dg.waves * DUNGEON_BP_SECONDS_PER_WAVE);
+      var reqHp = soak / reqDps / (1 - DUNGEON_BP_HP_RESERVE);
+      return Math.round(reqDps + reqHp * 0.05);
     }
     /* The DoT slice for dungeons — the same raw DoTs the tower folds
        in (poison, bleed, chill, burn, snare, tidal, comet), WITHOUT
@@ -7005,13 +7427,28 @@
        for all 3 strikes. Zones are fixed:
        perfect 46–54 (8 wide, gold), good 36–64 (28 wide, teal).
        3 strikes; Perfect +2, Good +1, Miss 0. Score → puzzle stars:
-       6→5★, 5→4★, 4→3★, 2–3→2★, 0–1→1★. Final = max(puzzle, recipe floor), cap 5.
+       6→5★, 5→4★, 4→3★, 2–3→2★, 0–1→1★. Final = max(puzzle, recipe
+       floor), capped at 5★ — with ONE exception: a flawless game (all
+       3 strikes Perfect, 6 pts) on the Starlight recipe forges a 7★
+       piece instead, but only once the climb has reached Floor 70 and
+       only if that slot's 7★ does not exist yet. One 7★ per slot, one
+       set in the whole game, ever (see forgeResultStars).
        Materials + gold are charged when the game OPENS (the metal is on
        the anvil); closing mid-game refunds nothing — stated in the modal. */
     var FORGE_PERFECT = { lo: 46, hi: 54 };
     var FORGE_GOOD = { lo: 36, hi: 64 };
     function forgePuzzleStars(score) { return score >= 6 ? 5 : score === 5 ? 4 : score === 4 ? 3 : score >= 2 ? 2 : 1; }
-    function forgeStarsFor(score, recipe) { return Math.min(5, Math.max(forgePuzzleStars(score), recipe.floor)); }
+    /* The final star rating of a finished forge. The 7★ rules live here
+       so the minigame's result screen and the piece actually saved can
+       never disagree: full Perfect (6 pts) on the Very Fast (Starlight)
+       recipe, only while that slot's one 7★ has not been forged yet,
+       and only once the climb has reached Floor 70 — below that, even a
+       flawless Starlight forge tops out at 5★. */
+    var SEVEN_STAR_MIN_FLOOR = 70;
+    function forgeResultStars(score, recipe, hasSeven, floor) {
+      if (score >= 6 && recipe.id === "essence" && !hasSeven && floor >= SEVEN_STAR_MIN_FLOOR) return 7;
+      return Math.min(5, Math.max(forgePuzzleStars(score), recipe.floor));
+    }
     function startForge(recipeId) {
       var rc = recipeById(recipeId);
       var mat = materialById(rc.mat);
@@ -7051,7 +7488,7 @@
       else if (kind === "good") { tone(1046.5, 0, 0.2, "triangle", 0.45); }
       else { tone(220, 0, 0.18, "triangle", 0.3); }
       updateForgeModal();
-      if (forgeGame.strikes.length >= 3) finishForge();
+      if (forgeGame.strikes.length >= 3) showForgeResult();
     }
     function updateForgeModal() {
       if (!forgeGame) return;
@@ -7078,6 +7515,15 @@
       h += '<div class="center"><p style="font-size:2.25rem;margin:0" aria-hidden="true">🔨</p>';
       h += '<h2 class="font-display" style="margin-top:0.25rem;font-size:1.375rem;font-weight:700">FORGE: ' + GEAR_SLOT_ICON[forgeGame.slot] + " " + GEAR_SLOT_LABEL[forgeGame.slot].toUpperCase() + '</h2>';
       h += '<p class="small dim" style="margin-top:0.375rem">' + esc(rc.name) + " — paid " + mat.icon + " " + rc.matCount + " " + esc(mat.name) + " + 🪙 " + rc.gold.toLocaleString("en-US") + ". The metal is on the anvil! Land 3 strikes: gold = Perfect (+2), teal = Good (+1). Score 6 → 5★, 5 → 4★, 4 → 3★, 2–3 → 2★, 0–1 → 1★ — and this recipe guarantees at least " + rc.floor + "★.</p>";
+      if (rc.id === "essence") {
+        if (slotHasSevenStar(save, forgeGame.slot)) {
+          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">This slot\'s <span style="' + starTextStyle(7) + '">7★</span> already exists — no second one can ever be forged.</p>';
+        } else if (save.floor >= SEVEN_STAR_MIN_FLOOR) {
+          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge reaches <span style="' + starTextStyle(7) + '">7★</span> — the only 7★ ' + GEAR_SLOT_LABEL[forgeGame.slot].toLowerCase() + " that can ever be made.</p>";
+        } else {
+          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge could reach <span style="' + starTextStyle(7) + '">7★</span> — but <span class="bold" style="color:var(--text)">7★ requires Floor ' + SEVEN_STAR_MIN_FLOOR + "+</span> (you're at Floor " + save.floor + "), so for now a flawless game tops out at 5★.</p>";
+        }
+      }
       h += '<p style="margin-top:0.5rem"><span class="speed-badge">⚡ SPEED: ' + esc(rc.speedLabel) + " · " + rc.speed + '%/s</span></p><p class="small bold" style="margin-top:0.375rem">Hammer speed: ' + esc(rc.speedLabel) + " — the marker sweeps at " + rc.speed + "%/s for all 3 strikes. Time your Strike! taps to the gold zone.</p></div>";
       h += '<div class="forge-bar-wrap" aria-hidden="true"><div class="forge-zone-good" style="left:' + FORGE_GOOD.lo + '%;width:' + goodW + '%"></div><div class="forge-zone-perfect" style="left:' + FORGE_PERFECT.lo + '%;width:' + perfW + '%"></div><div class="forge-marker" id="forge-marker" style="left:0%"></div></div>';
       h += '<p class="center small bold" id="forge-score" style="margin-top:0.625rem">Score: 0 / 6 · Strike 1 of 3</p>';
@@ -7096,31 +7542,89 @@
         maybeShowPendingModals();
       });
     }
-    function finishForge() {
+    /* The forge result screen: the finished piece is shown (and, at 5★+,
+       may be named by the Master) BEFORE it is committed — COLLECT saves
+       it, exactly like the main game's forge. The stars shown here come
+       from forgeResultStars, and commitForge recomputes them from the
+       same inputs, so the screen and the saved piece can never disagree. */
+    function showForgeResult() {
       if (forgeTimer) window.clearInterval(forgeTimer); forgeTimer = null;
       forgeGame.done = true;
       var rc = recipeById(forgeGame.recipeId);
-      var stars = forgeStarsFor(forgeGame.score, rc);
-      var floored = stars > forgePuzzleStars(forgeGame.score);
-      var piece = { uid: gearUidNew(), slot: forgeGame.slot, stars: stars };
       var score = forgeGame.score;
+      var hasSeven = slotHasSevenStar(save, forgeGame.slot);
+      var stars = forgeResultStars(score, rc, hasSeven, save.floor);
+      forgeGame.resultStars = stars;
+      var isSeven = stars >= 7;
+      /* A flawless Starlight game that could NOT reach 7★ — the result
+         screen explains the settle at 5★: either this slot's one 7★
+         already exists, or the climb has not reached Floor 70 yet. */
+      var sevenBlocked = score >= 6 && rc.id === "essence" && hasSeven;
+      var sevenFloorBlocked = score >= 6 && rc.id === "essence" && !hasSeven && save.floor < SEVEN_STAR_MIN_FLOOR;
+      var defName = gearDefaultName({ slot: forgeGame.slot, stars: stars });
+      var piece = { slot: forgeGame.slot, stars: stars };
+      var root = document.getElementById("modal-root");
+      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Forging complete"><div class="anime-card modal-card center" style="max-width:24rem;border-color:' + starColor(stars) + '">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">' + GEAR_SLOT_ICON[piece.slot] + '</p>';
+      h += '<h2 class="font-display" style="margin-top:0.5rem;font-size:1.5rem;font-weight:700" id="forge-result-name">' + esc(defName) + '</h2>';
+      h += '<p style="' + starTextStyle(stars) + ';font-size:1.125rem;margin:0.125rem 0 0">' + starsStr(stars) + '</p>';
+      h += '<p class="small" style="margin-top:0.375rem;font-weight:800;color:#5eead4">' + GEAR_SLOT_LABEL[piece.slot] + " · " + gearBonusText(piece) + "</p>";
+      if (isSeven) {
+        h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Flawless — all 3 strikes Perfect at Very Fast! The hammer sings…</p>';
+        h += '<p style="margin:0.5rem auto 0;width:fit-content;border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);padding:0.25rem 0.75rem;font-size:11px;font-weight:900;color:#3a2403">👑 ONE OF A KIND — THE ONLY 7★ ' + GEAR_SLOT_LABEL[piece.slot].toUpperCase() + " THAT CAN EVER BE FORGED</p>";
+      } else {
+        h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + forgePuzzleStars(score) + "★ from the hammer" + (rc.floor > forgePuzzleStars(score) ? ", raised to the recipe floor of " + rc.floor + "★" : "") + ".</p>";
+      }
+      if (sevenBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but this slot\'s 7★ already exists, and only one can ever be made, so this masterpiece settles at 5★.</p>';
+      if (sevenFloorBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but 7★ gear can only be forged from Floor ' + SEVEN_STAR_MIN_FLOOR + " onwards, so this masterpiece settles at 5★. Reach Floor " + SEVEN_STAR_MIN_FLOOR + " and forge flawlessly again!</p>";
+      if (stars >= 5) {
+        h += '<div style="margin-top:1rem;text-align:left"><label for="forge-piece-name" class="xs bold dim" style="letter-spacing:0.15em">✒️ NAME THIS PIECE, MASTER (OPTIONAL)</label>';
+        h += '<input id="forge-piece-name" type="text" maxlength="40" value="' + esc(defName) + '" placeholder="' + esc(defName) + '" aria-label="Name for your forged ' + stars + "-star " + piece.slot + ' (optional)" style="margin-top:0.375rem;width:100%;border-radius:16px;border:2px solid var(--border);background:var(--surface);padding:0.625rem 0.875rem;font-size:0.875rem;font-weight:700;color:var(--text)" />';
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:600">' + (isSeven ? "A one-of-a-kind set deserves its own names — this one will carry yours everywhere it appears." : "Pieces of 5★ and above may carry a name of your choosing; leave the suggested name if you like it.") + "</p></div>";
+      }
+      h += '<button type="button" class="btn-wide anime-btn-primary" id="forge-done-btn" style="margin-top:1rem" aria-label="Collect your forged ' + stars + "-star " + piece.slot + '">COLLECT ♪</button></div></div>';
+      root.innerHTML = h;
+      var nameInput = document.getElementById("forge-piece-name");
+      if (nameInput) {
+        nameInput.addEventListener("input", function () {
+          var rn = document.getElementById("forge-result-name");
+          if (rn) rn.textContent = nameInput.value.trim() || defName;
+        });
+      }
+      document.getElementById("forge-done-btn").addEventListener("click", function () {
+        var ni = document.getElementById("forge-piece-name");
+        commitForge(ni ? ni.value : undefined);
+      });
+      renderMain();
+    }
+    function commitForge(name) {
+      if (!forgeGame) return;
+      var rc = recipeById(forgeGame.recipeId);
+      var stars = forgeResultStars(forgeGame.score, rc, slotHasSevenStar(save, forgeGame.slot), save.floor);
+      /* Custom names exist only at 5★+: a blank or untouched field keeps
+         the default name (stored as no name at all). */
+      var custom = stars >= 5 && typeof name === "string" ? name.trim().slice(0, 40) : "";
+      /* Attunement rolls at the forge: every piece is attuned to a random
+         class; rarely (10%) it is fated for one specific hero instead. */
+      var att = rollGearAttunement();
+      var piece = { uid: gearUidNew(), slot: forgeGame.slot, stars: stars, recipe: rc.id };
+      if (custom && custom !== gearDefaultName(piece)) piece.name = custom;
+      if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
       forgeGame = null;
       var next = JSON.parse(JSON.stringify(save));
       next.gearInv.push(piece);
       persist(next);
       writeSave();
       playClearSfx();
-      var root = document.getElementById("modal-root");
-      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Forging complete"><div class="anime-card modal-card center" style="max-width:24rem;border-color:' + starColor(stars) + '">';
-      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">' + GEAR_SLOT_ICON[piece.slot] + '</p>';
-      h += '<h2 class="font-display" style="margin-top:0.5rem;font-size:1.5rem;font-weight:700">' + esc(gearName(piece)) + '</h2>';
-      h += '<p style="' + starTextStyle(stars) + ';font-size:1.125rem;margin:0.125rem 0 0">' + starsStr(stars) + '</p>';
-      h += '<p class="small" style="margin-top:0.375rem;font-weight:800">' + GEAR_SLOT_LABEL[piece.slot] + " · " + gearBonusText(piece) + "</p>";
-      h += '<p class="small dim" style="margin-top:0.375rem">Hammer score ' + score + " / 6" + (floored ? " — the " + esc(rc.name) + " floor lifted it to " + stars + "★!" : score === 6 ? " — FLAWLESS! Three perfect strikes!" : ".") + " It's in your gear bag — equip it from a hero's detail panel or the Gear Inventory.</p>";
-      h += '<button type="button" class="btn-wide anime-btn-primary" id="forge-done-btn">COLLECT ♪</button></div></div>';
-      root.innerHTML = h;
-      document.getElementById("forge-done-btn").addEventListener("click", function () { root.innerHTML = ""; renderMain(); maybeShowPendingModals(); });
+      document.getElementById("modal-root").innerHTML = "";
+      var attuneNote = piece.fatedHero
+        ? " 🌟 FATED for " + heroById(piece.fatedHero).name + " — its bonuses DOUBLE on them!"
+        : piece.attunedClass ? " Attuned: " + piece.attunedClass + " (+50% bonuses on a " + piece.attunedClass + ")." : "";
+      setNotice(stars >= 7
+        ? "👑 SEVEN STARS! " + gearName(piece) + " — the one and only 7★ " + piece.slot + " (" + gearBonusText(piece) + ") is in your gear inventory. No second one can ever be forged. Equip it from a hero's detail panel!" + attuneNote
+        : "⚒ Forged! " + gearName(piece) + " — " + stars + "★ " + piece.slot + " (" + gearBonusText(piece) + ") is in your gear inventory. Equip it from a hero's detail panel!" + attuneNote);
       renderMain();
+      maybeShowPendingModals();
     }
 
     /* ============================== MODALS ============================== */
