@@ -853,7 +853,7 @@
         desc: "Party critical chance +3% per skill level. She calls her target before she looses.",
         more: [
           { name: "Eagle Eye", desc: "Enemy attack −2% per skill level. Where Keen Eye picks the target, Eagle Eye picks the moment — the held breath, the gap in the armor, the half-second the monster forgets to guard — and the shot she lands there leaves the monster's next swing weaker for it. Her second skill, known from the start alongside Keen Eye." },
-          { name: "Twin Shot", desc: "Her own damage +8% per skill level. Two arrows on one string, loosed in a single breath — the second rides the first's wind and lands a heartbeat later, in the same hole. Her third skill, known from the start alongside Keen Eye and Eagle Eye." }
+          { name: "Twin Shot", desc: "Her own damage +12% per skill level. Two arrows on one string, loosed in a single breath — the second rides the first's wind and lands a heartbeat later, in the same hole. Her third skill, known from the start alongside Keen Eye and Eagle Eye." }
         ]
       },
       han: {
@@ -889,7 +889,7 @@
       },
       mira: { name: "Cartographer's Eye", desc: "Gold from floor clears +4% per skill level. She knows where the tower hides its coin." },
       dain: { name: "Immovable", desc: "Enemy attack −3% per skill level. Doorways fear him." },
-      sella: { name: "Chain Lightning", desc: "Her own damage +10% per skill level. Aim is improving; enthusiasm is not." },
+      sella: { name: "Chain Lightning", desc: "Her own damage +15% per skill level. Aim is improving; enthusiasm is not." },
       tomas: { name: "Underdog Spirit", desc: "His own damage +12% per skill level. Proof a 1-star can climb — Soren is the precedent." },
       pippa: { name: "Sure Shot", desc: "Party critical chance +2% per skill level. Bigger sheep, same sling." },
       brann: { name: "Bell of Courage", desc: "Healing +20% and party damage +2% per skill level. The tower knows they're coming, and regrets it." },
@@ -897,12 +897,12 @@
         name: "Shadowstep",
         desc: "Party critical chance +3% per skill level. She is already behind the enemy before the fight begins.",
         more: [
-          { name: "Venom Strike", desc: "Her attacks POISON the enemy — it takes poison damage every second equal to 10% of her attack per skill level, for as long as Nyx is in the party. Nyx does not need to swing twice: the first cut is a delivery, and the venom she leaves in the wound does the rest of the work in silence. Her second skill, known from the start alongside Shadowstep." }
+          { name: "Venom Strike", desc: "Her attacks POISON the enemy — it takes poison damage every second equal to 12% of her attack per skill level, for as long as Nyx is in the party. Nyx does not need to swing twice: the first cut is a delivery, and the venom she leaves in the wound does the rest of the work in silence. Her second skill, known from the start alongside Shadowstep." }
         ]
       },
       kael: {
         name: "Twin Fang",
-        desc: "His own damage +10% per skill level — and when Nyx fights beside him, party damage +2% per skill level. Two fangs, one shadow.",
+        desc: "His own damage +14% per skill level — and when Nyx fights beside him, party damage +2% per skill level. Two fangs, one shadow.",
         more: [
           { name: "Twin Strike", desc: "Party damage +2% per skill level. Kael does not only strike second — he strikes in rhythm, and a rhythm is contagious: the whole party starts timing their blows to land in the breath his opens up. His second skill, known from the start alongside Twin Fang." },
           { name: "Silent Hunt", desc: "Enemy attack −2% per skill level. A hunted thing fights worse — it flinches at shadows, guards the wrong side, spends its strength on a second fang that is not there yet. Kael makes sure every enemy feels hunted. His third skill, known from the start alongside Twin Fang and Twin Strike." }
@@ -997,7 +997,7 @@
       },
       rurik: {
         name: "Ember Cleave",
-        desc: "His own damage +12% per skill level. Every swing trails cinders, and every cinder is a promise of the next swing.",
+        desc: "His own damage +14% per skill level. Every swing trails cinders, and every cinder is a promise of the next swing.",
         more: [
           { name: "Ember Aura", desc: "Party damage +3% per skill level. Rurik runs hot enough to share — the heat rolling off his armor keeps every nearby blade limber, every nearby temper short, and every nearby strike a little more eager than it should be. His second skill, known from the start alongside Ember Cleave." },
           { name: "Crimson Roar", desc: "Party critical chance +2% per skill level. A dragonkin roar does something to the blood — the party's, mostly. Everything feels hittable for a moment after it, and somehow, everything is. His third skill, known from the start alongside Ember Cleave and Ember Aura." }
@@ -1085,7 +1085,7 @@
         name: "Rune of Power",
         desc: "Party damage +3% per skill level. He carves a rune of power into the air itself, and every ally's strike carries the old language's weight.",
         more: [
-          { name: "Rune of Fury", desc: "His own damage +12% per skill level. The rune on his own brow burns ember-bright, and Eldric's hammer — and his fury — hit like the mountain the rune was cut from." }
+          { name: "Rune of Fury", desc: "His own damage +16% per skill level. The rune on his own brow burns ember-bright, and Eldric's hammer — and his fury — hit like the mountain the rune was cut from." }
         ]
       },
       morrigan: {
@@ -2568,22 +2568,22 @@
     function selfSkillMult(def, o) {
       var lv = skillLevel(o);
       switch (def.id) {
-        case "jenna": return 1 + 0.08 * lv;
+        case "jenna": return 1 + 0.12 * lv;
         /* Duelist's Edge IS Soren's self-damage bonus — and it stays
            locked until effective rank 4★, so a young Soren gets none
            of it (see duelistUnlocked). */
         case "han": return duelistUnlocked(o) ? 1 + 0.12 * lv : 1;
         case "draven": return 1 + 0.15 * lv;
         case "eolka": return 1 + 0.12 * lv;
-        case "rurik": return 1 + 0.12 * lv;
-        case "kael": return 1 + 0.10 * lv;
-        case "eldric": return 1 + 0.12 * lv; // Rune of Fury — the rune on his brow burns ember-bright, and his own hammer hits like the mountain
+        case "rurik": return 1 + 0.14 * lv;
+        case "kael": return 1 + 0.14 * lv;
+        case "eldric": return 1 + 0.16 * lv; // Rune of Fury — the rune on his brow burns ember-bright, and his own hammer hits like the mountain
         case "morrigan": return 1 + 0.14 * lv; // Murder of Crows — a whole flock descends at her direction, and her own damage rides with it
         case "yurneth": return 1 + 0.15 * lv; // Night's Edge — the Pale Blade's own cut, the hardest-hitting of the 4★ tier
-        case "velkist": return 1 + 0.19 * lv;
+        case "velkist": return 1 + 0.19 * lv; // Frenzy (+9%) compounded by Blood Frenzy (+10%) — bleed ticks separately, Last Stand rides the battle loop
         /* Nyx has NO self-damage multiplier: her second skill is
            Venom Strike, a poison DoT (see venomDps), not a hit bonus. */
-        case "sella": return 1 + 0.10 * lv;
+        case "sella": return 1 + 0.15 * lv;
         case "tomas": return 1 + 0.12 * lv;
         case "greta": return 1 + 0.12 * lv;
         case "hugo": return 1 + 0.12 * lv;
@@ -2992,7 +2992,7 @@
     /* ---- Venom Strike (Nyx) & Blood Frenzy bleed (Torin) ----
        Persistent damage-over-time, live in tower battles for as long
        as the hero is in the party (no refresh timer, unlike Draven's
-       burn / Aurelia's snare): poison ticks for 10% of Nyx's attack
+       burn / Aurelia's snare): poison ticks for 12% of Nyx's attack
        per skill level each second; bleed ticks for 10% of Torin's
        attack per skill level each second. Like burn and snare, these
        DoTs land in the battle tick only — dungeons and offline
@@ -3001,7 +3001,7 @@
       if (!s || !s.heroes) return 0;
       var o = s.heroes["nyx"];
       if (!o || s.party.indexOf("nyx") < 0) return 0;
-      return heroAtk(heroById("nyx"), o, s) * 0.10 * skillLevel(o);
+      return heroAtk(heroById("nyx"), o, s) * 0.12 * skillLevel(o);
     }
     function bleedDps(s) {
       if (!s || !s.heroes) return 0;
@@ -3198,9 +3198,11 @@
     /* ============================== TOWER MEMORY ==============================
        The tower remembers. Every floor quietly keeps count of the party's
        wipes and repeat clears there (save.floorMemory), and a boss floor's
-       keeper grows subtly stronger for it: +2% HP and +1% attack per wipe,
-       +1% HP per repeat clear, hard-capped at +50% HP / +25% attack so no
-       floor can ever become impossible. This is NEVER stated in the UI — no
+       keeper grows subtly stronger for it: +1% HP and +0.5% attack per wipe,
+       +0.5% HP per repeat clear. The caps grow with the floor, so a heavily
+       fought low floor stays gentle while the climb's late bosses may harden
+       further: HP cap 25% at floor 1 rising to 50% at floor 100, ATK cap 12%
+       at floor 1 rising to 25% at floor 100. This is NEVER stated in the UI — no
        numbers, no labels, no explanation. The only traces are a few cryptic
        lines when entering a floor the tower knows, and the battlefield
        darkening, almost imperceptibly, as the count grows. */
@@ -3215,9 +3217,11 @@
     function memoryMults(s, f) {
       if (!isBossFloor(f)) return { hp: 1, atk: 1 };
       var m = floorMemoryOf(s, f);
+      var hpCap = 0.25 + (0.25 / 99) * (f - 1);
+      var atkCap = 0.12 + (0.13 / 99) * (f - 1);
       return {
-        hp: 1 + Math.min(0.5, m.deaths * 0.02 + m.reClears * 0.01),
-        atk: 1 + Math.min(0.25, m.deaths * 0.01)
+        hp: 1 + Math.min(hpCap, m.deaths * 0.01 + m.reClears * 0.005),
+        atk: 1 + Math.min(atkCap, m.deaths * 0.005)
       };
     }
     /* The boss's effective max HP on a tower floor, memory included —
@@ -7238,7 +7242,7 @@
         }
       }
       /* Venom Strike (Nyx): persistent poison — ticks every second
-         for 10% of her attack per skill level while she is in the
+         for 12% of her attack per skill level while she is in the
          party. Added after the party multipliers like burn / snare,
          and still shaved by the Cantor Dirge below. */
       var venTick = venomDps(s);
