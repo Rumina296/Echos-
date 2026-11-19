@@ -210,7 +210,7 @@
       .stickybar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding-top: 0.5rem; padding-bottom: 0.5rem; flex-wrap: wrap; }
       .currencies { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 800; flex-wrap: wrap; }
       .cur-pill { border-radius: 999px; padding: 0.125rem 0.625rem; border: 1px solid; white-space: nowrap; }
-      .cur-gold { border-color: #ffd94d66; background: #ffd94d1f; }
+      .cur-gold { border-color: #ffd94d66; background: #ffd94d1f; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.125rem 0.25rem 0.125rem 0.625rem; }
       .cur-gems { border-color: #7dd3fc66; background: #7dd3fc1f; }
       .cur-floor { color: var(--dim); font-weight: 700; }
       .cur-plus { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; flex: none; border-radius: 999px; border: 2px solid #ffd94d; background: #ffd94d33; color: #ffd94d; font-family: var(--font-display); font-size: 0.875rem; font-weight: 900; line-height: 1; cursor: pointer; }
@@ -3267,6 +3267,11 @@
         atk: 1 + Math.min(atkCap, m.deaths * 0.005)
       };
     }
+    /* The one crack in the tower's silence about its memory: for this many
+       gems, a boss floor's accumulated memory can be wiped back to nothing
+       (deaths and repeat clears to 0), returning its keeper to base stats.
+       Offered on the Tower tab's boss card whenever the floor remembers. */
+    var MEMORY_RESET_COST = 200;
     /* The boss's effective max HP on a tower floor, memory included —
        and, on Floor 90, Ossian's Grave Tithe growth on top of that.
        (Dungeon waves and offline estimates deliberately keep using raw
@@ -3350,26 +3355,31 @@
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
        (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems
        20 × (r + 1) (so 💎 20, 40, 60, 80, 100, 120 … up to 220 at #11),
-       plus dungeon materials from synthesis #3 on:
-       #3 → 2 Moonstones, #4 → 2 Dragon Scales, #5 → 1 Starlight
-       Essence, #6 → 2 Starlight Essence, #7 → 10 Starlight Essence,
-       #8 → 15, #9 → 20, #10 → 25, #11 → 30 Starlight Essence.
+       plus dungeon materials, keyed on the TARGET effective rank of the
+       synthesis: below 8★ the old schedule holds (#3 → 2 Moonstones,
+       #4 → 2 Dragon Scales, #5 → 1 Starlight Essence, #6 → 2 Starlight
+       Essence), but every synthesis landing at 8★ or higher costs
+       Starlight Essence by target rank (8★ → 10, 9★ → 15, 10★ → 20,
+       11★ → 25, 12★ → 30), so the 8★→12★ climb totals exactly 100.
        The hero must also be at the
        max level of its current rank. Nothing fuses automatically —
        duplicates bank until the player taps Synthesize. */
     function ascCost(o) { return o.asc + 2; }
     function synthGemCost(o) { return 20 * (o.asc + 1); }
-    function synthMatReq(o) {
-      var n = o.asc + 1;
-      if (n === 3) return { id: "moon", count: 2 };
-      if (n === 4) return { id: "scale", count: 2 };
-      if (n === 5) return { id: "essence", count: 1 };
-      if (n === 6) return { id: "essence", count: 2 };
-      if (n === 7) return { id: "essence", count: 10 };
-      if (n === 8) return { id: "essence", count: 15 };
-      if (n === 9) return { id: "essence", count: 20 };
-      if (n === 10) return { id: "essence", count: 25 };
-      if (n === 11) return { id: "essence", count: 30 };
+    function synthMatReq(def, o) {
+      // Material ladder keyed on TARGET effective rank (base stars + current asc + 1):
+      // 4★ → 2 Moonstones; 5★ → 5 Dragon Scales; 6★ → 10 Dragon Scales;
+      // 7★ → 1 Starlight Essence; 8★ → 10, 9★ → 15, 10★ → 20, 11★ → 25, 12★ → 30 Starlight,
+      // so the full 8★→12★ climb totals exactly 100. At or below 3★ no materials.
+      var target = def.stars + o.asc + 1;
+      // Soren-only exception: his 7★ step costs 20 Dragon Scales, not 1 Starlight,
+      // so his lifetime Starlight total to 12★ stays exactly 100 (not 101).
+      if (def.id === "han" && target === 7) return { id: "scale", count: 20 };
+      if (target >= 8) return { id: "essence", count: (target - 7) * 5 + 5 };
+      if (target === 4) return { id: "moon", count: 2 };
+      if (target === 5) return { id: "scale", count: 5 };
+      if (target === 6) return { id: "scale", count: 10 };
+      if (target === 7) return { id: "essence", count: 1 };
       return null;
     }
     function synthStatus(def, o) {
@@ -3380,7 +3390,7 @@
       reqs.push({ ok: o.dupes >= need, label: "Spare copies — you hold " + o.dupes + " / " + need + " needed" });
       var gc = synthGemCost(o);
       reqs.push({ ok: save && save.gems >= gc, label: "Gems — 💎 " + fmt(save ? save.gems : 0) + " / " + fmt(gc) + " needed" });
-      var mr = synthMatReq(o);
+      var mr = synthMatReq(def, o);
       if (mr) {
         var m = materialById(mr.id);
         var have = save && save.materials ? (save.materials[mr.id] || 0) : 0;
@@ -3410,8 +3420,9 @@
        original, friendlier table; from summon 101 onward the standard
        RATES above apply. Checked per pull against save.totalSummons, so a
        10-pull crossing the boundary mixes both tables. Both pities apply
-       under either table: the 80-pull pity forces 5★, and the 10-pull
-       4★ pity forces a roll inside the 4★–6★ pool. */
+       under either table: the 80-pull pity forces a 5★ or 6★ at a flat
+       50/50 (never 7★, never 4★ or below), and the 10-pull 4★ pity forces
+       a roll inside the 4★–6★ pool. */
     var NEWBIE_LIMIT = 100;
     var NEWBIE_RATES = [
       { stars: 7, pct: 0.5 }, { stars: 6, pct: 1 }, { stars: 5, pct: 2 },
@@ -3440,8 +3451,9 @@
     }
     function rollStars(pity, pity4, totalSummons) {
       /* The 80-pull 5★ pity is checked first: when both pities would
-         trigger on the same pull, the 5★ guarantee wins. */
-      if (pity + 1 >= PITY_LIMIT) return 5;
+         trigger on the same pull, the 5★ guarantee wins. It forces a 5★
+         or 6★ at a flat 50/50 (never 7★, never 4★ or below). */
+      if (pity + 1 >= PITY_LIMIT) return Math.random() < 0.5 ? 5 : 6;
       if (pity4 + 1 >= PITY4_LIMIT) return rollStars4Plus(totalSummons);
       var table = activeRates(totalSummons);
       var r = Math.random() * 100, acc = 0;
@@ -4135,6 +4147,7 @@
     var heroesTab = "team";
     var pulls = null;
     var showAllPulls = false;
+    var memoryResetArmed = null;
     var offlineReport = null;
     var offlineDismissed = false;
     var selectedHero = null;
@@ -4409,14 +4422,19 @@
       var f = save.fightFloor;
       var grinding = f < save.floor;
       cur.innerHTML =
-        '<span class="cur-pill cur-gold" aria-label="Gold: ' + fmt(save.gold) + '">🪙 ' + fmt(save.gold) + "</span>" +
-        '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Open gem exchange — trade gems for gold">+</button>' +
+        '<span class="cur-pill cur-gold" aria-label="Gold: ' + fmt(save.gold) + '">🪙 ' + fmt(save.gold) + ' ' + (exchangeUnlocked(save)
+          ? '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Open gem exchange — trade gems for gold">+</button>'
+          : '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Gem exchange locked — unlocks at Tower Floor ' + EXCHANGE_UNLOCK_FLOOR + ', you are on floor ' + save.floor + '" style="opacity:0.8;font-size:11px">🔒</button>') + "</span>" +
         '<span class="cur-pill cur-gems" aria-label="Gems: ' + save.gems + '">💎 ' + save.gems.toLocaleString("en-US") + "</span>" +
         '<span class="cur-floor">' + (grinding ? "🔁 Grinding " + f + " · Highest " + save.floor : "Floor " + save.floor) + "</span>";
       var exPlus = document.getElementById("exchange-plus");
       if (exPlus) exPlus.addEventListener("click", function () {
         var root = document.getElementById("modal-root");
         if (root && root.innerHTML) return; // another modal is open — never stack overlays
+        if (!exchangeUnlocked(save)) {
+          setNotice("🔒 The Gem Exchange is locked — it unlocks at Tower Floor " + EXCHANGE_UNLOCK_FLOOR + ". You're on Floor " + save.floor + " — keep climbing, Master!");
+          return;
+        }
         showExchangeModal();
       });
       var btns = document.querySelectorAll(".tabbtn");
@@ -4524,6 +4542,22 @@
       } else {
         h += '<p class="xs dim" style="margin:0.125rem 0 0">Clear reward: 🪙 ' + fmt(clearGold(f)) + " · 💎 " + clearGems(f) + " · " + s.totalClears + " floors cleared</p>";
         h += '<span class="badge badge-push">⚔ PUSHING — This is your highest floor!</span>';
+      }
+      if (isBossFloor(f)) {
+        var mem = floorMemoryOf(s, f);
+        var memTotal = memoryTotal(s, f);
+        if (memoryResetArmed === f) {
+          h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
+          h += '<p class="xs bold" style="margin:0">Make the tower forget Floor ' + f + '? Its boss returns to base stats.</p>';
+          h += '<button type="button" class="btn-pill anime-btn-gold" id="mem-reset-yes" ' + (s.gems < MEMORY_RESET_COST ? "disabled" : "") + ' aria-label="Confirm: reset Tower Memory on floor ' + f + ' for ' + MEMORY_RESET_COST + ' gems">Yes — reset for ' + MEMORY_RESET_COST + '💎</button>';
+          h += '<button type="button" class="btn-pill btn-ghost" id="mem-reset-no" aria-label="Cancel Tower Memory reset">Keep it</button>';
+          h += "</div>";
+        } else {
+          h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
+          h += '<button type="button" class="btn-pill" id="mem-reset-arm" ' + (memTotal <= 0 || s.gems < MEMORY_RESET_COST ? "disabled" : "") + ' aria-label="' + (memTotal <= 0 ? "Reset Tower Memory on floor " + f + " — this floor has no memory to reset" : s.gems < MEMORY_RESET_COST ? "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems — you only have " + s.gems + " gems" : "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems") + '" style="border:2px solid #a78bfa;background:#a78bfa26;color:#ddd6fe">🧠 Reset memory — ' + MEMORY_RESET_COST + '💎</button>';
+          h += '<span class="xs bold dim">' + (memTotal > 0 ? "Tower Memory: " + mem.deaths + " fall" + (mem.deaths === 1 ? "" : "s") + " · " + mem.reClears + " repeat clear" + (mem.reClears === 1 ? "" : "s") + " — this boss has grown stronger for them." + (s.gems < MEMORY_RESET_COST ? " You need " + MEMORY_RESET_COST + " 💎 to reset it." : "") : "The tower holds no memory of this floor — its boss fights at base strength.") + "</span>";
+          h += "</div>";
+        }
       }
       h += "</div>";
       h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(idleGoldPerSec(dps, f, grinding) * partyMods(s).goldMult) + "</p></div>";
@@ -5793,6 +5827,12 @@
       if (push) push.addEventListener("click", function () { setFightFloor(save.floor); });
       var back = document.getElementById("grind-back");
       if (back) back.addEventListener("click", function () { setFightFloor(Math.max(1, save.floor - 1)); });
+      var memArm = document.getElementById("mem-reset-arm");
+      if (memArm) memArm.addEventListener("click", function () { memoryResetArmed = save.fightFloor; renderMain(); });
+      var memYes = document.getElementById("mem-reset-yes");
+      if (memYes) memYes.addEventListener("click", function () { resetFloorMemory(save.fightFloor); renderMain(); });
+      var memNo = document.getElementById("mem-reset-no");
+      if (memNo) memNo.addEventListener("click", function () { memoryResetArmed = null; renderMain(); });
       var s1 = document.getElementById("summon-1");
       if (s1) s1.addEventListener("click", function () { doSummon(1); });
       var s10 = document.getElementById("summon-10");
@@ -5910,11 +5950,26 @@
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
     }
 
-    /* Small gem-exchange tiers: each of the three small tiers (100 / 500 /
-       1,000 💎) can be used up to 5 times per local calendar day. The counts
-       live in smallExchange under the same dailyDateStr() date stamp as the
-       big exchange and the daily login, so all of them reset at local
-       midnight. */
+    /* The Gem Exchange stays locked until the climb reaches this floor:
+       the header's + button shows a lock instead of opening the panel, and
+       the exchange functions themselves refuse below it. Reaching the floor
+       (save.floor, the frontier) unlocks every tier exactly as before. */
+    var EXCHANGE_UNLOCK_FLOOR = 35;
+    function exchangeUnlocked(s) {
+      return s && s.floor >= EXCHANGE_UNLOCK_FLOOR;
+    }
+
+    /* Small gem-exchange tiers: three preset bundles whose gold-per-gem rate
+       improves with size (300 / 330 / 360 gold per 💎) as an incentive to
+       trade in bigger chunks. Each tier can be used up to 5 times per local
+       calendar day. The counts live in smallExchange under the same
+       dailyDateStr() date stamp as the big exchange and the daily login, so
+       all of them reset at local midnight. */
+    var SMALL_EXCHANGE_TIERS = [
+      { gems: 100, gold: 30000 },
+      { gems: 1000, gold: 330000 },
+      { gems: 10000, gold: 3600000 }
+    ];
     var SMALL_EXCHANGE_PER_DAY = 5;
     function smallExchangeUsed(s, gemCost) {
       if (!s.smallExchange || s.smallExchange.date !== dailyDateStr(new Date())) return 0;
@@ -5927,39 +5982,43 @@
 
     /* ============================== ACTIONS ============================== */
     /* Gem exchange panel (opened from the + button beside the header
-       gold): the same tiers as before — 1 gem = 300 gold in three preset
-       bundles, plus the big daily exchange. Renders into #modal-root,
-       the single overlay slot, so it can never stack with the daily or
-       account modals. */
+       gold): three preset bundles whose rate improves with size — 300 gold
+       per 💎 at 100 💎, 330 at 1,000 💎, 360 at 10,000 💎 — plus the big
+       daily exchange. Renders into #modal-root, the single overlay slot,
+       so it can never stack with the daily or account modals. */
     function showExchangeModal() {
       var root = document.getElementById("modal-root");
       if (!root) return;
       var s = save;
+      if (!exchangeUnlocked(s)) return;
       var bigUsedToday = s.lastBigExchange === dailyDateStr(new Date());
       var h = '<div class="overlay" id="exchange-modal" role="dialog" aria-modal="true" aria-label="Gem exchange">';
       h += '<div class="anime-card modal-card" style="max-width:24rem;border-color:#ffd94d;box-shadow:0 0 44px rgba(255,217,77,0.3);text-align:center">';
       h += '<button type="button" id="exchange-close" aria-label="Close gem exchange" style="position:absolute;right:0.75rem;top:0.75rem;border-radius:999px;border:2px solid var(--border);background:var(--surface2);padding:0.125rem 0.625rem;font-size:0.875rem;font-weight:900">✕</button>';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">💰</p>';
       h += '<h2 class="anime-title font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">GEM EXCHANGE</h2>';
-      h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">Trade gems for gold — 1 💎 = 300 gold, paid out instantly.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">Trade gems for gold, paid out instantly — bigger bundles pay a better rate per gem.</p>';
       h += '<p class="small" style="margin-top:0.5rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems · 🪙 " + fmt(s.gold) + " gold</p>";
       h += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem;margin-top:0.625rem">';
-      [100, 500, 1000].forEach(function (gemCost) {
+      SMALL_EXCHANGE_TIERS.forEach(function (tier) {
+        var gemCost = tier.gems;
+        var goldGain = tier.gold;
         var left = smallExchangeLeft(s, gemCost);
         h += '<div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem">';
-        h += '<button type="button" class="btn-pill anime-btn-gold" id="exchange-' + gemCost + '" ' + (s.gems < gemCost || left <= 0 ? "disabled" : "") + ' aria-label="' + (left <= 0 ? "Exchange " + gemCost + " gems for " + (gemCost * 300).toLocaleString("en-US") + " gold — no uses left today, resets at midnight" : "Exchange " + gemCost + " gems for " + (gemCost * 300).toLocaleString("en-US") + " gold — " + left + " of " + SMALL_EXCHANGE_PER_DAY + " uses left today") + '">💎 ' + gemCost + " → " + (gemCost * 300).toLocaleString("en-US") + " gold</button>";
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="exchange-' + gemCost + '" ' + (s.gems < gemCost || left <= 0 ? "disabled" : "") + ' aria-label="' + (left <= 0 ? "Exchange " + gemCost + " gems for " + goldGain.toLocaleString("en-US") + " gold — no uses left today, resets at midnight" : "Exchange " + gemCost + " gems for " + goldGain.toLocaleString("en-US") + " gold — " + left + " of " + SMALL_EXCHANGE_PER_DAY + " uses left today") + '">💎 ' + gemCost + " → " + goldGain.toLocaleString("en-US") + " gold</button>";
         h += '<span style="font-size:0.6875rem;font-weight:700;color:var(--dim)">' + left + " left today</span>";
         h += "</div>";
       });
       h += "</div>";
       h += '<p class="xs bold dim" style="margin-top:0.5rem">Each small tier can be used ' + SMALL_EXCHANGE_PER_DAY + " times a day — uses reset at midnight.</p>";
       h += '<div style="margin-top:0.75rem;border-top:2px dashed var(--border);padding-top:0.75rem">';
-      h += '<button type="button" class="btn-pill anime-btn-primary" id="exchange-big" ' + (bigUsedToday || s.gems < 10000 ? "disabled" : "") + ' aria-label="' + (bigUsedToday ? "Big exchange already used today — 10,000 gems for 100,000,000 gold, available again tomorrow at midnight" : "Big daily exchange: 10,000 gems for 100,000,000 gold, once per day") + '">🌟 BIG EXCHANGE 🌟<br /><span style="font-size:0.75rem">💎 10,000 → 100,000,000 gold · once a day</span></button>';
+      h += '<button type="button" class="btn-pill anime-btn-primary" id="exchange-big" ' + (bigUsedToday || s.gems < 50000 ? "disabled" : "") + ' aria-label="' + (bigUsedToday ? "Big exchange already used today — 50,000 gems for 100,000,000 gold, available again tomorrow at midnight" : "Big daily exchange: 50,000 gems for 100,000,000 gold, once per day") + '">🌟 BIG EXCHANGE 🌟<br /><span style="font-size:0.75rem">💎 50,000 → 100,000,000 gold · once a day</span></button>';
       h += '<p class="xs bold dim" style="margin-top:0.375rem">' + (bigUsedToday ? "✅ Used today — the big exchange opens again at midnight tonight." : "One big exchange per day — it resets at midnight.") + "</p>";
       h += "</div></div></div>";
       root.innerHTML = h;
       document.getElementById("exchange-close").addEventListener("click", function () { root.innerHTML = ""; });
-      [100, 500, 1000].forEach(function (gemCost) {
+      SMALL_EXCHANGE_TIERS.forEach(function (tier) {
+        var gemCost = tier.gems;
         var b = document.getElementById("exchange-" + gemCost);
         if (b) b.addEventListener("click", function () { exchangeGems(gemCost); });
       });
@@ -5968,16 +6027,24 @@
     }
 
     /* Gems-for-gold exchange (panel opened from the + button beside the
-       header gold): a flat 1 gem = 300 gold rate, sold in three preset
-       bundles. Instant and permanent — gems out, gold in, saved like any
-       other spend. Each small tier is capped at 5 uses per local calendar
-       day (counts in smallExchange, same dailyDateStr() stamp as the big
-       exchange), resetting at local midnight. */
+       header gold): three preset bundles whose rate improves with size —
+       300 gold per 💎 at 100 💎, 330 at 1,000 💎, 360 at 10,000 💎.
+       Instant and permanent — gems out, gold in, saved like any other
+       spend. Each small tier is capped at 5 uses per local calendar day
+       (counts in smallExchange, same dailyDateStr() stamp as the big
+       exchange), resetting at local midnight. The whole exchange is locked
+       until the climb reaches Floor 35 (EXCHANGE_UNLOCK_FLOOR): below it
+       the header + shows a lock and both exchange functions refuse. */
     function exchangeGems(gemCost) {
       var s = save;
-      if (!s || s.gems < gemCost) return;
+      if (!s) return;
+      if (!exchangeUnlocked(s)) return;
+      var tier = null;
+      for (var i = 0; i < SMALL_EXCHANGE_TIERS.length; i++) { if (SMALL_EXCHANGE_TIERS[i].gems === gemCost) { tier = SMALL_EXCHANGE_TIERS[i]; break; } }
+      if (!tier) return;
+      if (s.gems < gemCost) return;
       if (smallExchangeLeft(s, gemCost) <= 0) return;
-      var goldGain = gemCost * 300;
+      var goldGain = tier.gold;
       var today = dailyDateStr(new Date());
       var counts = s.smallExchange && s.smallExchange.date === today ? JSON.parse(JSON.stringify(s.smallExchange.counts)) : {};
       counts[String(gemCost)] = (counts[String(gemCost)] || 0) + 1;
@@ -5991,22 +6058,47 @@
       if (document.getElementById("exchange-modal")) showExchangeModal();
     }
 
-    /* The big daily exchange: 10,000 💎 → 100,000,000 gold, once per local
+    /* The big daily exchange: 50,000 💎 → 100,000,000 gold, once per local
        calendar day (same dailyDateStr() date stamp as the daily login and
        the dungeon-run reset). */
     function exchangeGemsBig() {
       var s = save;
       if (!s) return;
+      if (!exchangeUnlocked(s)) return;
       if (s.lastBigExchange === dailyDateStr(new Date())) return;
-      if (s.gems < 10000) return;
+      if (s.gems < 50000) return;
       var next = JSON.parse(JSON.stringify(s));
-      next.gems -= 10000;
+      next.gems -= 50000;
       next.gold += 100000000;
       next.lastBigExchange = dailyDateStr(new Date());
       persist(next);
       writeSave();
-      setNotice("💰 BIG EXCHANGE! 10,000 💎 became 100,000,000 gold — see you tomorrow for the next one!");
+      setNotice("💰 BIG EXCHANGE! 50,000 💎 became 100,000,000 gold — see you tomorrow for the next one!");
       if (document.getElementById("exchange-modal")) showExchangeModal();
+    }
+
+    /* Tower Memory reset: pay MEMORY_RESET_COST gems to wipe one boss
+       floor's accumulated memory (deaths and repeat clears back to 0), so
+       its keeper returns to base stats. The counts live in floorMemory, so
+       the cleared floor persists and travels in save codes like any other
+       part of the save. Resetting the floor currently being fought also
+       clamps the live boss's HP to its new, unremembered max. */
+    function resetFloorMemory(fl) {
+      var s = save;
+      if (!s) return;
+      if (memoryTotal(s, fl) <= 0) return;
+      if (s.gems < MEMORY_RESET_COST) return;
+      var next = JSON.parse(JSON.stringify(s));
+      next.gems -= MEMORY_RESET_COST;
+      if (!next.floorMemory) next.floorMemory = {};
+      next.floorMemory[String(fl)] = { deaths: 0, reClears: 0 };
+      if ((s.fightFloor || s.floor) === fl) {
+        enemyHp = Math.min(enemyHp, bossMaxHp(next, fl));
+      }
+      persist(next);
+      writeSave();
+      memoryResetArmed = null;
+      setNotice("🧠 The tower forgets Floor " + fl + " — " + MEMORY_RESET_COST + " 💎 spent, and its boss stands at base strength again.");
     }
 
     function doSummon(count) {
@@ -6118,7 +6210,7 @@
         setNotice("✦ Synthesis isn't ready for " + def.name + " yet — still missing: " + st.missing.join(" · "));
         return;
       }
-      var mr = synthMatReq(o);
+      var mr = synthMatReq(def, o);
       var next = JSON.parse(JSON.stringify(s));
       var no = next.heroes[id];
       no.dupes -= ascCost(o);
