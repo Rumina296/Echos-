@@ -1171,6 +1171,13 @@
         lastSeen: now, seenOffline: now,
         starterId: starter.id, starterSeen: false, keeperSeen: false,
         dailyStreak: 1, dailyLastClaim: null, lastBigExchange: null, smallExchange: { date: "", counts: {} },
+        boostExpiresAt: 0, lastBoostBuy: null,
+        ticket6: { date: "", stocked: false, bought: false },
+        shopMaterials: { date: "", bought: {}, starlightStocked: false },
+        shopGearShelf: { date: "", pieces: [] },
+        shopSale: { date: "", item: "", pct: 0 },
+        shards: 0,
+        dupeExchange: { week: "", heroBuys: {}, month: "", hero6Buys: {}, matBuys: {} },
         materials: { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: [], equipped: {},
         dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 }, dungeonExtra: { ember: 0, frost: 0, star: 0 },
@@ -1254,6 +1261,102 @@
             if (typeof v === "number" && v > 0) cleanSmall[k] = Math.min(SMALL_EXCHANGE_PER_DAY, Math.floor(v));
           }
           merged.smallExchange = { date: merged.smallExchange.date, counts: cleanSmall };
+        }
+        // Migration: older saves have no Offline Boost — inactive, never bought.
+        if (typeof merged.boostExpiresAt !== "number" || merged.boostExpiresAt < 0) merged.boostExpiresAt = 0;
+        if (typeof merged.lastBoostBuy !== "string") merged.lastBoostBuy = null;
+        // Migration: older saves have no 6★ ticket stock — nothing stocked, nothing bought.
+        if (!merged.ticket6 || typeof merged.ticket6.date !== "string" || typeof merged.ticket6.stocked !== "boolean" || typeof merged.ticket6.bought !== "boolean") {
+          merged.ticket6 = { date: "", stocked: false, bought: false };
+        }
+        // Migration: older saves have no shop-materials shelf — nothing bought
+        // today and no Starlight stock rolled yet (the first load rolls it).
+        // Sanitize: bought counts are whole units, clamped to each material's
+        // daily cap, and only known material ids survive.
+        if (!merged.shopMaterials || typeof merged.shopMaterials.date !== "string"
+          || !merged.shopMaterials.bought || typeof merged.shopMaterials.bought !== "object"
+          || typeof merged.shopMaterials.starlightStocked !== "boolean") {
+          merged.shopMaterials = { date: "", bought: {}, starlightStocked: false };
+        } else {
+          var cleanBought = {};
+          SHOP_MATERIAL_TIERS.forEach(function (t) {
+            var v = merged.shopMaterials.bought[t.id];
+            if (typeof v === "number" && v > 0) cleanBought[t.id] = Math.min(t.cap, Math.floor(v));
+          });
+          merged.shopMaterials = {
+            date: merged.shopMaterials.date,
+            bought: cleanBought,
+            starlightStocked: merged.shopMaterials.starlightStocked
+          };
+        }
+        // Migration: older saves have no named-gear shelf — it rolls on first
+        // load. Sanitize: at most 3 pieces, valid slots only, stars clamped
+        // to the shelf's 3–5★ range (never 6★, never the forge-only 7★).
+        if (!merged.shopGearShelf || typeof merged.shopGearShelf.date !== "string" || !Array.isArray(merged.shopGearShelf.pieces)) {
+          merged.shopGearShelf = { date: "", pieces: [] };
+        } else {
+          var cleanPieces = [];
+          merged.shopGearShelf.pieces.forEach(function (raw) {
+            if (!raw || typeof raw !== "object") return;
+            if (raw.slot !== "weapon" && raw.slot !== "armor" && raw.slot !== "accessory") return;
+            if (typeof raw.stars !== "number") return;
+            cleanPieces.push({
+              slot: raw.slot,
+              stars: Math.max(3, Math.min(5, Math.floor(raw.stars))),
+              bought: raw.bought === true
+            });
+          });
+          merged.shopGearShelf = { date: merged.shopGearShelf.date, pieces: cleanPieces.slice(0, 3) };
+        }
+        // Migration: older saves have no daily sale — none rolled yet (the
+        // first load rolls one from that day's stocked items). Sanitize:
+        // the discount must be one of the four sale tiers, and a sale with
+        // no item is no sale at all.
+        if (!merged.shopSale || typeof merged.shopSale.date !== "string" || typeof merged.shopSale.item !== "string"
+          || typeof merged.shopSale.pct !== "number" || [10, 20, 30, 50].indexOf(merged.shopSale.pct) < 0) {
+          merged.shopSale = { date: "", item: "", pct: 0 };
+        }
+        if (!merged.shopSale.item) merged.shopSale = { date: merged.shopSale.date, item: "", pct: 0 };
+        // Migration: older saves have no Universal Shards and no Dupe Exchange
+        // history — 0 shards, nothing bought. Sanitize: the balance is a whole
+        // non-negative number; purchase counts survive only for heroes and
+        // materials that exist, clamped to their caps (weekly caps for 1★–5★
+        // heroes and for materials, the monthly cap for 6★ heroes).
+        merged.shards = typeof merged.shards === "number" && merged.shards > 0 ? Math.floor(merged.shards) : 0;
+        if (!merged.dupeExchange || typeof merged.dupeExchange.week !== "string" || typeof merged.dupeExchange.month !== "string"
+          || !merged.dupeExchange.heroBuys || typeof merged.dupeExchange.heroBuys !== "object"
+          || !merged.dupeExchange.hero6Buys || typeof merged.dupeExchange.hero6Buys !== "object"
+          || !merged.dupeExchange.matBuys || typeof merged.dupeExchange.matBuys !== "object") {
+          merged.dupeExchange = { week: "", heroBuys: {}, month: "", hero6Buys: {}, matBuys: {} };
+        } else {
+          var cleanHeroBuys = {};
+          for (var dbk in merged.dupeExchange.heroBuys) {
+            var dbDef = null;
+            for (var dbi = 0; dbi < HEROES.length; dbi++) if (HEROES[dbi].id === dbk) dbDef = HEROES[dbi];
+            var dbv = merged.dupeExchange.heroBuys[dbk];
+            if (!dbDef || dbDef.stars > 5 || typeof dbv !== "number" || dbv <= 0) continue;
+            cleanHeroBuys[dbk] = Math.min(SHARD_COPY_WEEKLY_CAPS[dbDef.stars] || 0, Math.floor(dbv));
+          }
+          var cleanHero6Buys = {};
+          for (var d6k in merged.dupeExchange.hero6Buys) {
+            var d6Def = null;
+            for (var d6i = 0; d6i < HEROES.length; d6i++) if (HEROES[d6i].id === d6k) d6Def = HEROES[d6i];
+            var d6v = merged.dupeExchange.hero6Buys[d6k];
+            if (!d6Def || d6Def.stars !== 6 || typeof d6v !== "number" || d6v <= 0) continue;
+            cleanHero6Buys[d6k] = Math.min(SHARD_COPY_MONTHLY_CAP, Math.floor(d6v));
+          }
+          var cleanMatBuys = {};
+          SHARD_MATERIAL_TIERS.forEach(function (t) {
+            var v = merged.dupeExchange.matBuys[t.id];
+            if (typeof v === "number" && v > 0) cleanMatBuys[t.id] = Math.min(t.cap, Math.floor(v));
+          });
+          merged.dupeExchange = {
+            week: merged.dupeExchange.week,
+            heroBuys: cleanHeroBuys,
+            month: merged.dupeExchange.month,
+            hero6Buys: cleanHero6Buys,
+            matBuys: cleanMatBuys
+          };
         }
         // --- Equipment / Dungeon fields (added later; older saves get defaults) ---
         var mats = { iron: 0, moon: 0, scale: 0, essence: 0 };
@@ -1415,6 +1518,13 @@
         totalClears: save.totalClears, totalGrindClears: save.totalGrindClears || 0,
         starterId: save.starterId || null, starterSeen: !!save.starterSeen, keeperSeen: save.keeperSeen ? 1 : 0,
         dailyStreak: save.dailyStreak || 1, dailyLastClaim: save.dailyLastClaim || null, lastBigExchange: save.lastBigExchange || null, smallExchange: save.smallExchange || { date: "", counts: {} },
+        boostExpiresAt: typeof save.boostExpiresAt === "number" ? save.boostExpiresAt : 0, lastBoostBuy: save.lastBoostBuy || null,
+        ticket6: save.ticket6 || { date: "", stocked: false, bought: false },
+        shopMaterials: save.shopMaterials || { date: "", bought: {}, starlightStocked: false },
+        shopGearShelf: save.shopGearShelf || { date: "", pieces: [] },
+        shopSale: save.shopSale || { date: "", item: "", pct: 0 },
+        shards: typeof save.shards === "number" ? save.shards : 0,
+        dupeExchange: save.dupeExchange || { week: "", heroBuys: {}, month: "", hero6Buys: {}, matBuys: {} },
         materials: save.materials || { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: save.gearInv || [], equipped: save.equipped || {},
         dungeonDate: save.dungeonDate || null, dungeonRuns: save.dungeonRuns || { ember: 0, frost: 0, star: 0 }, dungeonExtra: save.dungeonExtra || { ember: 0, frost: 0, star: 0 },
@@ -1456,6 +1566,9 @@
         totalClears: payload.totalClears, totalGrindClears: payload.totalGrindClears,
         starterId: payload.starterId, starterSeen: payload.starterSeen, keeperSeen: payload.keeperSeen === 1 || payload.keeperSeen === true,
         dailyStreak: payload.dailyStreak, dailyLastClaim: payload.dailyLastClaim, lastBigExchange: payload.lastBigExchange, smallExchange: payload.smallExchange,
+        boostExpiresAt: payload.boostExpiresAt, lastBoostBuy: payload.lastBoostBuy,
+        ticket6: payload.ticket6, shopMaterials: payload.shopMaterials, shopGearShelf: payload.shopGearShelf, shopSale: payload.shopSale,
+        shards: payload.shards, dupeExchange: payload.dupeExchange,
         materials: payload.materials, gearInv: payload.gearInv, equipped: payload.equipped,
         dungeonDate: payload.dungeonDate, dungeonRuns: payload.dungeonRuns, dungeonExtra: payload.dungeonExtra,
         redeemedCodes: payload.redeemedCodes,
@@ -3407,7 +3520,9 @@
        Floor 30 to 40 the way the unbroken ×1.20 curve did. The gem BASES
        (first clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal /
        gate / lord floors, repeats floored at 1 💎) are unchanged by the
-       flattening, and floors 1–30 pay exactly what they paid before it.
+       flattening, and floors 1–30 pay exactly what they paid before it
+       (a later 200/350 scale-down — see GEM_SCALE_DOWN — then lowered
+       every clear uniformly, growth rates and ratios unchanged).
        Offline gold and offline gems each follow their own AFK per-floor
        curve on these same growth rates (see idleGoldPerSec /
        idleGemsPerSec); neither rides the per-clear payouts anymore. */
@@ -3415,11 +3530,13 @@
     /* Flattened gem growth (Nov 19, 2026): past Floor 30 the per-clear gem
        curve eases to the same pace as the AFK curve — ×1.4 total from
        Floor 30 to Floor 40 (≈×1.0342 per floor), then a ×1.015-per-floor
-       taper past Floor 40. A Floor Lord repeat clear therefore pays
-       84 💎 on Floor 30 (unchanged) and 118 💎 on Floor 40 (was 521 💎),
-       and a Floor Lord first clear pays 1,009 💎 on Floor 30 (unchanged)
-       and 1,412 💎 on Floor 40 (was 6,247 💎). The 15% income cut
-       (GEM_INCOME_MULT) and the 1 💎 minimum per clear are kept. */
+       taper past Floor 40. Before the 200/350 scale-down (see
+       GEM_SCALE_DOWN), a Floor Lord repeat clear paid 84 💎 on Floor 30
+       and 118 💎 on Floor 40 (was 521 💎), and a Floor Lord first clear
+       paid 1,009 💎 on Floor 30 and 1,412 💎 on Floor 40 (was 6,247 💎);
+       after the scale-down those are 48 / 67 💎 and 576 / 807 💎. The 15%
+       income cut (GEM_INCOME_MULT) and the 1 💎 minimum per clear are
+       kept. */
     var GEM_GROWTH_MID = Math.pow(1.4, 1 / 10); // ≈1.0342, floors 31–40
     var GEM_GROWTH_LATE = 1.015; // floors 41+ — the taper
     /** Cumulative per-clear gem growth factor for a floor, relative to
@@ -3440,6 +3557,17 @@
        Exchange rates, gold earnings, and material drop rates are
        untouched. */
     var GEM_INCOME_MULT = 0.85;
+    /* Gem scale-down (Nov 19, 2026): every stage-clear gem payout is
+       multiplied by 200/350 (≈0.571) on top of the 15% cut above, matching
+       the AFK retune that took 8h of idle at Floor 40 from 350,000 💎 to
+       200,000 💎 (see idleGemsPerSec). Growth rates, floor ratios, the
+       15% cut, and the 1 💎 minimum per clear are all unchanged — only
+       the level of gem income drops. A Floor Lord repeat clear therefore
+       pays 48 💎 on Floor 30 (was 84 💎) and 67 💎 on Floor 40 (was
+       118 💎), and a Floor Lord first clear pays 576 💎 on Floor 30 (was
+       1,009 💎) and 807 💎 on Floor 40 (was 1,412 💎). Gem costs and
+       exchange rates are untouched. */
+    var GEM_SCALE_DOWN = 200 / 350; // ≈0.571
     /* Flattened gold growth (Nov 19, 2026): past Floor 30 the per-clear
        gold curve eases to the same pace as the AFK gold curve — ×1.4 total
        from Floor 30 to Floor 40 (≈×1.0342 per floor), then a ×1.015-per-
@@ -3459,17 +3587,17 @@
       return Math.pow(GOLD_GROWTH, 29) * 1.4 * Math.pow(GOLD_GROWTH_LATE, f - 40);
     }
     function clearGold(f) { return Math.round(16 * goldGrowthFactor(f) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
-    function clearGems(f) { return Math.max(1, Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * gemGrowthFactor(f) * GEM_INCOME_MULT)); }
+    function clearGems(f) { return Math.max(1, Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * gemGrowthFactor(f) * GEM_INCOME_MULT * GEM_SCALE_DOWN)); }
     function repeatGold(f) { return Math.round(clearGold(f) * 0.85); }
     function repeatGems(f) {
       // Bases were lowered in the gem rebalance (see GEM_GROWTH) and the
       // result is floored at 1 💎 so a grind clear never pays nothing: a
-      // normal grind clear pays 1 💎 on Floor 1 and 3 on Floor 20; a Floor
-      // Lord grind clear pays 1 💎 on Floor 1, 14 on Floor 20, 84 on
-      // Floor 30, 118 on Floor 40 and 137 on Floor 50 under the flattened
-      // growth (see gemGrowthFactor) and the ×0.85 income cut (see
-      // GEM_INCOME_MULT).
-      return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f) * GEM_INCOME_MULT));
+      // normal grind clear pays 1 💎 on Floor 1 and 2 on Floor 20; a Floor
+      // Lord grind clear pays 1 💎 on Floor 1, 8 on Floor 20, 48 on
+      // Floor 30, 67 on Floor 40 and 78 on Floor 50 under the flattened
+      // growth (see gemGrowthFactor), the ×0.85 income cut (see
+      // GEM_INCOME_MULT), and the 200/350 scale-down (see GEM_SCALE_DOWN).
+      return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f) * GEM_INCOME_MULT * GEM_SCALE_DOWN));
     }
     function goldForClear(f, isRepeat) { return isRepeat ? repeatGold(f) : clearGold(f); }
     function gemsForClear(f, isRepeat) { return isRepeat ? repeatGems(f) : clearGems(f); }
@@ -3494,7 +3622,8 @@
     // Level-up gold costs (Nov 19, 2026): stars scale linearly (1★ pays 1×, 7★ pays 7×), and levels 70–120 get a 10% discount (the post-7★ climb); levels 1–69 stay full price.
     function upgradeCost(def, o) { return Math.round(28 * def.stars * Math.pow(1.16, o.level - 1) * (o.level >= 70 ? 0.9 : 1)); }
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
-       (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems keyed
+       (0-based): spare copies on a doubling curve, 2^(r+1) (so 2, 4, 8,
+       16, 32, 64, 128, 256… for asc 0–7, doubling on past 7★ too), gems keyed
        on the TARGET effective rank (2★ → 20, 3★ → 50, 4★ → 100, 5★ → 200,
        6★ → 500, 7★ → 1,000, 8★ → 2,500, 9★ → 5,000, 10★ → 10,000,
        11★ → 20,000, 12★ → 40,000), plus dungeon materials, also keyed on
@@ -3505,7 +3634,7 @@
        The hero must also be at the
        max level of its current rank. Nothing fuses automatically —
        duplicates bank until the player taps Synthesize. */
-    function ascCost(o) { return o.asc + 2; }
+    function ascCost(o) { return Math.pow(2, o.asc + 1); }
     /* Gem cost keyed on TARGET effective rank (base stars + current asc + 1),
        like the Starlight Essence ladder: each higher rank costs more. */
     var SYNTH_GEM_COST = {
@@ -3598,31 +3727,34 @@
       if (floor <= 40) return AFK_GOLD_PER_SEC_30 * Math.pow(AFK_GOLD_GROWTH_MID, floor - 30);
       return AFK_GOLD_PER_SEC_40 * Math.pow(AFK_GOLD_GROWTH_LATE, floor - 40);
     }
-    /* Offline / AFK gem earnings (retuned Nov 19, 2026): idle gems no longer
-       ride the per-clear payout (gemsForClear) the way idle gold does. They
-       follow their own per-floor AFK curve, anchored on two targets: a full
-       8 hours of idle (the OFFLINE_CAP_SEC window) pays ≈250,000 💎 at
-       Floor 30 and ≈350,000 💎 at Floor 40. The curve is piecewise:
+    /* Offline / AFK gem earnings (retuned Nov 19, 2026; scaled down again
+       later the same day): idle gems no longer ride the per-clear payout
+       (gemsForClear) the way idle gold does. They follow their own
+       per-floor AFK curve, anchored on two targets: a full 8 hours of idle
+       (the OFFLINE_CAP_SEC window) pays ≈142,857 💎 at Floor 30 and
+       200,000 💎 at Floor 40 — the original 250,000 / 350,000 anchors
+       scaled by 200/350 (≈0.571), keeping the same 1.4× ratio between the
+       anchors and every growth rate. The curve is piecewise:
        floors 1–30 climb ×1.20 per floor (the game's familiar gem growth)
        up to the Floor 30 anchor; floors 31–40 ease to ≈×1.0342 per floor
-       (exactly the pace that lands on the Floor 40 anchor, 350 ÷ 250 over
-       ten floors); past Floor 40 the growth tapers to ×1.015 per floor, so
-       idle gems keep rising gently instead of compounding steeply —
-       ≈355,000 per 8h at Floor 41, ≈406,000 at Floor 50, ≈471,000 at
-       Floor 60, ≈855,000 at Floor 100 (continuing the 31–40 pace to
-       Floor 100 would have paid ≈2.6M). The rate is a property of the
-       floor being idled on: it does not scale with party DPS (a party with
-       no DPS at all still earns nothing) and does not distinguish a grind
-       floor from the frontier — offline, the party is never landing a
-       "first clear" over and over, so the old first-clear/repeat split no
-       longer applies to AFK gems. The AFK growth rates past Floor 30
+       (exactly the pace that lands on the Floor 40 anchor, 200,000 ÷
+       142,857 over ten floors); past Floor 40 the growth tapers to ×1.015
+       per floor, so idle gems keep rising gently instead of compounding
+       steeply — ≈203,000 per 8h at Floor 41, ≈232,000 at Floor 50,
+       ≈269,000 at Floor 60, ≈489,000 at Floor 100 (continuing the 31–40
+       pace to Floor 100 would have paid ≈1.5M). The rate is a property of
+       the floor being idled on: it does not scale with party DPS (a party
+       with no DPS at all still earns nothing) and does not distinguish a
+       grind floor from the frontier — offline, the party is never landing
+       a "first clear" over and over, so the old first-clear/repeat split
+       no longer applies to AFK gems. The AFK growth rates past Floor 30
        (≈×1.0342, then ×1.015) are the same rates the flattened per-clear
        curve uses (see gemGrowthFactor), so idle and active earnings grow
        consistently; gem costs and exchange rates are untouched. (Idle
        gold follows its own AFK curve on the same rates — see
        idleGoldPerSec above.) */
-    var AFK_GEMS_PER_SEC_30 = 250000 / (8 * 3600); // ≈8.6806 💎/s at Floor 30
-    var AFK_GEMS_PER_SEC_40 = 350000 / (8 * 3600); // ≈12.1528 💎/s at Floor 40
+    var AFK_GEMS_PER_SEC_40 = 200000 / (8 * 3600); // ≈6.9444 💎/s at Floor 40
+    var AFK_GEMS_PER_SEC_30 = AFK_GEMS_PER_SEC_40 / 1.4; // ≈4.9603 💎/s at Floor 30 (≈142,857 💎 per 8h)
     var AFK_GROWTH_EARLY = 1.2; // floors 1–30
     var AFK_GROWTH_MID = Math.pow(AFK_GEMS_PER_SEC_40 / AFK_GEMS_PER_SEC_30, 1 / 10); // ≈1.0342, floors 31–40
     var AFK_GROWTH_LATE = 1.015; // floors 41+ — the taper
@@ -4576,6 +4708,7 @@
       if (tab === "heroes") renderMain();
       if (tab === "summon") renderMain();
       if (tab === "quests") renderMain();
+      if (tab === "shop") renderMain();
     }
     function setNotice(msg) {
       noticeText = msg;
@@ -4624,6 +4757,7 @@
             '<button type="button" class="tabbtn" data-tab="heroes" aria-pressed="false">🎒 Heroes</button>' +
             '<button type="button" class="tabbtn" data-tab="dungeon" aria-pressed="false">🗺️ Dungeon</button>' +
             '<button type="button" class="tabbtn" data-tab="quests" aria-pressed="false">📜 Quests<span class="tab-badge" id="quests-tab-badge" style="display:none"></span></button>' +
+            '<button type="button" class="tabbtn" data-tab="shop" aria-pressed="false">🛍️ Shop</button>' +
             '<button type="button" class="tabbtn" data-tab="save" aria-pressed="false">💾 Save</button>' +
           "</nav>" +
           '<button type="button" class="daily-btn" id="daily-btn" aria-label="Daily login reward calendar">🎁 Daily</button>' +
@@ -4635,6 +4769,10 @@
       btns.forEach(function (b) {
         b.addEventListener("click", function () {
           tab = b.getAttribute("data-tab");
+          /* Opening the Shop tab re-rolls any stale daily shop state, so
+             a save left open across midnight stocks fresh (the main
+             game's ensureTicket6RollNow, widened to the whole shop). */
+          if (tab === "shop") ensureShopRollNow();
           renderHeader();
           renderMain();
           scrollToViewTop();
@@ -4713,6 +4851,7 @@
       if (!main || !save) return;
       if (tab === "battle") main.innerHTML = battleHTML();
       else if (tab === "summon") main.innerHTML = summonHTML();
+      else if (tab === "shop") main.innerHTML = shopHTML();
       else if (tab === "save") main.innerHTML = saveCodeHTML();
       else if (tab === "dungeon") main.innerHTML = dungeonHTML();
       else if (tab === "quests") main.innerHTML = questsHTML();
@@ -4796,7 +4935,7 @@
         }
       }
       h += "</div>";
-      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(idleGoldPerSec(dps, f, grinding) * partyMods(s).goldMult) + "</p></div>";
+      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(idleGoldPerSec(dps, f, grinding) * partyMods(s).goldMult * boostMult(s, Date.now())) + '</p><p>💎/sec ≈ ' + fmt(idleGemsPerSec(dps, f, grinding) * boostMult(s, Date.now())) + "</p></div>";
       h += "</div>";
       if (titheStarted(s)) {
         h += '<p class="tithe-chip" role="status">⚰️ Grave Tithe ×' + titheStacks(s) + " — Ossian has kept " + graveKillsOf(s) + " of your dead (+" + tithePct(s) + "% ATK &amp; HP waiting at Floor 90" + (titheStacks(s) >= 20 ? " — the tithe is full" : " · next stack in " + titheKillsToNext(s) + " kills") + ")</p>";
@@ -4856,6 +4995,8 @@
       /* grind panel */
       h += grindHTML();
       h += '<p class="small dim" style="margin-top:0.75rem">Your party fights on its own, Master — even while you\'re away (offline earnings up to 8 hours, paid at your current target floor\'s rate — grind floor if you\'re grinding). Every clear pays gems that grow with the floor (~20% more per floor early on, easing off past Floor 30): a normal floor pays 💎 1 on first clear, gate bosses 💎 2, and Floor Lords 💎 5 — those are the Floor 1 rates, and they climb from there. Spend gold leveling heroes in the <button type="button" class="linklike" data-goto="heroes" style="font-size:0.875rem">Heroes</button> tab when a floor feels slow.</p>';
+      /* ---------- Offline Boost ---------- */
+      h += offlineBoostHTML();
       if (!s.heroes["luna"] && highest <= 25) {
         h += '<p class="small" style="margin-top:0.5rem;font-weight:600;color:#c9b8ff">🌙 Tower rumor: a mysterious guide waits on Floor 25, watching every party that climbs…</p>';
       }
@@ -5643,6 +5784,9 @@
     }
     function applyImportedSave(res) {
       var imp = res.save;
+      /* 🛍️ Shop daily state rolls fresh for today on an imported save too
+         (same lazy midnight reset as the first load). */
+      imp = ensureShopTodayAll(imp, Date.now());
       imp.lastSeen = Date.now();
       save = imp;
       muted = !!res.muted;
@@ -6322,6 +6466,1222 @@
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
       var dgLost = document.getElementById("dg-lost-ok");
       if (dgLost) dgLost.addEventListener("click", function () { lastDungeonLost = null; renderMain(); });
+      /* --- shop bindings (Tower-screen boost + Shop tab) --- */
+      var boostBtn = document.getElementById("boost-buy");
+      if (boostBtn) boostBtn.addEventListener("click", function () { buyOfflineBoost(); });
+      var tArm = document.getElementById("ticket-arm");
+      if (tArm) tArm.addEventListener("click", function () { ticketArmed = true; renderMain(); });
+      var tConfirm = document.getElementById("ticket-confirm");
+      if (tConfirm) tConfirm.addEventListener("click", function () { confirmTicketPurchase(); });
+      var tCancel = document.getElementById("ticket-cancel");
+      if (tCancel) tCancel.addEventListener("click", function () { ticketArmed = false; renderMain(); });
+      main.querySelectorAll("[data-ticket-pick]").forEach(function (el) {
+        el.addEventListener("click", function () { buyHeroTicket(el.getAttribute("data-ticket-pick")); });
+      });
+      var t6Arm = document.getElementById("ticket6-arm");
+      if (t6Arm) t6Arm.addEventListener("click", function () { ticket6Armed = true; renderMain(); });
+      var t6Confirm = document.getElementById("ticket6-confirm");
+      if (t6Confirm) t6Confirm.addEventListener("click", function () { confirmTicket6Purchase(); });
+      var t6Cancel = document.getElementById("ticket6-cancel");
+      if (t6Cancel) t6Cancel.addEventListener("click", function () { ticket6Armed = false; renderMain(); });
+      main.querySelectorAll("[data-ticket6-pick]").forEach(function (el) {
+        el.addEventListener("click", function () { buyTicket6Hero(el.getAttribute("data-ticket6-pick")); });
+      });
+      main.querySelectorAll("[data-shop-mat]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShopMaterial(el.getAttribute("data-shop-mat")); });
+      });
+      main.querySelectorAll("[data-shop-gear]").forEach(function (el) {
+        el.addEventListener("click", function () { buyRandomGear(el.getAttribute("data-shop-gear")); });
+      });
+      main.querySelectorAll("[data-shop-named]").forEach(function (el) {
+        el.addEventListener("click", function () { buyNamedGear(Number(el.getAttribute("data-shop-named"))); });
+      });
+      /* --- two-shop switch + Dupe Exchange bindings --- */
+      var sideGems = document.getElementById("shop-side-gems");
+      if (sideGems) sideGems.addEventListener("click", function () { shopSide = "gems"; renderMain(); });
+      var sideShards = document.getElementById("shop-side-shards");
+      if (sideShards) sideShards.addEventListener("click", function () { shopSide = "shards"; renderMain(); });
+      main.querySelectorAll("[data-convert-1]").forEach(function (el) {
+        el.addEventListener("click", function () { convertSpares(el.getAttribute("data-convert-1"), false); });
+      });
+      main.querySelectorAll("[data-convert-all]").forEach(function (el) {
+        el.addEventListener("click", function () { convertSpares(el.getAttribute("data-convert-all"), true); });
+      });
+      main.querySelectorAll("[data-shard-copy]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShardCopy(el.getAttribute("data-shard-copy")); });
+      });
+      main.querySelectorAll("[data-shard-mat]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShardMaterial(el.getAttribute("data-shard-mat")); });
+      });
+    }
+
+    /* ============================== SHOP (ported from the main game) ==============================
+       The Tower Shop, mirrored from the main game's client/src/App.tsx and
+       adapted to this copy's own field names: materials are iron / moon /
+       scale / essence here (the main game's iron / moonstone / dragon /
+       starlight), and gear pieces live in gearInv keyed by uid. Every
+       purchase helper below is pure in the main game's sense — it takes a
+       save and returns a NEW save (a deep copy; the input is never
+       mutated) or null when the purchase is blocked — and every price a
+       purchase charges comes from shopPriceNow, the single place the
+       daily discount is applied, so the displayed sale price and the
+       charged price can never disagree. */
+    function shopClone(s) { return JSON.parse(JSON.stringify(s)); }
+
+    /* ============================== OFFLINE BOOST ==============================
+       +50% offline gold AND +50% offline gems for 24 hours, bought on the
+       Tower screen for 5,000 💎, once per local calendar day (same
+       dailyDateStr() date stamp as the big exchange and the daily login,
+       resetting at local midnight). State lives in the save:
+       boostExpiresAt (epoch ms, 0 = inactive) + lastBoostBuy (date of
+       last purchase). The multiplier is applied at the two places offline
+       rates are computed — the load-time offline grant in init and the
+       Tower screen's live per-sec display — never inside idleGoldPerSec /
+       idleGemsPerSec themselves, which keep their own curves (and their
+       dps <= 0 guard, so zero DPS still earns zero even with the boost). */
+    var OFFLINE_BOOST_COST = 5000;
+    var OFFLINE_BOOST_DURATION_MS = 24 * 3600 * 1000;
+    var OFFLINE_BOOST_MULT = 1.5;
+    function boostActive(s, now) {
+      return s.boostExpiresAt > 0 && now < s.boostExpiresAt;
+    }
+    function boostMult(s, now) {
+      return boostActive(s, now) ? OFFLINE_BOOST_MULT : 1;
+    }
+    /** Pure purchase: null when blocked (already bought today, or not
+        enough gems), otherwise the save with exactly 5,000 💎 deducted and
+        the 24h expiry stamped from `now`. */
+    function applyOfflineBoostPurchase(s, now) {
+      if (s.lastBoostBuy === dailyDateStr(new Date(now))) return null;
+      if (s.gems < OFFLINE_BOOST_COST) return null;
+      var next = shopClone(s);
+      next.gems = s.gems - OFFLINE_BOOST_COST;
+      next.boostExpiresAt = now + OFFLINE_BOOST_DURATION_MS;
+      next.lastBoostBuy = dailyDateStr(new Date(now));
+      return next;
+    }
+
+    /* ============================== HERO TICKET ==============================
+       Sold in the Shop tab for 5,000 💎: after the confirm step the buyer
+       picks one of the three 5★ heroes (Lyra Voss, Brynn Solmar, Faye
+       Stormweaver) and gets that hero immediately at 5★ base — exactly
+       like a summon grant (new hero → level 1, 0 dupes, joins the party
+       if room; owned hero → dupes +1 for synthesis). The ticket never
+       touches the pity counters or totalSummons. */
+    var HERO_TICKET_COST = 5000;
+    var HERO_TICKET_IDS = ["lyra", "brynn", "faye"];
+    /** Pure purchase step 1 (confirm tap): deducts the ticket's current
+        price (5,000 💎, or today's sale price when the ticket is the
+        day's sale item) and nothing else — null when there aren't enough
+        gems. The picker opens only after this succeeds, so a paid ticket
+        can never be lost. */
+    function applyHeroTicketDeduct(s, now) {
+      var cost = shopPriceNow(s, now, "ticket5", HERO_TICKET_COST);
+      if (s.gems < cost) return null;
+      var next = shopClone(s);
+      next.gems = s.gems - cost;
+      return next;
+    }
+    /** Pure purchase step 2 (hero picked): grants exactly the chosen hero
+        at 5★ base — new hero → level 1, 0 dupes, joins the party if room;
+        owned hero → dupes +1 for synthesis. No gems move here, and pity,
+        pity4 and totalSummons are left exactly as they were. Null for an
+        id outside the ticket's three heroes. */
+    function applyHeroTicketGrant(s, heroId) {
+      if (HERO_TICKET_IDS.indexOf(heroId) < 0) return null;
+      var next = shopClone(s);
+      var owned = next.heroes[heroId];
+      if (!owned) {
+        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        if (next.party.length < MAX_PARTY) next.party.push(heroId);
+      } else {
+        next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
+      }
+      return next;
+    }
+
+    /* ============================== 6★ HERO TICKET ============================
+       The Shop's rare ticket: 15,000 💎 for any one of the five summonable
+       6★ heroes (Draven Korr, Diddle, Amara Solenne, Durnan Ironfist,
+       Orien Starfall — Silas Thorne is a locked boss, never in the pool).
+       It is only in stock on a 10% daily roll at the local-midnight reset
+       (about 1 day in 10); when stocked, exactly 1 is available that day.
+       Stock lives in the save as ticket6 { date, stocked, bought },
+       following the lazy daily-reset pattern of dungeonRuns /
+       smallExchange: the roll is made only when the stamped date is not
+       today, so the result is stable within a day and re-rolls at
+       midnight. Grant rules are identical to the 5★ ticket — no pity or
+       totalSummons impact. */
+    var TICKET6_COST = 15000;
+    var TICKET6_IDS = ["draven", "diddle", "amara", "durnan", "orien"];
+    var TICKET6_STOCK_CHANCE = 0.1;
+    /** The 10% stock roll itself, kept injectable so tests can drive it. */
+    function rollTicket6Stock(rand) {
+      return rand() < TICKET6_STOCK_CHANCE;
+    }
+    /** Lazy daily reset: a save whose ticket6 stamp is not today gets a
+        fresh roll for today (bought reset to false); a save already
+        stamped today is returned untouched, so the stock cannot change
+        mid-day. */
+    function ensureTicket6Today(s, now, rand) {
+      rand = rand || Math.random;
+      var today = dailyDateStr(new Date(now));
+      if (s.ticket6 && s.ticket6.date === today) return s;
+      var next = shopClone(s);
+      next.ticket6 = { date: today, stocked: rollTicket6Stock(rand), bought: false };
+      return next;
+    }
+    /** Stocked for the day `now` falls on (ignoring whether it was bought). */
+    function ticket6InStock(s, now) {
+      return !!s.ticket6 && s.ticket6.date === dailyDateStr(new Date(now)) && s.ticket6.stocked;
+    }
+    /** Buyable right now: stocked today and today's one ticket not yet bought. */
+    function ticket6Available(s, now) {
+      return ticket6InStock(s, now) && !s.ticket6.bought;
+    }
+    /** Pure purchase step 1 (confirm tap): deducts the ticket's current
+        price (15,000 💎, or today's sale price when the ticket is the
+        day's sale item) and marks today's ticket bought — null when not
+        in stock, already bought, or short on gems. */
+    function applyTicket6Deduct(s, now) {
+      if (!ticket6Available(s, now)) return null;
+      var cost = shopPriceNow(s, now, "ticket6", TICKET6_COST);
+      if (s.gems < cost) return null;
+      var next = shopClone(s);
+      next.gems = s.gems - cost;
+      next.ticket6 = { date: next.ticket6.date, stocked: next.ticket6.stocked, bought: true };
+      return next;
+    }
+    /** Pure purchase step 2 (hero picked): grants exactly the chosen hero
+        at 6★ base, dupe rules identical to the 5★ ticket. No gems move
+        here, and pity, pity4 and totalSummons are left exactly as they
+        were. Null for an id outside the ticket's five heroes. */
+    function applyTicket6Grant(s, heroId) {
+      if (TICKET6_IDS.indexOf(heroId) < 0) return null;
+      var next = shopClone(s);
+      var owned = next.heroes[heroId];
+      if (!owned) {
+        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        if (next.party.length < MAX_PARTY) next.party.push(heroId);
+      } else {
+        next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
+      }
+      return next;
+    }
+
+    /* ============================== SHOP MATERIALS ============================
+       The Shop tab also sells crafting materials for gems — one unit per
+       tap — under daily caps that keep dungeon runs the main faucet:
+       Iron 100 💎 (10/day), Moonstone 400 💎 (5/day), Dragon Scale
+       1,000 💎 (3/day), Starlight Essence 5,000 💎 (1/day). Starlight is
+       extra guarded: it is only stocked on a 20% daily roll at the
+       local-midnight reset (about 1–2 days a week); on other days it shows
+       greyed out as "not in stock today". State lives in the save as
+       shopMaterials { date, bought, starlightStocked }, following the same
+       lazy daily-reset pattern as the 6★ ticket: the roll and the caps
+       reset only when the stamped date is not today. (Material ids are
+       this copy's own: moon = Moonstone, scale = Dragon Scale, essence =
+       Starlight Essence.) */
+    var SHOP_MATERIAL_TIERS = [
+      { id: "iron", cost: 100, cap: 10 },
+      { id: "moon", cost: 400, cap: 5 },
+      { id: "scale", cost: 1000, cap: 3 },
+      { id: "essence", cost: 5000, cap: 1 }
+    ];
+    var STARLIGHT_STOCK_CHANCE = 0.2;
+    function shopMaterialTier(id) {
+      for (var i = 0; i < SHOP_MATERIAL_TIERS.length; i++) if (SHOP_MATERIAL_TIERS[i].id === id) return SHOP_MATERIAL_TIERS[i];
+      return SHOP_MATERIAL_TIERS[0];
+    }
+    /** The 20% Starlight stock roll itself, kept injectable so tests can drive it. */
+    function rollStarlightStock(rand) {
+      return rand() < STARLIGHT_STOCK_CHANCE;
+    }
+    /** Lazy daily reset: a save whose shop-materials stamp is not today
+        gets fresh caps and a fresh Starlight stock roll for today; a save
+        already stamped today is returned untouched, so neither can change
+        mid-day. */
+    function ensureShopMaterialsToday(s, now, rand) {
+      rand = rand || Math.random;
+      var today = dailyDateStr(new Date(now));
+      if (s.shopMaterials && s.shopMaterials.date === today) return s;
+      var next = shopClone(s);
+      next.shopMaterials = { date: today, bought: {}, starlightStocked: rollStarlightStock(rand) };
+      return next;
+    }
+    /** Units of `id` already bought on the day `now` falls on (0 on a stale stamp). */
+    function shopMaterialBoughtToday(s, id, now) {
+      if (!s.shopMaterials || s.shopMaterials.date !== dailyDateStr(new Date(now))) return 0;
+      return s.shopMaterials.bought[id] || 0;
+    }
+    /** Units of `id` still buyable today: the daily cap minus today's purchases. */
+    function shopMaterialLeft(s, id, now) {
+      return Math.max(0, shopMaterialTier(id).cap - shopMaterialBoughtToday(s, id, now));
+    }
+    /** Stocked on the day `now` falls on: every material except Starlight
+        is stocked daily; Starlight needs today's 20% roll to have landed. */
+    function shopMaterialInStock(s, id, now) {
+      if (id !== "essence") return true;
+      return !!s.shopMaterials && s.shopMaterials.date === dailyDateStr(new Date(now)) && s.shopMaterials.starlightStocked;
+    }
+    /** Pure purchase: one unit of `id` — null when Starlight is not stocked
+        today, when today's cap is already used up, or when gems are short.
+        Otherwise deducts exactly the tier's cost (or today's sale price),
+        adds exactly 1 unit to the material inventory, and counts the unit
+        against today's cap. */
+    function applyShopMaterialPurchase(s, id, now) {
+      var tier = shopMaterialTier(id);
+      if (!shopMaterialInStock(s, id, now)) return null;
+      if (shopMaterialLeft(s, id, now) <= 0) return null;
+      var cost = shopPriceNow(s, now, "mat:" + id, tier.cost);
+      if (s.gems < cost) return null;
+      var today = dailyDateStr(new Date(now));
+      var sameDay = !!s.shopMaterials && s.shopMaterials.date === today;
+      var next = shopClone(s);
+      next.gems = s.gems - cost;
+      if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
+      next.materials[id] = (next.materials[id] || 0) + 1;
+      var bought = sameDay ? JSON.parse(JSON.stringify(s.shopMaterials.bought)) : {};
+      bought[id] = shopMaterialBoughtToday(s, id, now) + 1;
+      next.shopMaterials = {
+        date: today,
+        bought: bought,
+        starlightStocked: sameDay ? s.shopMaterials.starlightStocked : false
+      };
+      return next;
+    }
+
+    /* ============================== SHOP GEAR ================================
+       The Shop tab also sells gear for gems, as a mix of both formats —
+       and never a 7★: the 7★ stays forge-only (flawless Starlight game,
+       once per slot, Floor 70+), so shop gear tops out at 5★.
+       A. RANDOM GEAR: four tiers named by the star range they can roll —
+          1–4★ Gear 800 💎 (random 1–4★), 2–5★ Gear 2,000 💎 (2–5★),
+          3–5★ Gear 3,000 💎 (3–5★), 4–5★ Gear 8,000 💎 (4–5★) — each an
+          instant random piece (random slot, uniform random stars in the
+          tier's range; the forge's mini-game odds can't be replicated,
+          so the shop rolls uniformly). The star-range names are
+          shop-only: the forge recipes keep their material names (Iron /
+          Moonstone / Dragonscale / Starlight Forging). No daily cap:
+          the price is the gate.
+       B. NAMED GEAR: a daily shelf of exactly 3 distinct pieces (random
+          slot + random 3–5★, distinct by slot-and-stars), rolled at the
+          local-midnight reset, each buyable once that day. Prices by
+          star: 3★ 3,000 💎, 4★ 6,000 💎, 5★ 12,000 💎. The shelf lives
+          in the save as shopGearShelf { date, pieces } under the same
+          lazy daily-reset pattern as the rest of the shop.
+       Shop pieces carry no forge recipe and no attunement roll — they are
+       plain pieces that land in the gear inventory exactly like forged
+       ones, named by the forge's slot-and-stars name mapping. */
+    var SHOP_GEAR_TIERS = [
+      { id: "iron", label: "1–4★", icon: "🔩", cost: 800, minStars: 1, maxStars: 4 },
+      { id: "moon", label: "2–5★", icon: "🌙", cost: 2000, minStars: 2, maxStars: 5 },
+      { id: "scale", label: "3–5★", icon: "🐉", cost: 3000, minStars: 3, maxStars: 5 },
+      { id: "essence", label: "4–5★", icon: "✨", cost: 8000, minStars: 4, maxStars: 5 }
+    ];
+    var NAMED_GEAR_PRICES = { 3: 3000, 4: 6000, 5: 12000 };
+    function namedGearPrice(stars) {
+      return NAMED_GEAR_PRICES[stars] || 0;
+    }
+    /** Roll the named shelf: exactly 3 distinct pieces drawn without
+        replacement from the 9 slot-and-star combinations (3 slots ×
+        3–5★), so no two shelf pieces share both slot and stars. */
+    function rollNamedGearShelf(rand) {
+      rand = rand || Math.random;
+      var combos = [];
+      ["weapon", "armor", "accessory"].forEach(function (slot) {
+        [3, 4, 5].forEach(function (stars) { combos.push({ slot: slot, stars: stars }); });
+      });
+      var pieces = [];
+      for (var n = 0; n < 3; n++) {
+        var idx = Math.min(combos.length - 1, Math.floor(rand() * combos.length));
+        var pick = combos.splice(idx, 1)[0];
+        pieces.push({ slot: pick.slot, stars: pick.stars, bought: false });
+      }
+      return pieces;
+    }
+    /** Lazy daily reset: a save whose named-shelf stamp is not today gets
+        a freshly rolled shelf for today; a save already stamped today is
+        returned untouched, so the shelf cannot change mid-day. */
+    function ensureShopGearShelfToday(s, now, rand) {
+      rand = rand || Math.random;
+      var today = dailyDateStr(new Date(now));
+      if (s.shopGearShelf && s.shopGearShelf.date === today) return s;
+      var next = shopClone(s);
+      next.shopGearShelf = { date: today, pieces: rollNamedGearShelf(rand) };
+      return next;
+    }
+    /** The shelf as it stands for the day `now` falls on — empty when the
+        stamp is stale (the lazy reset has not run for today yet). */
+    function namedShelfToday(s, now) {
+      return s.shopGearShelf && s.shopGearShelf.date === dailyDateStr(new Date(now)) ? s.shopGearShelf.pieces : [];
+    }
+    /** Pure purchase, random gear: null when the tier is unknown or gems
+        are short. Otherwise deducts exactly the tier's cost (or today's
+        sale price) and grants one piece — random slot, uniform random
+        stars inside the tier's range (tiers top out at 5★, so never a
+        6★ or 7★). */
+    function applyRandomGearPurchase(s, tierId, now, rand) {
+      rand = rand || Math.random;
+      var tier = null;
+      for (var i = 0; i < SHOP_GEAR_TIERS.length; i++) if (SHOP_GEAR_TIERS[i].id === tierId) tier = SHOP_GEAR_TIERS[i];
+      if (!tier) return null;
+      var cost = shopPriceNow(s, now, "gear:" + tier.id, tier.cost);
+      if (s.gems < cost) return null;
+      var slot = GEAR_SLOTS[Math.floor(rand() * 3)] || "weapon";
+      var stars = tier.minStars + Math.floor(rand() * (tier.maxStars - tier.minStars + 1));
+      var piece = { uid: gearUidNew(), slot: slot, stars: Math.min(5, stars) };
+      var next = shopClone(s);
+      next.gems = s.gems - cost;
+      next.gearInv = (next.gearInv || []).concat([piece]);
+      return { save: next, piece: piece };
+    }
+    /** Pure purchase, named gear: null when today's shelf has no piece at
+        `index`, when that piece was already bought today, or when gems
+        are short. Otherwise deducts exactly the per-star price (or
+        today's sale price), marks the shelf piece bought (sold out for
+        the rest of the day), and grants exactly that piece. */
+    function applyNamedGearPurchase(s, index, now, rand) {
+      var shelf = namedShelfToday(s, now);
+      var entry = shelf[index];
+      if (!entry || entry.bought) return null;
+      var price = shopPriceNow(s, now, "named:" + index, namedGearPrice(entry.stars));
+      if (price <= 0 || s.gems < price) return null;
+      var piece = { uid: gearUidNew(), slot: entry.slot, stars: entry.stars };
+      var next = shopClone(s);
+      next.gems = s.gems - price;
+      next.gearInv = (next.gearInv || []).concat([piece]);
+      next.shopGearShelf = {
+        date: s.shopGearShelf.date,
+        pieces: shelf.map(function (p, i) { return i === index ? { slot: p.slot, stars: p.stars, bought: true } : { slot: p.slot, stars: p.stars, bought: p.bought }; })
+      };
+      return { save: next, piece: piece };
+    }
+
+    /* ============================== SHOP DAILY SALE =========================
+       Every day at the local-midnight reset the shop puts exactly ONE
+       stocked item on sale. The eligible pool is everything in stock that
+       day: the 5★ Hero Ticket (always), the 6★ Hero Ticket (only on days
+       its 10% roll stocked it), each material in stock (Starlight Essence
+       only on its stocked days), the four random gear tiers, and the
+       named shelf's pieces. The discount is rarity-tiered: 10% off on
+       50% of days, 20% on 30%, 30% on 15%, and the 50% jackpot on 5%.
+       The sale lives in the save as shopSale { date, item, pct } under
+       the same lazy daily-reset pattern as the rest of the shop — rolled
+       only when the stamped date is not today, from the save's
+       already-reset daily state (so it can only pick items actually in
+       stock today), stable within the day, cleared at midnight. The
+       Offline Boost is NOT part of this system: it is a Tower-screen
+       purchase and is never discounted.
+       Every shop purchase charges shopPriceNow(...), the single place
+       the discount is applied, so the displayed sale price and the
+       charged price can never disagree. All shop prices are multiples
+       of 100 and every discount is a whole ten, so each sale price is an
+       exact whole number of gems. */
+    var SALE_DISCOUNT_TIERS = [
+      { pct: 10, chance: 0.5 },
+      { pct: 20, chance: 0.3 },
+      { pct: 30, chance: 0.15 },
+      { pct: 50, chance: 0.05 }
+    ];
+    /** The rarity-tiered discount roll itself, kept injectable for tests.
+        The 1e-9 epsilon keeps the tier boundaries exact despite binary
+        float sums (0.5 + 0.3 + 0.15 is not precisely 0.95). */
+    function rollSaleDiscount(rand) {
+      rand = rand || Math.random;
+      var r = rand();
+      var acc = 0;
+      for (var i = 0; i < SALE_DISCOUNT_TIERS.length; i++) {
+        acc += SALE_DISCOUNT_TIERS[i].chance;
+        if (r < acc - 1e-9) return SALE_DISCOUNT_TIERS[i].pct;
+      }
+      return SALE_DISCOUNT_TIERS[SALE_DISCOUNT_TIERS.length - 1].pct;
+    }
+    /** Today's sale-eligible pool: the keys of everything in stock today.
+        Runs against the save's already-reset daily state — the 6★ ticket
+        and Starlight Essence appear only on their stocked days. */
+    function shopSalePool(s, now) {
+      var pool = ["ticket5"];
+      if (ticket6InStock(s, now)) pool.push("ticket6");
+      SHOP_MATERIAL_TIERS.forEach(function (t) {
+        if (shopMaterialInStock(s, t.id, now)) pool.push("mat:" + t.id);
+      });
+      SHOP_GEAR_TIERS.forEach(function (t) { pool.push("gear:" + t.id); });
+      namedShelfToday(s, now).forEach(function (p, i) { if (!p.bought) pool.push("named:" + i); });
+      return pool;
+    }
+    /** Lazy daily reset: a save whose sale stamp is not today gets a
+        fresh sale — one item picked uniformly from today's stocked pool
+        and a fresh rarity-tiered discount. A save already stamped today
+        is returned untouched, so the sale cannot change mid-day. */
+    function ensureShopSaleToday(s, now, rand) {
+      rand = rand || Math.random;
+      var today = dailyDateStr(new Date(now));
+      if (s.shopSale && s.shopSale.date === today) return s;
+      var pool = shopSalePool(s, now);
+      var next = shopClone(s);
+      if (pool.length === 0) {
+        next.shopSale = { date: today, item: "", pct: 0 };
+        return next;
+      }
+      var item = pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
+      next.shopSale = { date: today, item: item, pct: rollSaleDiscount(rand) };
+      return next;
+    }
+    /** The sale in force on the day `now` falls on, or null when the
+        stamp is stale or no sale was rolled. */
+    function shopSaleFor(s, now) {
+      if (!s.shopSale || s.shopSale.date !== dailyDateStr(new Date(now)) || !s.shopSale.item) return null;
+      return { item: s.shopSale.item, pct: s.shopSale.pct };
+    }
+    /** The price actually charged for `itemKey` right now: the base price
+        with today's discount applied when this item is the day's sale,
+        the base price otherwise. Display and charging both go through
+        here, so they always agree. */
+    function shopPriceNow(s, now, itemKey, base) {
+      var sale = shopSaleFor(s, now);
+      if (!sale || sale.item !== itemKey) return base;
+      return Math.floor((base * (100 - sale.pct)) / 100);
+    }
+    /** Price display for a shop item (HTML): the plain price, or — when
+        the item is today's sale — the struck-through base price, the sale
+        price (from shopPriceNow, the very function purchases charge, so
+        display and charge always agree), and the sale badge. */
+    function shopPriceHTML(s, now, itemKey, base) {
+      var sale = shopSaleFor(s, now);
+      if (!sale || sale.item !== itemKey) return base.toLocaleString("en-US") + "💎";
+      var price = shopPriceNow(s, now, itemKey, base);
+      return '<s style="opacity:.6">' + base.toLocaleString("en-US") + '💎</s> ' + price.toLocaleString("en-US") + '💎 <span style="border-radius:999px;background:#fb7185;color:#fff;padding:0.125rem 0.5rem;font-size:11px;font-weight:900">🔥 SALE −' + sale.pct + "%</span>";
+    }
+    /** A short human label for a sale item key, for the sale banner. */
+    function shopSaleLabel(s, now, key) {
+      if (key === "ticket5") return "the 5★ Hero Ticket";
+      if (key === "ticket6") return "the 6★ Hero Ticket";
+      if (key.indexOf("mat:") === 0) return materialById(key.slice(4)).name;
+      if (key.indexOf("gear:") === 0) {
+        var gid = key.slice(5);
+        for (var i = 0; i < SHOP_GEAR_TIERS.length; i++) if (SHOP_GEAR_TIERS[i].id === gid) return SHOP_GEAR_TIERS[i].label + " random gear";
+        return "random gear";
+      }
+      if (key.indexOf("named:") === 0) {
+        var entry = namedShelfToday(s, now)[Number(key.slice(6))];
+        return entry ? gearDefaultName({ slot: entry.slot, stars: entry.stars }) + " (named gear)" : "a named gear piece";
+      }
+      return "a shop item";
+    }
+    /* ============================== DUPE EXCHANGE ============================
+       The Shop's SECOND shop, kept fully separate from the Gem Shop above:
+       its own currency (Universal Shards, 🔷), its own listings, its own
+       caps. Nothing here is priced in gems, nothing here is touched by the
+       Gem Shop's daily sale, and there are no tickets here. (Material ids
+       are this copy's own: moon = Moonstone, scale = Dragon Scale,
+       essence = Starlight Essence.)
+
+       CONVERSION (spares → shards) is ALWAYS manual and player-chosen —
+       Rachel's rule, stated plainly: spare copies stay as synthesis dupes
+       by default, and only the copies the player explicitly converts, per
+       hero, via Convert 1 / Convert All, ever become shards. No code path
+       converts automatically — not summoning, not synthesis, not any reset.
+       Only SPARE copies convert (the `dupes` count); a hero's first copy
+       can never be converted, so converting can never un-own a hero.
+       Rates by the spare's BASE stars: 1★ 1, 2★ 3, 3★ 8, 4★ 20, 5★ 50,
+       6★ 120, 7★ 300 shards. Unlimited — the brake is on buying.
+
+       TARGETED COPIES (shards → one duplicate copy): any hero in the
+       summon roster except the natural 7★s (Luna, Aurelia Vey — summon-only
+       forever) and the locked bosses (Silas, Mara — not in HEROES at all).
+       Prices are 10× the conversion rate: 1★ 10, 2★ 30, 3★ 80, 4★ 200,
+       5★ 500, 6★ 1,200 shards. A purchase grants exactly one copy with the
+       ticket grant rules (new hero → Lv 1, 0 dupes, joins the party if
+       there is room; owned hero → dupes +1) and — like the tickets — never
+       touches pity, pity4, or totalSummons. Per-hero caps: 1★–2★ 50/week,
+       3★ 20/week, 4★ 10/week, 5★ 3/week (weekly caps reset Monday at local
+       midnight), 6★ 1/month (resets on the 1st, local time).
+
+       MATERIALS SHELF (shards): Iron 10 🔷 (20/week), Moonstone 40 🔷
+       (10/week), Dragon Scale 100 🔷 (5/week), Starlight Essence 500 🔷
+       (1/week) — its own weekly caps, separate from the Gem Shop's daily
+       material caps. Counts live in the save as dupeExchange { week,
+       heroBuys, month, hero6Buys, matBuys } under the lazy period-reset
+       pattern: counts stamped with an older week/month read as 0 and are
+       replaced on the next purchase in the new period. */
+    var SHARD_CONVERT_RATES = { 1: 1, 2: 3, 3: 8, 4: 20, 5: 50, 6: 120, 7: 300 };
+    var SHARD_COPY_PRICES = { 1: 10, 2: 30, 3: 80, 4: 200, 5: 500, 6: 1200 };
+    var SHARD_COPY_WEEKLY_CAPS = { 1: 50, 2: 50, 3: 20, 4: 10, 5: 3 };
+    var SHARD_COPY_MONTHLY_CAP = 1; // 6★ heroes: 1 copy per hero per month
+    var SHARD_MATERIAL_TIERS = [
+      { id: "iron", cost: 10, cap: 20 },
+      { id: "moon", cost: 40, cap: 10 },
+      { id: "scale", cost: 100, cap: 5 },
+      { id: "essence", cost: 500, cap: 1 }
+    ];
+    function shardMaterialTier(id) {
+      for (var i = 0; i < SHARD_MATERIAL_TIERS.length; i++) if (SHARD_MATERIAL_TIERS[i].id === id) return SHARD_MATERIAL_TIERS[i];
+      return SHARD_MATERIAL_TIERS[0];
+    }
+    /** Shards one spare copy of a `stars`-base hero converts into. */
+    function shardConvertRate(stars) {
+      return SHARD_CONVERT_RATES[stars] || 0;
+    }
+    /** Shards one targeted copy of a `stars`-base hero costs (0 = not sold). */
+    function shardCopyPrice(stars) {
+      return SHARD_COPY_PRICES[stars] || 0;
+    }
+    /** The Monday (local) of the week containing `d`, as a date stamp —
+        the weekly stamp for exchange caps, which reset Monday at local
+        midnight. */
+    function weekKeyOf(d) {
+      var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      day.setDate(day.getDate() - ((day.getDay() + 6) % 7)); // Monday = offset 0
+      return dailyDateStr(day);
+    }
+    /** The "YYYY-MM" stamp of the month containing `d` — the monthly
+        stamp for the 6★ cap, which resets on the 1st of the month,
+        local time. */
+    function monthKeyOf(d) {
+      var m = d.getMonth() + 1;
+      return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m;
+    }
+    /** The exchange's hero def for `heroId`, or null when the hero can
+        never be bought here: unknown ids, the locked bosses (Silas and
+        Mara live in RUN2_LOCKED_HEROES, not HEROES), and the natural 7★s
+        (Luna and Aurelia Vey stay summon-only — no copy price exists at
+        7★). */
+    function exchangeHeroDef(heroId) {
+      var def = null;
+      for (var i = 0; i < HEROES.length; i++) if (HEROES[i].id === heroId) def = HEROES[i];
+      if (!def || def.stars >= 7) return null;
+      return def;
+    }
+    /** Copies of `def` already bought in the current cap period (0 when
+        the stored stamp belongs to an older week/month). 6★ reads the
+        monthly counts; every other rank reads the weekly counts. */
+    function exchangeHeroBought(s, def, now) {
+      var d = new Date(now);
+      if (def.stars >= 6) {
+        if (s.dupeExchange.month !== monthKeyOf(d)) return 0;
+        return s.dupeExchange.hero6Buys[def.id] || 0;
+      }
+      if (s.dupeExchange.week !== weekKeyOf(d)) return 0;
+      return s.dupeExchange.heroBuys[def.id] || 0;
+    }
+    /** The per-hero cap for `def` in its period: weekly for 1★–5★,
+        monthly for 6★. */
+    function exchangeHeroCap(def) {
+      return def.stars >= 6 ? SHARD_COPY_MONTHLY_CAP : (SHARD_COPY_WEEKLY_CAPS[def.stars] || 0);
+    }
+    /** Copies of `def` still buyable in the current period. */
+    function exchangeHeroLeft(s, def, now) {
+      return Math.max(0, exchangeHeroCap(def) - exchangeHeroBought(s, def, now));
+    }
+    /** Pure conversion — the ONLY way spares ever become shards, and it
+        runs only when the player taps Convert: moves `count` spare copies
+        of `heroId` (clamped to the spares actually banked) out of `dupes`
+        and pays exactly rate × count shards. The first copy is untouchable
+        (it is not part of `dupes`), so the hero stays owned. Null when the
+        hero is unowned or has no spares. Pity, pity4 and totalSummons are
+        never touched. */
+    function applyConvertSpares(s, heroId, count) {
+      var owned = s.heroes[heroId];
+      if (!owned) return null;
+      var n = Math.max(0, Math.min(Math.floor(count) || 0, owned.dupes));
+      if (n <= 0) return null;
+      var def = heroById(heroId);
+      var gained = shardConvertRate(def.stars) * n;
+      var next = shopClone(s);
+      next.shards = (s.shards || 0) + gained;
+      var kept = JSON.parse(JSON.stringify(owned));
+      kept.dupes = owned.dupes - n;
+      next.heroes[heroId] = kept;
+      return next;
+    }
+    /** Pure targeted-copy purchase: null when the hero is not sold here
+        (7★s, bosses, unknown ids), when this period's per-hero cap is
+        used up, or when shards are short. Otherwise deducts exactly the
+        rank's price, grants exactly one copy (ticket grant rules: new
+        hero joins at Lv 1 with 0 dupes and takes a party slot if one is
+        free; owned hero gains dupes +1), and counts the copy against the
+        current week (1★–5★) or month (6★), restamping that period when
+        it rolled over. Pity, pity4 and totalSummons are never touched. */
+    function applyShardCopyPurchase(s, heroId, now) {
+      var def = exchangeHeroDef(heroId);
+      if (!def) return null;
+      if (exchangeHeroLeft(s, def, now) <= 0) return null;
+      var price = shardCopyPrice(def.stars);
+      if (price <= 0 || (s.shards || 0) < price) return null;
+      var next = shopClone(s);
+      var owned = next.heroes[heroId];
+      if (!owned) {
+        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        if (next.party.length < MAX_PARTY) next.party.push(heroId);
+      } else {
+        owned.dupes = owned.dupes + 1;
+      }
+      var d = new Date(now);
+      var ex = next.dupeExchange;
+      var bought = exchangeHeroBought(s, def, now) + 1;
+      if (def.stars >= 6) {
+        var hero6Buys = ex.month === monthKeyOf(d) ? ex.hero6Buys : {};
+        hero6Buys[heroId] = bought;
+        next.dupeExchange = { week: ex.week, heroBuys: ex.heroBuys, month: monthKeyOf(d), hero6Buys: hero6Buys, matBuys: ex.matBuys };
+      } else {
+        var heroBuys = ex.week === weekKeyOf(d) ? ex.heroBuys : {};
+        heroBuys[heroId] = bought;
+        next.dupeExchange = { week: weekKeyOf(d), heroBuys: heroBuys, month: ex.month, hero6Buys: ex.hero6Buys, matBuys: ex.matBuys };
+      }
+      next.shards = s.shards - price;
+      return next;
+    }
+    /** Units of `id` already bought from the exchange shelf in the week
+        containing `now` (0 on a stale week stamp). */
+    function shardMaterialBought(s, id, now) {
+      if (s.dupeExchange.week !== weekKeyOf(new Date(now))) return 0;
+      return s.dupeExchange.matBuys[id] || 0;
+    }
+    /** Units of `id` still buyable from the exchange shelf this week. */
+    function shardMaterialLeft(s, id, now) {
+      return Math.max(0, shardMaterialTier(id).cap - shardMaterialBought(s, id, now));
+    }
+    /** Pure exchange-material purchase: one unit of `id` — null when this
+        week's cap for the material is used up or shards are short.
+        Otherwise deducts exactly the tier's shard price, adds exactly 1
+        unit to the material inventory, and counts the unit against this
+        week (restamping the week when it rolled over, which also resets
+        the weekly hero counts stamped under the old week). */
+    function applyShardMaterialPurchase(s, id, now) {
+      var tier = shardMaterialTier(id);
+      if (shardMaterialLeft(s, id, now) <= 0) return null;
+      if ((s.shards || 0) < tier.cost) return null;
+      var wk = weekKeyOf(new Date(now));
+      var sameWeek = s.dupeExchange.week === wk;
+      var next = shopClone(s);
+      var ex = next.dupeExchange;
+      next.shards = s.shards - tier.cost;
+      next.materials[id] = (s.materials[id] || 0) + 1;
+      var matBuys = sameWeek ? ex.matBuys : {};
+      matBuys[id] = shardMaterialBought(s, id, now) + 1;
+      next.dupeExchange = {
+        week: wk,
+        heroBuys: sameWeek ? ex.heroBuys : {},
+        month: ex.month,
+        hero6Buys: ex.hero6Buys,
+        matBuys: matBuys
+      };
+      return next;
+    }
+
+    /** The full lazy daily reset, in the main game's order: 6★ ticket
+        stock, shop materials, named-gear shelf, then the sale — rolled
+        last, from today's freshly stocked pool. */
+    function ensureShopTodayAll(s, now, rand) {
+      rand = rand || Math.random;
+      var next = ensureTicket6Today(s, now, rand);
+      next = ensureShopMaterialsToday(next, now, rand);
+      next = ensureShopGearShelfToday(next, now, rand);
+      next = ensureShopSaleToday(next, now, rand);
+      return next;
+    }
+
+    /* Shop tab UI state — the tickets' arm-then-confirm + picker flow
+       (same pattern as the Tower Memory reset's two-step confirm), kept
+       in memory so battle re-renders never lose a half-finished buy. */
+    var ticketArmed = false;
+    var ticketPickerOpen = false;
+    // Which of the Shop tab's two separate shops is showing: the Gem Shop
+    // (gems only) or the Dupe Exchange (Universal Shards only). Each side
+    // shows only its own currency balance and its own listings.
+    var shopSide = "gems";
+    var ticket6Armed = false;
+    var ticket6PickerOpen = false;
+
+    /* ============================== RENDER: SHOP TAB ============================== */
+    function shopHTML() {
+      var s = save;
+      var now = Date.now();
+      var h = '<section aria-label="Shop">';
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center;position:relative;overflow:hidden">';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;left:10%;top:1rem;color:#ffd94d">✦</span>';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;right:12%;top:2rem;font-size:0.875rem;color:#ff9ecf;animation-delay:0.8s">★</span>';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🛍️</p>';
+      h += '<h2 class="font-display" style="font-size:1.5rem;font-weight:700;margin:0.25rem 0 0">☆ The Tower Shop ☆</h2>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">The tower keeps two separate shops under one roof — flip between them below. Each shop takes only its own currency and stocks only its own shelves.</p>';
+      h += '<div style="margin-top:1rem;display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem" role="group" aria-label="Choose which shop to browse">';
+      h += '<button type="button" class="btn-pill font-display' + (shopSide === "gems" ? " anime-btn-primary" : "") + '" id="shop-side-gems" aria-pressed="' + (shopSide === "gems") + '" style="padding:0.625rem 1.25rem;font-size:1rem' + (shopSide === "gems" ? "" : ";border:2px solid var(--border);background:var(--surface2);color:var(--text)") + '">💎 Gem Shop</button>';
+      h += '<button type="button" class="btn-pill font-display' + (shopSide === "shards" ? " anime-btn-sky" : "") + '" id="shop-side-shards" aria-pressed="' + (shopSide === "shards") + '" style="padding:0.625rem 1.25rem;font-size:1rem' + (shopSide === "shards" ? "" : ";border:2px solid var(--border);background:var(--surface2);color:var(--text)") + '">🔷 Dupe Exchange</button>';
+      h += "</div>";
+      if (shopSide === "gems") {
+        h += '<p class="small" style="margin-top:0.75rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems</p>";
+        var sale = shopSaleFor(s, now);
+        if (sale) {
+          h += '<p class="small" style="margin:0.75rem auto 0;max-width:28rem;border-radius:999px;border:2px solid #fb7185;background:rgba(251,113,133,0.15);padding:0.375rem 1rem;font-weight:800;color:#fda4af">🔥 SALE −' + sale.pct + "% today: " + esc(shopSaleLabel(s, now, sale.item)) + " — until midnight!</p>";
+        }
+      } else {
+        h += '<p class="small" style="margin-top:0.75rem;font-weight:800">🔷 ' + (s.shards || 0).toLocaleString("en-US") + " Universal Shards</p>";
+      }
+      h += "</div>";
+      if (shopSide === "shards") {
+        h += dupeExchangeHTML(s, now);
+        h += "</section>";
+        return h;
+      }
+
+      /* ---------- Hero Ticket ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Hero Ticket">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎟️</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Hero Ticket</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Pick any of the three 5★ heroes and they join your roster at once — no summoning circle, no pity, no luck involved. A hero you already own comes as a duplicate copy toward synthesis.</p>';
+      if (ticketPickerOpen) {
+        h += '<div style="margin:1rem auto 0;max-width:32rem"><p class="small" style="font-weight:800;color:#ffd94d">🎟️ Ticket paid — choose your hero!</p>';
+        h += '<div style="display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-top:0.75rem">';
+        HERO_TICKET_IDS.forEach(function (id) {
+          var def = heroById(id);
+          var owned = s.heroes[id];
+          h += '<button type="button" data-ticket-pick="' + id + '" aria-label="Use the Hero Ticket on ' + esc(def.name) + " — " + def.stars + " star " + esc(def.cls) + (owned ? ", already owned, grants a duplicate copy" : "") + '" style="border-radius:24px;border:2px solid #ffd94d;background:rgba(255,217,77,0.15);padding:0.75rem;text-align:left;color:var(--text)">';
+          h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + esc(def.name) + "</p>";
+          h += '<p class="xs" style="font-weight:700;color:#ffd94d;margin:0.125rem 0 0">' + starsStr(def.stars) + " · " + esc(def.cls) + "</p>";
+          h += '<p class="xs dim" style="margin:0.125rem 0 0">' + esc(def.title) + "</p>";
+          h += '<p class="xs" style="font-weight:800;margin:0.25rem 0 0">' + (owned ? "Owned — grants a duplicate copy" : "New hero — joins at Lv 1") + "</p>";
+          h += "</button>";
+        });
+        h += "</div></div>";
+      } else if (ticketArmed) {
+        h += '<div style="margin-top:1rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem">';
+        h += '<p class="small bold" style="width:100%;margin:0">Buy a Hero Ticket for ' + shopPriceHTML(s, now, "ticket5", HERO_TICKET_COST) + "?</p>";
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="ticket-confirm" aria-label="Confirm: buy a Hero Ticket for ' + shopPriceNow(s, now, "ticket5", HERO_TICKET_COST) + ' gems">Yes — buy the ticket</button>';
+        h += '<button type="button" class="btn-pill btn-ghost" id="ticket-cancel" aria-label="Cancel Hero Ticket purchase">Keep my gems</button>';
+        h += "</div>";
+      } else {
+        var t5price = shopPriceNow(s, now, "ticket5", HERO_TICKET_COST);
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="ticket-arm" style="margin-top:1rem;padding:0.75rem 1.5rem;font-size:1rem" ' + (s.gems < t5price ? "disabled" : "") + ' aria-label="' + (s.gems < t5price ? "Buy a Hero Ticket for " + t5price + " gems — you only have " + s.gems + " gems" : "Buy a Hero Ticket for " + t5price + " gems and pick one of the three 5 star heroes") + '">🎟️ Buy Hero Ticket — ' + shopPriceHTML(s, now, "ticket5", HERO_TICKET_COST) + "</button>";
+      }
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Lyra Voss · Brynn Solmar · Faye Stormweaver — all 5★. The ticket never touches your pity counters or summon count.</p>';
+      h += "</div>";
+
+      /* ---------- 6★ Hero Ticket (rare stock) ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="6 star Hero Ticket">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎫</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">6★ Hero Ticket</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">A rarer ticket, for the tower\'s 6★ legends — Draven Korr, Diddle, Amara Solenne, Durnan Ironfist, or Orien Starfall. The tower only stocks one about 1 day in 10, and only one per stocked day.</p>';
+      if (ticket6PickerOpen) {
+        h += '<div style="margin:1rem auto 0;max-width:32rem"><p class="small" style="font-weight:800;color:#ffd94d">🎫 Ticket paid — choose your 6★ hero!</p>';
+        h += '<div style="display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-top:0.75rem">';
+        TICKET6_IDS.forEach(function (id) {
+          var def = heroById(id);
+          var owned = s.heroes[id];
+          h += '<button type="button" data-ticket6-pick="' + id + '" aria-label="Use the 6 star Hero Ticket on ' + esc(def.name) + " — " + def.stars + " star " + esc(def.cls) + (owned ? ", already owned, grants a duplicate copy" : "") + '" style="border-radius:24px;border:2px solid #f87171;background:rgba(248,113,113,0.15);padding:0.75rem;text-align:left;color:var(--text)">';
+          h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + esc(def.name) + "</p>";
+          h += '<p class="xs" style="font-weight:700;color:#fca5a5;margin:0.125rem 0 0">' + starsStr(def.stars) + " · " + esc(def.cls) + "</p>";
+          h += '<p class="xs dim" style="margin:0.125rem 0 0">' + esc(def.title) + "</p>";
+          h += '<p class="xs" style="font-weight:800;margin:0.25rem 0 0">' + (owned ? "Owned — grants a duplicate copy" : "New hero — joins at Lv 1") + "</p>";
+          h += "</button>";
+        });
+        h += "</div></div>";
+      } else if (ticket6Armed) {
+        h += '<div style="margin-top:1rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5rem">';
+        h += '<p class="small bold" style="width:100%;margin:0">Buy a 6★ Hero Ticket for ' + shopPriceHTML(s, now, "ticket6", TICKET6_COST) + "?</p>";
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="ticket6-confirm" aria-label="Confirm: buy a 6 star Hero Ticket for ' + shopPriceNow(s, now, "ticket6", TICKET6_COST) + ' gems">Yes — buy the ticket</button>';
+        h += '<button type="button" class="btn-pill btn-ghost" id="ticket6-cancel" aria-label="Cancel 6 star Hero Ticket purchase">Keep my gems</button>';
+        h += "</div>";
+      } else if (!ticket6InStock(s, now)) {
+        h += '<div style="margin-top:1rem;opacity:.6">';
+        h += '<button type="button" class="btn-pill btn-ghost" disabled style="padding:0.75rem 1.5rem;font-size:1rem" aria-label="6 star Hero Ticket — not in stock today">🎫 6★ Hero Ticket — ' + TICKET6_COST.toLocaleString("en-US") + "💎</button>";
+        h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:var(--dim)">Not in stock today — the tower stocks a 6★ ticket about 1 day in 10. Check back tomorrow.</p>';
+        h += "</div>";
+      } else if (s.ticket6.bought) {
+        h += '<div style="margin-top:1rem;opacity:.6">';
+        h += '<button type="button" class="btn-pill btn-ghost" disabled style="padding:0.75rem 1.5rem;font-size:1rem" aria-label="6 star Hero Ticket — today\'s ticket already bought">🎫 6★ Hero Ticket — sold out today</button>';
+        h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:var(--dim)">You claimed today\'s 6★ ticket — the next stock roll is at midnight.</p>';
+        h += "</div>";
+      } else {
+        var t6price = shopPriceNow(s, now, "ticket6", TICKET6_COST);
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="ticket6-arm" style="margin-top:1rem;padding:0.75rem 1.5rem;font-size:1rem" ' + (s.gems < t6price ? "disabled" : "") + ' aria-label="' + (s.gems < t6price ? "Buy a 6 star Hero Ticket for " + t6price + " gems — you only have " + s.gems + " gems" : "Buy a 6 star Hero Ticket for " + t6price + " gems and pick one of the five 6 star heroes") + '">🎫 Buy 6★ Hero Ticket — ' + shopPriceHTML(s, now, "ticket6", TICKET6_COST) + "</button>";
+      }
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Draven Korr · Diddle · Amara Solenne · Durnan Ironfist · Orien Starfall — all 6★. The ticket never touches your pity counters or summon count.</p>';
+      h += "</div>";
+
+      /* ---------- Shop Materials ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop materials">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Materials</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials, one at a time, straight into your stores. The daily caps keep dungeons the main faucet — and Starlight Essence only shows up about 1–2 days a week.</p>';
+      h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
+      SHOP_MATERIAL_TIERS.forEach(function (tier) {
+        var m = materialById(tier.id);
+        var inStock = shopMaterialInStock(s, tier.id, now);
+        var left = shopMaterialLeft(s, tier.id, now);
+        var soldOut = inStock && left <= 0;
+        var price = shopPriceNow(s, now, "mat:" + tier.id, tier.cost);
+        var short = s.gems < price;
+        var blocked = !inStock || soldOut || short;
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (!inStock ? ";opacity:.6" : "") + '">';
+        h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(m.name) + "</p>";
+        h += '<p class="xs dim" style="margin:0.125rem 0 0">You hold ' + (s.materials[tier.id] || 0) + " · max " + tier.cap + " per day</p>";
+        if (!inStock) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:var(--dim)">Not in stock today — Starlight only stocks about 1–2 days a week.</p>';
+        else if (soldOut) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out today — caps reset at midnight.</p>';
+        else h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">' + left + " left today</p>";
+        h += '<button type="button" class="btn-pill anime-btn-sky" data-shop-mat="' + tier.id + '" style="margin-top:0.5rem;width:100%" ' + (blocked ? "disabled" : "") + ' aria-label="' + (!inStock ? esc(m.name) + " — not in stock today" : soldOut ? esc(m.name) + " — sold out today, daily cap reached" : short ? "Buy 1 " + esc(m.name) + " for " + price + " gems — you only have " + s.gems + " gems" : "Buy 1 " + esc(m.name) + " for " + price + " gems — " + left + " left today") + '">Buy 1 — ' + shopPriceHTML(s, now, "mat:" + tier.id, tier.cost) + "</button>";
+        h += "</div>";
+      });
+      h += "</div>";
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Caps and the Starlight stock roll reset at midnight. Dungeon runs still pay far more per hour — the shop is for topping up.</p>';
+      h += "</div>";
+
+      /* ---------- Shop Random Gear ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop random gear">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎲</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Random Gear</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">A finished piece from the tier you pick — random slot, random stars in the tier\'s range, no hammer game. Shop gear tops out at 5★: 6★ and the one-of-a-kind 7★ stay forge-only.</p>';
+      h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
+      SHOP_GEAR_TIERS.forEach(function (tier) {
+        var price = shopPriceNow(s, now, "gear:" + tier.id, tier.cost);
+        var short = s.gems < price;
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left">';
+        h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + tier.icon + " " + esc(tier.label) + " Gear</p>";
+        h += '<p class="xs dim" style="margin:0.125rem 0 0">Random slot · ' + tier.minStars + "–" + tier.maxStars + "★</p>";
+        h += '<button type="button" class="btn-pill anime-btn-sky" data-shop-gear="' + tier.id + '" style="margin-top:0.5rem;width:100%" ' + (short ? "disabled" : "") + ' aria-label="' + (short ? "Buy a random " + esc(tier.label) + " gear piece for " + price + " gems — you only have " + s.gems + " gems" : "Buy a random " + esc(tier.label) + " gear piece, " + tier.minStars + " to " + tier.maxStars + " stars, for " + price + " gems") + '">Buy — ' + shopPriceHTML(s, now, "gear:" + tier.id, tier.cost) + "</button>";
+        h += "</div>";
+      });
+      h += "</div>";
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">No daily cap — the price is the gate. Every piece lands in your gear inventory, ready to equip, combine, or sell.</p>';
+      h += "</div>";
+
+      /* ---------- Shop Named Gear (daily shelf) ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop named gear shelf">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🏷️</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Today\'s Named Gear</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Three specific pieces, rolled fresh at midnight — what you see is exactly what you get. Each piece can be bought once today.</p>';
+      h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">';
+      namedShelfToday(s, now).forEach(function (entry, i) {
+        var basePrice = namedGearPrice(entry.stars);
+        var price = shopPriceNow(s, now, "named:" + i, basePrice);
+        var short = s.gems < price;
+        var name = gearDefaultName({ slot: entry.slot, stars: entry.stars });
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (entry.bought ? ";opacity:.6" : "") + '">';
+        h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + esc(name) + "</p>";
+        h += '<p class="xs" style="margin:0.125rem 0 0;font-weight:700"><span style="' + starTextStyle(entry.stars) + '">' + starsStr(entry.stars) + "</span> · " + GEAR_SLOT_ICON[entry.slot] + " " + GEAR_SLOT_LABEL[entry.slot] + "</p>";
+        if (entry.bought) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out — yours is in your gear inventory.</p>';
+        h += '<button type="button" class="btn-pill anime-btn-gold" data-shop-named="' + i + '" style="margin-top:0.5rem;width:100%" ' + (entry.bought || short ? "disabled" : "") + ' aria-label="' + (entry.bought ? esc(name) + ", " + entry.stars + " star " + entry.slot + " — sold out today" : short ? "Buy " + esc(name) + ", " + entry.stars + " star " + entry.slot + ", for " + price + " gems — you only have " + s.gems + " gems" : "Buy " + esc(name) + ", " + entry.stars + " star " + entry.slot + ", for " + price + " gems") + '">' + (entry.bought ? "Sold out" : "Buy — " + shopPriceHTML(s, now, "named:" + i, basePrice)) + "</button>";
+        h += "</div>";
+      });
+      h += "</div>";
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Priced by stars: 3★ 3,000💎 · 4★ 6,000💎 · 5★ 12,000💎. The shelf re-rolls at midnight — and never holds a 7★.</p>';
+      h += "</div>";
+      h += "</section>";
+      return h;
+    }
+
+    /* The Dupe Exchange side of the Shop tab — the second shop's three
+       shelves, rendered only while shopSide is "shards" (see shopHTML).
+       Shards only here: no gem prices, no tickets, and the Gem Shop's
+       daily sale never applies. Mirrors the main game's exchange UI. */
+    function dupeExchangeHTML(s, now) {
+      var h = "";
+
+      /* ---------- Dupe Exchange: Convert Spares ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Dupe Exchange — convert spare copies into Universal Shards">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🔷</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Convert Spare Copies</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Turn spare copies you don\'t need into 🔷 Universal Shards. Conversion is <span class="bold" style="color:var(--text)">always your choice, hero by hero</span> — nothing ever converts on its own. Spares you leave alone stay banked as synthesis dupes, exactly as before; only the copies you tap Convert on become shards. A hero\'s first copy can never be converted.</p>';
+      h += '<p class="xs dim" style="margin:0.5rem auto 0;max-width:28rem;font-weight:700">Rates per spare, by base stars: 1★ 1 🔷 · 2★ 3 🔷 · 3★ 8 🔷 · 4★ 20 🔷 · 5★ 50 🔷 · 6★ 120 🔷 · 7★ 300 🔷 — no limit on converting.</p>';
+      var spareHeroes = HEROES.filter(function (def) { return ((s.heroes[def.id] || {}).dupes || 0) > 0; })
+        .sort(function (a, b) { return b.stars - a.stars || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0); });
+      if (spareHeroes.length === 0) {
+        h += '<p class="small dim" style="margin:1rem auto 0;max-width:28rem;border:2px dashed var(--border);border-radius:24px;padding:0.75rem 1rem;font-weight:600">No spare copies right now — every hero you own is down to their first copy. Summons that land on heroes you already own bank spares here.</p>';
+      } else {
+        h += '<ul style="list-style:none;margin:1rem auto 0;max-width:32rem;padding:0;display:grid;gap:0.5rem;text-align:left">';
+        spareHeroes.forEach(function (def) {
+          var owned = s.heroes[def.id];
+          var rate = shardConvertRate(def.stars);
+          h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
+          h += '<span style="min-width:0;flex:1"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="small bold">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span></span>';
+          h += '<span class="xs dim" style="display:block;font-weight:700">' + owned.dupes + " spare " + (owned.dupes === 1 ? "copy" : "copies") + " · " + rate + " 🔷 each</span></span>";
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-convert-1="' + def.id + '" aria-label="Convert 1 spare copy of ' + esc(def.name) + " into " + rate + " Universal Shards — " + owned.dupes + ' spares banked">Convert 1 → ' + rate + " 🔷</button>";
+          if (owned.dupes > 1) {
+            h += '<button type="button" class="btn-pill" data-convert-all="' + def.id + '" style="border:2px solid #7dd3fc;background:rgba(125,211,252,0.15);color:#7dd3fc" aria-label="Convert all ' + owned.dupes + " spare copies of " + esc(def.name) + " into " + (rate * owned.dupes) + ' Universal Shards">Convert All → ' + (rate * owned.dupes).toLocaleString("en-US") + " 🔷</button>";
+          }
+          h += "</li>";
+        });
+        h += "</ul>";
+      }
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Converting never touches your pity counters or your summon count — and it can\'t be undone, so convert only the spares you\'re sure about.</p>';
+      h += "</div>";
+
+      /* ---------- Dupe Exchange: Targeted Copies ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Dupe Exchange — buy targeted hero copies with Universal Shards">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎯</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Targeted Copies</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Spend shards on exactly the copy you need — it lands as a duplicate for synthesis, just as if you\'d summoned it. Each hero has their own allowance: weekly for 1★–5★ (resets Monday), monthly for 6★ (resets on the 1st).</p>';
+      h += '<p class="xs dim" style="margin:0.5rem auto 0;max-width:28rem;font-weight:700">Prices: 1★ 10 🔷 · 2★ 30 🔷 · 3★ 80 🔷 · 4★ 200 🔷 · 5★ 500 🔷 · 6★ 1,200 🔷. Luna and Aurelia Vey (7★) and the locked bosses Silas and Mara are never sold here.</p>';
+      [1, 2, 3, 4, 5, 6].forEach(function (stars) {
+        var price = shardCopyPrice(stars);
+        var group = HEROES.filter(function (def) { return def.stars === stars; });
+        if (group.length === 0) return;
+        h += '<div style="margin:1rem auto 0;max-width:32rem;text-align:left">';
+        h += '<p class="xs" style="font-weight:900;letter-spacing:.08em"><span style="' + starTextStyle(stars) + '">' + starsStr(stars) + "</span> — " + price.toLocaleString("en-US") + " 🔷 PER COPY · " + (stars >= 6 ? SHARD_COPY_MONTHLY_CAP + " PER HERO PER MONTH" : SHARD_COPY_WEEKLY_CAPS[stars] + " PER HERO PER WEEK") + "</p>";
+        h += '<ul style="list-style:none;margin:0.375rem 0 0;padding:0;display:grid;gap:0.5rem">';
+        group.forEach(function (def) {
+          var owned = s.heroes[def.id];
+          var left = exchangeHeroLeft(s, def, now);
+          var capped = left <= 0;
+          var short = (s.shards || 0) < price;
+          h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
+          h += '<span style="min-width:0;flex:1"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="small bold">' + esc(def.name) + ' <span class="xs dim" style="font-weight:700">· ' + esc(def.cls) + "</span></span>";
+          h += '<span class="xs dim" style="display:block;font-weight:700">' + (owned ? owned.dupes + " spares banked" : "Not owned yet — joins at Lv 1") + " · " + (capped
+            ? '<span style="color:#ffd94d">Allowance used up — ' + (stars >= 6 ? "resets on the 1st" : "resets Monday") + "</span>"
+            : left + " left " + (stars >= 6 ? "this month" : "this week")) + "</span></span>";
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-shard-copy="' + def.id + '" ' + (capped || short ? "disabled" : "") + ' aria-label="' + (capped
+            ? "Buy a copy of " + esc(def.name) + " for " + price + " shards — allowance used up, " + (stars >= 6 ? "resets on the 1st of the month" : "resets Monday")
+            : short
+              ? "Buy a copy of " + esc(def.name) + " for " + price + " shards — you only have " + (s.shards || 0) + " shards"
+              : "Buy one duplicate copy of " + esc(def.name) + " for " + price + " Universal Shards — " + left + " left " + (stars >= 6 ? "this month" : "this week")) + '">Buy copy — ' + price.toLocaleString("en-US") + " 🔷</button>";
+          h += "</li>";
+        });
+        h += "</ul></div>";
+      });
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Buying a copy never touches your pity counters or your summon count. No tickets here — tickets live in the 💎 Gem Shop.</p>';
+      h += "</div>";
+
+      /* ---------- Dupe Exchange: Materials Shelf ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Dupe Exchange — materials for Universal Shards">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Materials Shelf</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials for shards, one at a time. This shelf has its own weekly caps (reset Monday) — separate from the Gem Shop\'s daily material caps.</p>';
+      h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
+      SHARD_MATERIAL_TIERS.forEach(function (tier) {
+        var m = materialById(tier.id);
+        var left = shardMaterialLeft(s, tier.id, now);
+        var soldOut = left <= 0;
+        var short = (s.shards || 0) < tier.cost;
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left">';
+        h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(m.name) + "</p>";
+        h += '<p class="xs dim" style="margin:0.125rem 0 0">You hold ' + (s.materials[tier.id] || 0) + " · max " + tier.cap + " per week</p>";
+        if (soldOut) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out this week — caps reset Monday.</p>';
+        else h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#7dd3fc">' + left + " left this week</p>";
+        h += '<button type="button" class="btn-pill anime-btn-sky" data-shard-mat="' + tier.id + '" style="margin-top:0.5rem;width:100%" ' + (soldOut || short ? "disabled" : "") + ' aria-label="' + (soldOut
+          ? esc(m.name) + " — sold out this week, weekly cap reached"
+          : short
+            ? "Buy 1 " + esc(m.name) + " for " + tier.cost + " shards — you only have " + (s.shards || 0) + " shards"
+            : "Buy 1 " + esc(m.name) + " for " + tier.cost + " Universal Shards — " + left + " left this week") + '">Buy 1 — ' + tier.cost.toLocaleString("en-US") + " 🔷</button>";
+        h += "</div>";
+      });
+      h += "</div>";
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Shards only on this side of the shop — the daily 🔥 sale never applies to exchange prices.</p>';
+      h += "</div>";
+      return h;
+    }
+
+    /* The Offline Boost card on the Tower screen (NOT a Shop tab item —
+       it is bought where the offline earnings it boosts are explained). */
+    function offlineBoostHTML() {
+      var s = save;
+      var now = Date.now();
+      var h = '<div class="anime-card mt4 card-pad" aria-label="Offline Boost">';
+      h += '<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0.5rem"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚡ Offline Boost</h3><p class="xs" style="margin:0;font-weight:800;color:var(--dim)">5,000 💎 · once a day</p></div>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 24 hours</span>. One purchase per day — it resets at local midnight.</p>';
+      if (boostActive(s, now)) {
+        h += '<p class="small" style="margin-top:0.75rem;display:inline-block;border-radius:999px;border:1px solid rgba(255,217,77,0.55);background:rgba(255,217,77,0.15);padding:0.375rem 0.875rem;font-weight:900;color:#ffd94d">⚡ Boost active — ' + fmtClock(Math.max(0, (s.boostExpiresAt - now) / 1000)) + " left of +50% offline gold &amp; gems</p>";
+      } else if (s.lastBoostBuy === dailyDateStr(new Date())) {
+        h += '<button type="button" class="btn-pill btn-ghost" disabled style="margin-top:0.75rem" aria-label="Offline Boost — already claimed today, back tomorrow">Already claimed today — back tomorrow</button>';
+      } else {
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 24 hours") + '">⚡ Buy Offline Boost — ' + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎</button>";
+      }
+      h += "</div>";
+      return h;
+    }
+
+    /* ============================== SHOP ACTIONS ============================== */
+    /* Offline Boost: bought on the Tower screen for 5,000 💎, once per
+       local calendar day. The pure helper refuses when already bought
+       today or gems are short. */
+    function buyOfflineBoost() {
+      var s = save;
+      if (!s) return;
+      var next = applyOfflineBoostPurchase(s, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      setNotice("⚡ Offline Boost! Your party earns +50% offline gold and gems for the next 24 hours.");
+      renderMain();
+    }
+
+    /* Hero Ticket: 5,000 💎, bought in the Shop tab — the confirm tap pays
+       and opens the picker, and choosing a hero grants them at 5★ base.
+       Pity counters and totalSummons are never touched. */
+    function confirmTicketPurchase() {
+      var s = save;
+      if (!s) return;
+      var next = applyHeroTicketDeduct(s, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      ticketArmed = false;
+      ticketPickerOpen = true;
+      renderMain();
+    }
+    function buyHeroTicket(heroId) {
+      var s = save;
+      if (!s) return;
+      var next = applyHeroTicketGrant(s, heroId);
+      if (!next) return;
+      persist(next);
+      writeSave();
+      ticketPickerOpen = false;
+      ticketArmed = false;
+      var def = heroById(heroId);
+      var owned = s.heroes[heroId];
+      setNotice(owned
+        ? "🎟️ Hero Ticket! " + def.name + " (" + def.stars + "★) joins your roster as a duplicate — one more copy toward synthesis!"
+        : "🎟️ Hero Ticket! " + def.name + " (" + def.stars + "★) joins your roster!");
+      renderMain();
+    }
+
+    /* 6★ Hero Ticket: same two-step shape as the 5★ ticket, but only
+       buyable while today's 10% stock roll has one in (see
+       ticket6Available). Opening the Shop tab re-rolls a stale stamp, so
+       a save left open across midnight stocks fresh without a reload. */
+    function ensureShopRollNow() {
+      var s = save;
+      if (!s) return;
+      var next = ensureShopTodayAll(s, Date.now());
+      if (next !== s) {
+        persist(next);
+        writeSave();
+      }
+    }
+    function confirmTicket6Purchase() {
+      var s = save;
+      if (!s) return;
+      var next = applyTicket6Deduct(s, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      ticket6Armed = false;
+      ticket6PickerOpen = true;
+      renderMain();
+    }
+    function buyTicket6Hero(heroId) {
+      var s = save;
+      if (!s) return;
+      var next = applyTicket6Grant(s, heroId);
+      if (!next) return;
+      persist(next);
+      writeSave();
+      ticket6PickerOpen = false;
+      ticket6Armed = false;
+      var def = heroById(heroId);
+      var owned = s.heroes[heroId];
+      setNotice(owned
+        ? "🎟️ 6★ Hero Ticket! " + def.name + " (" + def.stars + "★) joins your roster as a duplicate — one more copy toward synthesis!"
+        : "🎟️ 6★ Hero Ticket! " + def.name + " (" + def.stars + "★) joins your roster!");
+      renderMain();
+    }
+
+    /* Shop materials: one unit per tap at the tier's exact gem price,
+       under the daily cap (and, for Starlight, only on stocked days).
+       The pure helper refuses every blocked case, so a tap that can't
+       buy simply does nothing. */
+    function buyShopMaterial(id) {
+      var s = save;
+      if (!s) return;
+      var next = applyShopMaterialPurchase(s, id, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      var charged = s.gems - next.gems;
+      var left = shopMaterialLeft(next, id, Date.now());
+      var m = materialById(id);
+      setNotice(m.icon + " Bought 1 " + m.name + " for " + charged.toLocaleString("en-US") + " 💎 — you hold " + next.materials[id] + " now, " + left + " left to buy today.");
+      renderMain();
+    }
+
+    /* Shop random gear: one tap buys one instant random piece from the
+       tier (no mini-game, no daily cap). The pure helper rolls the slot
+       and stars and refuses only a short gem balance or a bad tier. */
+    function buyRandomGear(tierId) {
+      var s = save;
+      if (!s) return;
+      var result = applyRandomGearPurchase(s, tierId, Date.now());
+      if (!result) return;
+      persist(result.save);
+      writeSave();
+      var p = result.piece;
+      setNotice("🎲 Shop gear! " + gearName(p) + " — " + p.stars + "★ " + p.slot + " (" + gearBonusText(p) + ") is in your gear inventory. Equip it from a hero's detail panel!");
+      renderMain();
+    }
+
+    /* Shop named gear: one tap buys the exact shelf piece (once per
+       day per piece). The pure helper refuses sold-out pieces, a stale
+       shelf, and short gem balances. */
+    function buyNamedGear(index) {
+      var s = save;
+      if (!s) return;
+      var result = applyNamedGearPurchase(s, index, Date.now());
+      if (!result) return;
+      persist(result.save);
+      writeSave();
+      var p = result.piece;
+      setNotice("🏷️ Named gear! " + gearName(p) + " — " + p.stars + "★ " + p.slot + " (" + gearBonusText(p) + ") is in your gear inventory. Equip it from a hero's detail panel!");
+      renderMain();
+    }
+
+    /* Dupe Exchange — conversion: the player taps Convert 1 or Convert
+       All on one hero; ONLY that tap ever turns spares into shards.
+       Nothing anywhere else converts — summoning, synthesis, and resets
+       all leave spare counts exactly as they were. The pure helper
+       clamps to the spares banked and can never touch the first copy. */
+    function convertSpares(heroId, all) {
+      var s = save;
+      if (!s) return;
+      var owned = s.heroes[heroId];
+      if (!owned || owned.dupes <= 0) return;
+      var next = applyConvertSpares(s, heroId, all ? owned.dupes : 1);
+      if (!next) return;
+      persist(next);
+      writeSave();
+      var def = heroById(heroId);
+      var converted = owned.dupes - next.heroes[heroId].dupes;
+      var gained = next.shards - s.shards;
+      var keeps = next.heroes[heroId].dupes;
+      setNotice("🔷 Converted " + converted + " spare " + (converted === 1 ? "copy" : "copies") + " of " + def.name + " (" + def.stars + "★) into " + gained.toLocaleString("en-US") + " 🔷 Universal Shards — you hold " + next.shards.toLocaleString("en-US") + " 🔷 now. " + def.name + " keeps " + keeps + " spare " + (keeps === 1 ? "copy" : "copies") + " for synthesis.");
+      renderMain();
+    }
+
+    /* Dupe Exchange — targeted copy: one tap buys exactly one duplicate
+       copy of the chosen hero at the rank's shard price, under the
+       per-hero weekly (1★–5★) or monthly (6★) cap. The pure helper
+       refuses unsold heroes (7★s, bosses), capped heroes, and short
+       shard balances, and never touches pity or totalSummons. */
+    function buyShardCopy(heroId) {
+      var s = save;
+      if (!s) return;
+      var next = applyShardCopyPurchase(s, heroId, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      var def = heroById(heroId);
+      var owned = s.heroes[heroId];
+      var left = exchangeHeroLeft(next, def, Date.now());
+      setNotice(owned
+        ? "🔷 Targeted copy! " + def.name + " (" + def.stars + "★) gains a duplicate copy for synthesis — " + next.heroes[heroId].dupes + " spares banked now. " + left + " more " + (def.stars >= 6 ? "this month" : "this week") + " for " + def.name + "."
+        : "🔷 Targeted copy! " + def.name + " (" + def.stars + "★) joins your roster at Lv 1! " + left + " more " + (def.stars >= 6 ? "this month" : "this week") + " for " + def.name + ".");
+      renderMain();
+    }
+
+    /* Dupe Exchange — materials shelf: one unit per tap at the tier's
+       exact shard price, under the shelf's own weekly caps (separate
+       from the Gem Shop's daily material caps). */
+    function buyShardMaterial(id) {
+      var s = save;
+      if (!s) return;
+      var next = applyShardMaterialPurchase(s, id, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      var charged = s.shards - next.shards;
+      var left = shardMaterialLeft(next, id, Date.now());
+      var m = materialById(id);
+      setNotice(m.icon + " Bought 1 " + m.name + " for " + charged.toLocaleString("en-US") + " 🔷 — you hold " + next.materials[id] + " now, " + left + " left to buy this week.");
+      renderMain();
     }
 
     /* The Gem Exchange stays locked until the climb reaches this floor:
@@ -8576,6 +9936,12 @@
         loaded = freshSave(now);
         isNew = true;
       }
+      /* 🛍️ Shop daily state: a save crossing local midnight gets its fresh
+         10% 6★-ticket roll, fresh material caps, a fresh 20% Starlight
+         stock roll, a freshly rolled named-gear shelf, and — rolled last,
+         from today's freshly stocked pool — exactly one stocked item at a
+         rarity-tiered discount (all stable within the day). */
+      loaded = ensureShopTodayAll(loaded, now);
       /* Offline earnings: heroes kept fighting their current target floor
          while away — gold AND gems, 5-minute minimum, 8-hour cap. */
       var awaySec = Math.min(Math.max(0, (now - loaded.lastSeen) / 1000), OFFLINE_CAP_SEC);
@@ -8590,9 +9956,11 @@
         var isRepeat = target < loaded.floor;
         /* Gold skills ride along offline too: partyMods' goldMult
            (Mira's eye, Draven's Dragon's Hoard, the First Climb bond)
-           multiplies offline gold just as it does live clears. */
-        var gold = Math.floor(idleGoldPerSec(dps, target, isRepeat) * awaySec * partyMods(loaded).goldMult);
-        var gems = Math.floor(idleGemsPerSec(dps, target, isRepeat) * awaySec);
+           multiplies offline gold just as it does live clears. The
+           Offline Boost (×1.5 while active) fattens both gold and gems. */
+        var boost = boostMult(loaded, now);
+        var gold = Math.floor(idleGoldPerSec(dps, target, isRepeat) * awaySec * partyMods(loaded).goldMult * boost);
+        var gems = Math.floor(idleGemsPerSec(dps, target, isRepeat) * awaySec * boost);
         if (gold > 0 || gems > 0) {
           loaded.gold += gold;
           loaded.gems += gems;
