@@ -2578,10 +2578,10 @@
        Moonstone 95%/s (Steady), Dragonscale 125%/s (Fast),
        Starlight 170%/s (Very Fast). */
     var FORGE_RECIPES = [
-      { id: "iron", name: "Iron Forge", mat: "iron", matCount: 5, gold: 500, floor: 1, speed: 65, speedLabel: "Slow", blurb: "Humble stock — but a master's hammer can coax 5★ out of scrap." },
-      { id: "moon", name: "Moonstone Forge", mat: "moon", matCount: 3, gold: 2000, floor: 2, speed: 95, speedLabel: "Steady", blurb: "Moonstone holds an edge beautifully. Guaranteed 2★ or better." },
-      { id: "scale", name: "Dragonscale Forge", mat: "scale", matCount: 2, gold: 5000, floor: 3, speed: 125, speedLabel: "Fast", blurb: "Scale-forged gear never comes out dull. Guaranteed 3★ or better." },
-      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Pure condensed starlight. Guaranteed 4★ — and a flawless game (3 Perfects) forges the one-of-a-kind 7★, once per slot." }
+      { id: "iron", name: "Iron Forge", mat: "iron", matCount: 5, gold: 500, floor: 1, speed: 65, speedLabel: "Slow", blurb: "Humble stock — but strike a perfect game (all 3 Perfect) and even scrap comes out 4★." },
+      { id: "moon", name: "Moonstone Forge", mat: "moon", matCount: 3, gold: 2000, floor: 2, speed: 95, speedLabel: "Steady", blurb: "Moonstone holds an edge beautifully. Guaranteed 2★ or better — and a perfect game (all 3 Perfect) forges 5★." },
+      { id: "scale", name: "Dragonscale Forge", mat: "scale", matCount: 2, gold: 5000, floor: 3, speed: 125, speedLabel: "Fast", blurb: "Scale-forged gear never comes out dull. Guaranteed 3★ or better — and a perfect game (all 3 Perfect) forges 6★." },
+      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Pure condensed starlight. Guaranteed 4★ — a perfect game forges 6★ at worst, and the one-of-a-kind 7★ when the gate is met (Floor 70+, once per slot)." }
     ];
     function recipeById(id) { for (var i = 0; i < FORGE_RECIPES.length; i++) if (FORGE_RECIPES[i].id === id) return FORGE_RECIPES[i]; return FORGE_RECIPES[0]; }
     function gearByUid(uid, ctx) {
@@ -5416,11 +5416,11 @@
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">6 → 5★ · 5 → 4★ · 4 → 3★ · 2–3 → 2★ · 0–1 → 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>';
       /* 👑 The 7★ set tracker — also the locked hint that tells players
          the tier exists and exactly how it unlocks, long before Floor 70. */
       h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
-      h += '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. Anything less tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>";
+      h += '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. A flawless Starlight game whose gate isn\'t met still forges <span style="color:var(--text)">6★</span>; every non-perfect result tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>";
       h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.375rem">';
       GEAR_SLOTS.forEach(function (sl) {
         var seven = null;
@@ -6496,11 +6496,20 @@
       main.querySelectorAll("[data-shop-named]").forEach(function (el) {
         el.addEventListener("click", function () { buyNamedGear(Number(el.getAttribute("data-shop-named"))); });
       });
-      /* --- two-shop switch + Dupe Exchange bindings --- */
-      var sideGems = document.getElementById("shop-side-gems");
-      if (sideGems) sideGems.addEventListener("click", function () { shopSide = "gems"; renderMain(); });
-      var sideShards = document.getElementById("shop-side-shards");
-      if (sideShards) sideShards.addEventListener("click", function () { shopSide = "shards"; renderMain(); });
+      /* --- shop hub navigation + Dupe Exchange bindings --- */
+      main.querySelectorAll("[data-shop-tile]").forEach(function (el) {
+        el.addEventListener("click", function () { shopOpenShelf(el.getAttribute("data-shop-tile")); });
+      });
+      var dealBtn = document.getElementById("shop-deal");
+      if (dealBtn) dealBtn.addEventListener("click", function () {
+        var sale = shopSaleFor(save, Date.now());
+        if (!sale) return;
+        saleHighlight = sale.item;
+        shopView = shopShelfForSaleItem(sale.item);
+        renderMain();
+      });
+      var backBtn = document.getElementById("shop-back");
+      if (backBtn) backBtn.addEventListener("click", function () { shopBackToHub(); });
       main.querySelectorAll("[data-convert-1]").forEach(function (el) {
         el.addEventListener("click", function () { convertSpares(el.getAttribute("data-convert-1"), false); });
       });
@@ -6969,6 +6978,32 @@
       }
       return "a shop item";
     }
+    /** The hub shelf that holds a sale item key (for the Today's Deal
+        banner): tickets hold both hero tickets, materials hold mat:*,
+        gear holds both random-gear tiers and the named shelf. */
+    function shopShelfForSaleItem(key) {
+      if (key === "ticket5" || key === "ticket6") return "tickets";
+      if (key.indexOf("mat:") === 0) return "materials";
+      return "gear";
+    }
+    /** The undiscounted base price of a sale item key, so the Today's
+        Deal banner can show it through shopPriceHTML (struck-through
+        base + sale price, exactly as the shelf cards show it). */
+    function shopSaleBasePrice(s, now, key) {
+      if (key === "ticket5") return HERO_TICKET_COST;
+      if (key === "ticket6") return TICKET6_COST;
+      if (key.indexOf("mat:") === 0) return shopMaterialTier(key.slice(4)).cost;
+      if (key.indexOf("gear:") === 0) {
+        var gid = key.slice(5);
+        for (var i = 0; i < SHOP_GEAR_TIERS.length; i++) if (SHOP_GEAR_TIERS[i].id === gid) return SHOP_GEAR_TIERS[i].cost;
+        return 0;
+      }
+      if (key.indexOf("named:") === 0) {
+        var entry = namedShelfToday(s, now)[Number(key.slice(6))];
+        return entry ? namedGearPrice(entry.stars) : 0;
+      }
+      return 0;
+    }
     /* ============================== DUPE EXCHANGE ============================
        The Shop's SECOND shop, kept fully separate from the Gem Shop above:
        its own currency (Universal Shards, 🔷), its own listings, its own
@@ -7187,10 +7222,31 @@
        in memory so battle re-renders never lose a half-finished buy. */
     var ticketArmed = false;
     var ticketPickerOpen = false;
-    // Which of the Shop tab's two separate shops is showing: the Gem Shop
-    // (gems only) or the Dupe Exchange (Universal Shards only). Each side
-    // shows only its own currency balance and its own listings.
-    var shopSide = "gems";
+    // Which Shop view is showing: the storefront hub (four category
+    // tiles + Today's Deal banner) or one shelf — Tickets, Materials,
+    // Gear (all gems) or the Dupe Exchange (Universal Shards only).
+    // The hub replaces the old Gem Shop / Dupe Exchange top switch.
+    var shopView = "hub";
+    // The sale item key whose card wears the gold ring after the player
+    // taps the Today's Deal banner (cleared on the way back to the hub).
+    var saleHighlight = null;
+    // Gold ring marking the sale item's card on its shelf (inline-style
+    // equivalent of the main game's ring-4 ring-[#ffd94d] + glow).
+    function shopSaleRing(key) {
+      return saleHighlight === key ? ";box-shadow:0 0 0 4px #ffd94d,0 0 20px rgba(255,217,77,0.55)" : "";
+    }
+    // Back to the hub from any shelf (also clears the sale highlight).
+    function shopBackToHub() { shopView = "hub"; saleHighlight = null; renderMain(); }
+    // Open a shelf from a hub tile (no sale highlight — tiles are not sales).
+    function shopOpenShelf(shelf) { saleHighlight = null; shopView = shelf; renderMain(); }
+    // The shelf header bar: "← Shop" back button, shelf title, and the
+    // shelf's own currency balance on the right.
+    function shopShelfBar(title, balanceHTML) {
+      return '<div style="margin-top:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem">'
+        + '<button type="button" class="btn-pill font-display" id="shop-back" aria-label="Back to the Shop hub" style="padding:0.5rem 1rem;font-size:0.875rem;border:2px solid var(--border);background:var(--surface2);color:var(--text)">← Shop</button>'
+        + '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0">' + title + "</h3>"
+        + '<p class="small" style="margin:0 0 0 auto;font-weight:800">' + balanceHTML + "</p></div>";
+    }
     var ticket6Armed = false;
     var ticket6PickerOpen = false;
 
@@ -7204,29 +7260,55 @@
       h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;right:12%;top:2rem;font-size:0.875rem;color:#ff9ecf;animation-delay:0.8s">★</span>';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🛍️</p>';
       h += '<h2 class="font-display" style="font-size:1.5rem;font-weight:700;margin:0.25rem 0 0">☆ The Tower Shop ☆</h2>';
-      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">The tower keeps two separate shops under one roof — flip between them below. Each shop takes only its own currency and stocks only its own shelves.</p>';
-      h += '<div style="margin-top:1rem;display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem" role="group" aria-label="Choose which shop to browse">';
-      h += '<button type="button" class="btn-pill font-display' + (shopSide === "gems" ? " anime-btn-primary" : "") + '" id="shop-side-gems" aria-pressed="' + (shopSide === "gems") + '" style="padding:0.625rem 1.25rem;font-size:1rem' + (shopSide === "gems" ? "" : ";border:2px solid var(--border);background:var(--surface2);color:var(--text)") + '">💎 Gem Shop</button>';
-      h += '<button type="button" class="btn-pill font-display' + (shopSide === "shards" ? " anime-btn-sky" : "") + '" id="shop-side-shards" aria-pressed="' + (shopSide === "shards") + '" style="padding:0.625rem 1.25rem;font-size:1rem' + (shopSide === "shards" ? "" : ";border:2px solid var(--border);background:var(--surface2);color:var(--text)") + '">🔷 Dupe Exchange</button>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">The tower keeps four shelves under one roof — tickets, materials, gear, and the Dupe Exchange. Pick a shelf below: gems buy the first three, Universal Shards buy the Exchange.</p>';
+      h += '<p class="small" style="margin-top:0.75rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems · 🔷 " + (s.shards || 0).toLocaleString("en-US") + " Universal Shards</p>";
       h += "</div>";
-      if (shopSide === "gems") {
-        h += '<p class="small" style="margin-top:0.75rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems</p>";
+      if (shopView === "hub") {
+        /* ---------- Shop hub: Today's Deal + category tiles ---------- */
         var sale = shopSaleFor(s, now);
         if (sale) {
-          h += '<p class="small" style="margin:0.75rem auto 0;max-width:28rem;border-radius:999px;border:2px solid #fb7185;background:rgba(251,113,133,0.15);padding:0.375rem 1rem;font-weight:800;color:#fda4af">🔥 SALE −' + sale.pct + "% today: " + esc(shopSaleLabel(s, now, sale.item)) + " — until midnight!</p>";
+          var dealShelf = shopShelfForSaleItem(sale.item);
+          var dealShelfName = dealShelf === "tickets" ? "Tickets" : dealShelf === "materials" ? "Materials" : "Gear";
+          h += '<button type="button" class="anime-card mt4 card-pad" id="shop-deal" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text);box-shadow:0 0 0 2px #fb7185,0 10px 28px rgba(10,4,32,0.45)" aria-label="Today\'s Deal: ' + esc(shopSaleLabel(s, now, sale.item)) + ", " + sale.pct + " percent off — tap to open the " + dealShelfName + ' shelf">';
+          h += '<span class="small" style="font-weight:800;color:#fda4af">🔥 SALE −' + sale.pct + "% today: " + esc(shopSaleLabel(s, now, sale.item)) + " — " + shopPriceHTML(s, now, sale.item, shopSaleBasePrice(s, now, sale.item)) + "</span>";
+          h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:700">Tap to see it in ' + dealShelfName + " — until midnight!</span>";
+          h += "</button>";
         }
-      } else {
-        h += '<p class="small" style="margin-top:0.75rem;font-weight:800">🔷 ' + (s.shards || 0).toLocaleString("en-US") + " Universal Shards</p>";
+        h += '<div style="margin-top:1rem;display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem" role="group" aria-label="Shop shelves">';
+        h += '<button type="button" class="anime-card card-pad" data-shop-tile="tickets" aria-label="Tickets shelf — 5 star and 6 star hero tickets" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text)">';
+        h += '<span style="display:block;font-size:2.5rem" aria-hidden="true">🎟️</span>';
+        h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Tickets</span>';
+        h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">5★ &amp; 6★ hero tickets</span>';
+        h += "</button>";
+        h += '<button type="button" class="anime-card card-pad" data-shop-tile="materials" aria-label="Materials shelf — Iron to Starlight" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text)">';
+        h += '<span style="display:block;font-size:2.5rem" aria-hidden="true">🧰</span>';
+        h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Materials</span>';
+        h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">Iron to Starlight</span>';
+        h += "</button>";
+        h += '<button type="button" class="anime-card card-pad" data-shop-tile="gear" aria-label="Gear shelf — random and named gear" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text)">';
+        h += '<span style="display:block;font-size:2.5rem" aria-hidden="true">🎲</span>';
+        h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Gear</span>';
+        h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">Random &amp; named</span>';
+        h += "</button>";
+        h += '<button type="button" class="anime-card card-pad" data-shop-tile="exchange" aria-label="Dupe Exchange shelf — trade spares for shards" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text)">';
+        h += '<span style="display:block;font-size:2.5rem" aria-hidden="true">🔷</span>';
+        h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Exchange</span>';
+        h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">Trade spares for shards</span>';
+        h += "</button>";
+        h += "</div>";
+        h += "</section>";
+        return h;
       }
-      h += "</div>";
-      if (shopSide === "shards") {
+      if (shopView === "exchange") {
+        h += shopShelfBar("🔷 Dupe Exchange", "🔷 " + (s.shards || 0).toLocaleString("en-US") + " Universal Shards");
         h += dupeExchangeHTML(s, now);
         h += "</section>";
         return h;
       }
-
+      if (shopView === "tickets") {
+        h += shopShelfBar("🎟️ Tickets", "💎 " + s.gems.toLocaleString("en-US") + " gems");
       /* ---------- Hero Ticket ---------- */
-      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Hero Ticket">';
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center' + shopSaleRing("ticket5") + '" aria-label="Hero Ticket">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎟️</p>';
       h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Hero Ticket</h3>';
       h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Pick any of the three 5★ heroes and they join your roster at once — no summoning circle, no pity, no luck involved. A hero you already own comes as a duplicate copy toward synthesis.</p>';
@@ -7258,7 +7340,7 @@
       h += "</div>";
 
       /* ---------- 6★ Hero Ticket (rare stock) ---------- */
-      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="6 star Hero Ticket">';
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center' + shopSaleRing("ticket6") + '" aria-label="6 star Hero Ticket">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎫</p>';
       h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">6★ Hero Ticket</h3>';
       h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">A rarer ticket, for the tower\'s 6★ legends — Draven Korr, Diddle, Amara Solenne, Durnan Ironfist, or Orien Starfall. The tower only stocks one about 1 day in 10, and only one per stocked day.</p>';
@@ -7299,6 +7381,11 @@
       h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Draven Korr · Diddle · Amara Solenne · Durnan Ironfist · Orien Starfall — all 6★. The ticket never touches your pity counters or summon count.</p>';
       h += "</div>";
 
+        h += "</section>";
+        return h;
+      }
+      if (shopView === "materials") {
+        h += shopShelfBar("🧰 Materials", "💎 " + s.gems.toLocaleString("en-US") + " gems");
       /* ---------- Shop Materials ---------- */
       h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop materials">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
@@ -7313,7 +7400,7 @@
         var price = shopPriceNow(s, now, "mat:" + tier.id, tier.cost);
         var short = s.gems < price;
         var blocked = !inStock || soldOut || short;
-        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (!inStock ? ";opacity:.6" : "") + '">';
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (!inStock ? ";opacity:.6" : "") + shopSaleRing("mat:" + tier.id) + '">';
         h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(m.name) + "</p>";
         h += '<p class="xs dim" style="margin:0.125rem 0 0">You hold ' + (s.materials[tier.id] || 0) + " · max " + tier.cap + " per day</p>";
         if (!inStock) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:var(--dim)">Not in stock today — Starlight only stocks about 1–2 days a week.</p>';
@@ -7326,6 +7413,11 @@
       h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Caps and the Starlight stock roll reset at midnight. Dungeon runs still pay far more per hour — the shop is for topping up.</p>';
       h += "</div>";
 
+        h += "</section>";
+        return h;
+      }
+      /* ---------- Gear shelf (random + named) ---------- */
+      h += shopShelfBar("🎲 Gear", "💎 " + s.gems.toLocaleString("en-US") + " gems");
       /* ---------- Shop Random Gear ---------- */
       h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop random gear">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🎲</p>';
@@ -7335,7 +7427,7 @@
       SHOP_GEAR_TIERS.forEach(function (tier) {
         var price = shopPriceNow(s, now, "gear:" + tier.id, tier.cost);
         var short = s.gems < price;
-        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left">';
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + shopSaleRing("gear:" + tier.id) + '">';
         h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + tier.icon + " " + esc(tier.label) + " Gear</p>";
         h += '<p class="xs dim" style="margin:0.125rem 0 0">Random slot · ' + tier.minStars + "–" + tier.maxStars + "★</p>";
         h += '<button type="button" class="btn-pill anime-btn-sky" data-shop-gear="' + tier.id + '" style="margin-top:0.5rem;width:100%" ' + (short ? "disabled" : "") + ' aria-label="' + (short ? "Buy a random " + esc(tier.label) + " gear piece for " + price + " gems — you only have " + s.gems + " gems" : "Buy a random " + esc(tier.label) + " gear piece, " + tier.minStars + " to " + tier.maxStars + " stars, for " + price + " gems") + '">Buy — ' + shopPriceHTML(s, now, "gear:" + tier.id, tier.cost) + "</button>";
@@ -7356,7 +7448,7 @@
         var price = shopPriceNow(s, now, "named:" + i, basePrice);
         var short = s.gems < price;
         var name = gearDefaultName({ slot: entry.slot, stars: entry.stars });
-        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (entry.bought ? ";opacity:.6" : "") + '">';
+        h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (entry.bought ? ";opacity:.6" : "") + shopSaleRing("named:" + i) + '">';
         h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + esc(name) + "</p>";
         h += '<p class="xs" style="margin:0.125rem 0 0;font-weight:700"><span style="' + starTextStyle(entry.stars) + '">' + starsStr(entry.stars) + "</span> · " + GEAR_SLOT_ICON[entry.slot] + " " + GEAR_SLOT_LABEL[entry.slot] + "</p>";
         if (entry.bought) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out — yours is in your gear inventory.</p>';
@@ -7370,8 +7462,8 @@
       return h;
     }
 
-    /* The Dupe Exchange side of the Shop tab — the second shop's three
-       shelves, rendered only while shopSide is "shards" (see shopHTML).
+    /* The Dupe Exchange shelf of the Shop tab — its three shelves,
+       rendered only while shopView is "exchange" (see shopHTML).
        Shards only here: no gem prices, no tickets, and the Gem Shop's
        daily sale never applies. Mirrors the main game's exchange UI. */
     function dupeExchangeHTML(s, now) {
@@ -7392,14 +7484,16 @@
         spareHeroes.forEach(function (def) {
           var owned = s.heroes[def.id];
           var rate = shardConvertRate(def.stars);
-          h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
-          h += '<span style="min-width:0;flex:1"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="small bold">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span></span>';
-          h += '<span class="xs dim" style="display:block;font-weight:700">' + owned.dupes + " spare " + (owned.dupes === 1 ? "copy" : "copies") + " · " + rate + " 🔷 each</span></span>";
+          h += '<li style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
+          h += '<span style="display:flex;align-items:center;gap:0.625rem"><span style="display:block;flex:none;width:40px;height:40px;overflow:hidden;border-radius:12px;border:2px solid ' + def.color + '"><img src="' + AVATARS[def.id] + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 16%;display:block" /></span>';
+          h += '<span style="min-width:0"><span style="display:block" class="small bold">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span></span>';
+          h += '<span class="xs dim" style="display:block;font-weight:700">' + owned.dupes + " spare " + (owned.dupes === 1 ? "copy" : "copies") + " · " + rate + " 🔷 each</span></span></span>";
+          h += '<span style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem">';
           h += '<button type="button" class="btn-pill anime-btn-sky" data-convert-1="' + def.id + '" aria-label="Convert 1 spare copy of ' + esc(def.name) + " into " + rate + " Universal Shards — " + owned.dupes + ' spares banked">Convert 1 → ' + rate + " 🔷</button>";
           if (owned.dupes > 1) {
             h += '<button type="button" class="btn-pill" data-convert-all="' + def.id + '" style="border:2px solid #7dd3fc;background:rgba(125,211,252,0.15);color:#7dd3fc" aria-label="Convert all ' + owned.dupes + " spare copies of " + esc(def.name) + " into " + (rate * owned.dupes) + ' Universal Shards">Convert All → ' + (rate * owned.dupes).toLocaleString("en-US") + " 🔷</button>";
           }
-          h += "</li>";
+          h += "</span></li>";
         });
         h += "</ul>";
       }
@@ -7425,6 +7519,7 @@
           var capped = left <= 0;
           var short = (s.shards || 0) < price;
           h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
+          h += '<span style="display:block;flex:none;width:40px;height:40px;overflow:hidden;border-radius:12px;border:2px solid ' + def.color + '"><img src="' + AVATARS[def.id] + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 16%;display:block" /></span>';
           h += '<span style="min-width:0;flex:1"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="small bold">' + esc(def.name) + ' <span class="xs dim" style="font-weight:700">· ' + esc(def.cls) + "</span></span>";
           h += '<span class="xs dim" style="display:block;font-weight:700">' + (owned ? owned.dupes + " spares banked" : "Not owned yet — joins at Lv 1") + " · " + (capped
             ? '<span style="color:#ffd94d">Allowance used up — ' + (stars >= 6 ? "resets on the 1st" : "resets Monday") + "</span>"
@@ -7438,14 +7533,14 @@
         });
         h += "</ul></div>";
       });
-      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Buying a copy never touches your pity counters or your summon count. No tickets here — tickets live in the 💎 Gem Shop.</p>';
+      h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Buying a copy never touches your pity counters or your summon count. No tickets here — tickets live on the 🎟️ Tickets shelf.</p>';
       h += "</div>";
 
       /* ---------- Dupe Exchange: Materials Shelf ---------- */
       h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Dupe Exchange — materials for Universal Shards">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
       h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Materials Shelf</h3>';
-      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials for shards, one at a time. This shelf has its own weekly caps (reset Monday) — separate from the Gem Shop\'s daily material caps.</p>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials for shards, one at a time. This shelf has its own weekly caps (reset Monday) — separate from the Materials shelf\'s daily material caps.</p>';
       h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
       SHARD_MATERIAL_TIERS.forEach(function (tier) {
         var m = materialById(tier.id);
@@ -8787,26 +8882,39 @@
        for all 3 strikes. Zones are fixed:
        perfect 46–54 (8 wide, gold), good 36–64 (28 wide, teal).
        3 strikes; Perfect +2, Good +1, Miss 0. Score → puzzle stars:
-       6→5★, 5→4★, 4→3★, 2–3→2★, 0–1→1★. Final = max(puzzle, recipe
-       floor), capped at 5★ — with ONE exception: a flawless game (all
-       3 strikes Perfect, 6 pts) on the Starlight recipe forges a 7★
-       piece instead, but only once the climb has reached Floor 70 and
-       only if that slot's 7★ does not exist yet. One 7★ per slot, one
-       set in the whole game, ever (see forgeResultStars).
+       6→5★, 5→4★, 4→3★, 2–3→2★, 0–1→1★. A non-perfect game's final =
+       max(puzzle, recipe floor), capped at 5★. A PERFECT game (all 3
+       strikes Perfect, 6 pts) climbs the perfect-forge ladder instead:
+       recipe floor + 3 stars — Iron 4★, Moonstone 5★, Dragonscale 6★,
+       Starlight 7★ when its gate is met (Floor 70+, and that slot's 7★
+       not yet forged) and 6★ when it is not, so a flawless Starlight
+       forge never gives less than a flawless Dragonscale one. One 7★
+       per slot, one set in the whole game, ever (see forgeResultStars).
        Materials + gold are charged when the game OPENS (the metal is on
        the anvil); closing mid-game refunds nothing — stated in the modal. */
     var FORGE_PERFECT = { lo: 46, hi: 54 };
     var FORGE_GOOD = { lo: 36, hi: 64 };
     function forgePuzzleStars(score) { return score >= 6 ? 5 : score === 5 ? 4 : score === 4 ? 3 : score >= 2 ? 2 : 1; }
-    /* The final star rating of a finished forge. The 7★ rules live here
-       so the minigame's result screen and the piece actually saved can
-       never disagree: full Perfect (6 pts) on the Very Fast (Starlight)
-       recipe, only while that slot's one 7★ has not been forged yet,
-       and only once the climb has reached Floor 70 — below that, even a
-       flawless Starlight forge tops out at 5★. */
+    /* The final star rating of a finished forge. The perfect-forge ladder
+       and the 7★ rules live here so the minigame's result screen and the
+       piece actually saved can never disagree. A perfect game (6 pts)
+       takes the explicit ladder branch — recipe floor + 3: Iron 4★,
+       Moonstone 5★, Dragonscale 6★, and Starlight 7★ only while that
+       slot's one 7★ has not been forged yet AND the climb has reached
+       Floor 70; a Starlight perfect whose 7★ gate is not met lands on 6★,
+       never less than Dragonscale's perfect. Every non-perfect game keeps
+       the old rule: the higher of the puzzle result and the recipe floor,
+       capped at 5★. */
     var SEVEN_STAR_MIN_FLOOR = 70;
     function forgeResultStars(score, recipe, hasSeven, floor) {
-      if (score >= 6 && recipe.id === "essence" && !hasSeven && floor >= SEVEN_STAR_MIN_FLOOR) return 7;
+      if (score >= 6) {
+        // Perfect game — the ladder: recipe floor + 3 stars. Starlight's
+        // top rung is the gated 7★; with the gate unmet it lands on 6★.
+        if (recipe.id === "essence") {
+          return !hasSeven && floor >= SEVEN_STAR_MIN_FLOOR ? 7 : 6;
+        }
+        return recipe.floor + 3;
+      }
       return Math.min(5, Math.max(forgePuzzleStars(score), recipe.floor));
     }
     function startForge(recipeId) {
@@ -8874,14 +8982,17 @@
       h += '<div class="anime-card modal-card" style="max-width:28rem;border-color:#ffd94d;box-shadow:0 0 44px rgba(255,217,77,0.35)">';
       h += '<div class="center"><p style="font-size:2.25rem;margin:0" aria-hidden="true">🔨</p>';
       h += '<h2 class="font-display" style="margin-top:0.25rem;font-size:1.375rem;font-weight:700">FORGE: ' + GEAR_SLOT_ICON[forgeGame.slot] + " " + GEAR_SLOT_LABEL[forgeGame.slot].toUpperCase() + '</h2>';
-      h += '<p class="small dim" style="margin-top:0.375rem">' + esc(rc.name) + " — paid " + mat.icon + " " + rc.matCount + " " + esc(mat.name) + " + 🪙 " + rc.gold.toLocaleString("en-US") + ". The metal is on the anvil! Land 3 strikes: gold = Perfect (+2), teal = Good (+1). Score 6 → 5★, 5 → 4★, 4 → 3★, 2–3 → 2★, 0–1 → 1★ — and this recipe guarantees at least " + rc.floor + "★.</p>";
+      h += '<p class="small dim" style="margin-top:0.375rem">' + esc(rc.name) + " — paid " + mat.icon + " " + rc.matCount + " " + esc(mat.name) + " + 🪙 " + rc.gold.toLocaleString("en-US") + ". The metal is on the anvil! Land 3 strikes: gold = Perfect (+2), teal = Good (+1). Score 5 → 4★, 4 → 3★, 2–3 → 2★, 0–1 → 1★ — and this recipe guarantees at least " + rc.floor + "★.</p>";
+      if (rc.id !== "essence") {
+        h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge reaches <span style="' + starTextStyle(rc.floor + 3) + '">' + (rc.floor + 3) + '★</span> — the perfect-forge ladder: minimum + 3.</p>';
+      }
       if (rc.id === "essence") {
         if (slotHasSevenStar(save, forgeGame.slot)) {
-          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">This slot\'s <span style="' + starTextStyle(7) + '">7★</span> already exists — no second one can ever be forged.</p>';
+          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">This slot\'s <span style="' + starTextStyle(7) + '">7★</span> already exists — no second one can ever be forged. A flawless game here still forges <span style="' + starTextStyle(6) + '">6★</span>.</p>';
         } else if (save.floor >= SEVEN_STAR_MIN_FLOOR) {
           h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge reaches <span style="' + starTextStyle(7) + '">7★</span> — the only 7★ ' + GEAR_SLOT_LABEL[forgeGame.slot].toLowerCase() + " that can ever be made.</p>";
         } else {
-          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge could reach <span style="' + starTextStyle(7) + '">7★</span> — but <span class="bold" style="color:var(--text)">7★ requires Floor ' + SEVEN_STAR_MIN_FLOOR + "+</span> (you're at Floor " + save.floor + "), so for now a flawless game tops out at 5★.</p>";
+          h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge could reach <span style="' + starTextStyle(7) + '">7★</span> — but <span class="bold" style="color:var(--text)">7★ requires Floor ' + SEVEN_STAR_MIN_FLOOR + "+</span> (you're at Floor " + save.floor + "), so for now a flawless game tops out at " + '<span style="' + starTextStyle(6) + '">6★</span>.</p>';
         }
       }
       h += '<p style="margin-top:0.5rem"><span class="speed-badge">⚡ SPEED: ' + esc(rc.speedLabel) + " · " + rc.speed + '%/s</span></p><p class="small bold" style="margin-top:0.375rem">Hammer speed: ' + esc(rc.speedLabel) + " — the marker sweeps at " + rc.speed + "%/s for all 3 strikes. Time your Strike! taps to the gold zone.</p></div>";
@@ -8917,7 +9028,7 @@
       forgeGame.resultStars = stars;
       var isSeven = stars >= 7;
       /* A flawless Starlight game that could NOT reach 7★ — the result
-         screen explains the settle at 5★: either this slot's one 7★
+         screen explains the settle at 6★: either this slot's one 7★
          already exists, or the climb has not reached Floor 70 yet. */
       var sevenBlocked = score >= 6 && rc.id === "essence" && hasSeven;
       var sevenFloorBlocked = score >= 6 && rc.id === "essence" && !hasSeven && save.floor < SEVEN_STAR_MIN_FLOOR;
@@ -8932,11 +9043,13 @@
       if (isSeven) {
         h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Flawless — all 3 strikes Perfect at Very Fast! The hammer sings…</p>';
         h += '<p style="margin:0.5rem auto 0;width:fit-content;border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);padding:0.25rem 0.75rem;font-size:11px;font-weight:900;color:#3a2403">👑 ONE OF A KIND — THE ONLY 7★ ' + GEAR_SLOT_LABEL[piece.slot].toUpperCase() + " THAT CAN EVER BE FORGED</p>";
+      } else if (score >= 6) {
+        h += '<p class="small dim" style="margin-top:0.375rem">PERFECT GAME — all 3 strikes Perfect! The perfect-forge ladder lifts this piece to ' + stars + "★ (recipe minimum " + rc.floor + "★ + 3).</p>";
       } else {
         h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + forgePuzzleStars(score) + "★ from the hammer" + (rc.floor > forgePuzzleStars(score) ? ", raised to the recipe floor of " + rc.floor + "★" : "") + ".</p>";
       }
-      if (sevenBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but this slot\'s 7★ already exists, and only one can ever be made, so this masterpiece settles at 5★.</p>';
-      if (sevenFloorBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but 7★ gear can only be forged from Floor ' + SEVEN_STAR_MIN_FLOOR + " onwards, so this masterpiece settles at 5★. Reach Floor " + SEVEN_STAR_MIN_FLOOR + " and forge flawlessly again!</p>";
+      if (sevenBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but this slot\'s 7★ already exists, and only one can ever be made, so this masterpiece settles at 6★.</p>';
+      if (sevenFloorBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but 7★ gear can only be forged from Floor ' + SEVEN_STAR_MIN_FLOOR + " onwards, so this masterpiece settles at 6★. Reach Floor " + SEVEN_STAR_MIN_FLOOR + " and forge flawlessly again!</p>";
       if (stars >= 5) {
         h += '<div style="margin-top:1rem;text-align:left"><label for="forge-piece-name" class="xs bold dim" style="letter-spacing:0.15em">✒️ NAME THIS PIECE, MASTER (OPTIONAL)</label>';
         h += '<input id="forge-piece-name" type="text" maxlength="40" value="' + esc(defName) + '" placeholder="' + esc(defName) + '" aria-label="Name for your forged ' + stars + "-star " + piece.slot + ' (optional)" style="margin-top:0.375rem;width:100%;border-radius:16px;border:2px solid var(--border);background:var(--surface);padding:0.625rem 0.875rem;font-size:0.875rem;font-weight:700;color:var(--text)" />';
