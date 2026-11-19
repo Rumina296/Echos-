@@ -508,6 +508,11 @@
       .pull-grid { margin-top: 1rem; display: grid; gap: 0.75rem; grid-template-columns: repeat(2, 1fr); }
       @media (min-width: 640px) { .pull-grid.multi { grid-template-columns: repeat(3, 1fr); } }
       .pull-grid.single { grid-template-columns: 1fr; max-width: 220px; margin-left: auto; margin-right: auto; width: 100%; }
+      .pull-grid.compact { grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+      @media (min-width: 640px) { .pull-grid.compact { grid-template-columns: repeat(5, 1fr); } }
+      .pull-grid.compact .pull-card { padding: 0.375rem; border-radius: 16px; }
+      .pull-grid.compact .pull-card .portrait { height: 4.5rem; }
+      .pull-grid.compact .pull-card .pname { font-size: 0.75rem; }
       .pull-card { overflow: hidden; border-radius: 24px; border: 3px solid; padding: 0.75rem; text-align: center; }
       .pull-card .portrait { position: relative; display: block; height: 8rem; width: 100%; overflow: hidden; border-radius: 16px; }
       .pull-card .portrait img { height: 100%; width: 100%; object-fit: cover; object-position: center 14%; }
@@ -648,7 +653,7 @@
       { id: "jenna", name: "Arden", title: "The Cheerful Deadeye", cls: "Archer", stars: 3, color: "#f2b134", baseHp: 560, baseAtk: 62, atkSpeed: 0.95,
         blurb: "Summoned as a farm girl with a bow, Arden turned out to be a once-in-a-generation marksman — and the heart of every party she joins." },
       { id: "han", name: "Soren Ashford", title: "The 1-Star Who Wouldn't Die", cls: "Swordsman", stars: 1, color: "#e5484d", baseHp: 520, baseAtk: 52, atkSpeed: 1.0,
-        blurb: "A max-level ranker trapped inside his own gacha game as its weakest pull — a genuine 1-star, the lowest the circle can give. No talent, no luck — just ten years of game knowledge and a refusal to be synthesized. He starts at the very bottom, and that is the point: no 1-star in Echoria climbs higher. Six syntheses deep, all the way to 7★, if a Master believes in him long enough — the 1-star who wouldn't die, and wouldn't stay one either." },
+        blurb: "A max-level ranker trapped inside his own gacha game as its weakest pull — a genuine 1-star, the lowest the circle can give. No talent, no luck — just ten years of game knowledge and a refusal to be synthesized. He starts at the very bottom, and that is the point: no 1-star in Echoria climbs higher. Eleven syntheses deep, all the way to 12★ and a level cap of 120, if a Master believes in him long enough — the 1★ that surpassed all limits, tying Luna herself at the very top of the tower, the 1-star who wouldn't die, and wouldn't stay one either." },
       { id: "luna", name: "Luna", title: "The Moonlit Guide", cls: "Lunar Oracle", stars: 7, color: "#c9b8ff", baseHp: 1350, baseAtk: 120, atkSpeed: 0.9,
         blurb: "She appeared on the first floor of Echoria one night and never left. Luna remembers every hero who ever climbed, every floor ever cleared, every Master who ever fell — and she fights so no one climbs alone. No summoning circle can call her; she chooses her own Master." },
       { id: "aaron", name: "Rhys Calder", title: "The Loyal Spear", cls: "Spearman", stars: 2, color: "#7cc7ff", baseHp: 660, baseAtk: 66, atkSpeed: 0.85,
@@ -693,9 +698,10 @@
          flat auras: thorns that bite back, a freeze earned stack by stack,
          a puppet who turns the enemy's strings against it, a tide that
          swallows blows, a mountain that will not fall, and a sage who
-         reads the fated blow in the stars. All six grow to an effective
-         7★ on the standard synthesis cap of 5 (see maxAsc — no entry
-         needed), and their skills live in the battle loop, not in
+         reads the fated blow in the stars. Ilya, Nix and Mari (5★, cap 2) and Amara and Orien (6★, cap 1)
+         all grow to an effective 7★, while Durnan (6★, cap 2)
+         reaches 8★ (see maxAsc), and their skills live in the
+         battle loop, not in
          partyMods: their power is in what they DO, not what they add. */
       { id: "ilya", name: "Ilya Thorn", title: "The Thornkeeper", cls: "Warden", stars: 5, color: "#16a34a", baseHp: 920, baseAtk: 90, atkSpeed: 0.85,
         blurb: "A warden of the paradise's last garden wall, deep green hair in a long braid woven with thorns, bark-and-moss armor over a patience that outlasts sieges. His thorns grew from the garden wall itself — and they have never once forgotten what they were planted to guard." },
@@ -714,9 +720,9 @@
       { id: "aurelia", name: "Aurelia Vey", title: "The Golden Weaver", cls: "Weaver", stars: 7, color: "#e0a92e", baseHp: 1300, baseAtk: 155, atkSpeed: 1.0,
         blurb: "She was already seated at the center of the web when the summoning circle found her — black hair bound in a high bun threaded with gold, eight slender legs arching around her like a living throne, and a hundred tiny golden spiders converging along her silk toward whoever had called. Seven stars: the rarest answer the circle can give, earned thread by patient thread. Aurelia does not chase her prey, Master. She weaves, she smiles, and she waits for it to come to her." },
       { id: "vesper", name: "Vesper Quill", title: "The Midnight Puppeteer", cls: "Puppeteer", stars: 4, color: "#7a7de0", baseHp: 700, baseAtk: 88, atkSpeed: 1.0,
-        blurb: "A street performer from the tower's lower floors, all midnight-blue curls and gold thread, whose little wooden puppets began moving on their own the night Echoria's magic touched her strings. Now she climbs to learn who is pulling hers. Four stars today — but her threads are still lengthening: just three syntheses refine her to a 7★ effective rank, a puppeteer whose stage is the whole tower." },
+        blurb: "A street performer from the tower's lower floors, all midnight-blue curls and gold thread, whose little wooden puppets began moving on their own the night Echoria's magic touched her strings. Now she climbs to learn who is pulling hers. Four stars today — but her threads are still lengthening: just four syntheses refine her to an 8★ effective rank, a puppeteer whose stage is the whole tower." },
       { id: "orin", name: "Orin Vale", title: "The Last Songkeeper", cls: "Bard", stars: 3, color: "#e09a3e", baseHp: 620, baseAtk: 70, atkSpeed: 1.0,
-        blurb: "A wandering musician with warm copper hair in a loose topknot and a single feather, a patchwork traveling coat stitched with little stars, and a battered lute older than the tower itself. Cheerful, scruffy, always humming — and untouched by time, as if the years simply forgot him, his smile sweet and a little sad. He carries the last songs of the paradise from before it became the tower: the foreign entity can corrupt memories, but it cannot erase a song, so Orin climbs to keep the paradise alive the only way it still survives — by singing it. Three stars today — but a song is never finished while someone still sings it: four syntheses carry the songkeeper to an effective 7★, verse by remembered verse, until the Paradise Requiem itself returns." },
+        blurb: "A wandering musician with warm copper hair in a loose topknot and a single feather, a patchwork traveling coat stitched with little stars, and a battered lute older than the tower itself. Cheerful, scruffy, always humming — and untouched by time, as if the years simply forgot him, his smile sweet and a little sad. He carries the last songs of the paradise from before it became the tower: the foreign entity can corrupt memories, but it cannot erase a song, so Orin climbs to keep the paradise alive the only way it still survives — by singing it. Three stars today — but a song is never finished while someone still sings it: seven syntheses carry the songkeeper to an effective 10★, verse by remembered verse, until the Paradise Requiem itself returns." },
       { id: "nia", name: "Nia Marrow", title: "The Hearth Cook", cls: "Cook", stars: 1, color: "#d96a3f", baseHp: 500, baseAtk: 44, atkSpeed: 0.9,
         blurb: "The paradise's feasts never really ended — Nia kept them, recipe by recipe, in the only place the Unmaking couldn't eat: a cook's memory. Her stews taste like home to anyone who has ever had one." },
       { id: "dun", name: "Dunstan Cole", title: "The Blacksmith", cls: "Blacksmith", stars: 1, color: "#6e6a7a", baseHp: 520, baseAtk: 48, atkSpeed: 0.85,
@@ -1008,7 +1014,7 @@
       },
       vesper: {
         name: "Marionette Waltz",
-        desc: "Party damage +3% per skill level, and enemy attack −2% per skill level — her puppet strikes on its own dancing strings, and every so often it tangles the enemy's limbs mid-swing, slowing their blows. Her waltz grows with her effective rank (base stars + synthesis ranks): three syntheses take the 4★ puppeteer all the way to 7★.",
+        desc: "Party damage +3% per skill level, and enemy attack −2% per skill level — her puppet strikes on its own dancing strings, and every so often it tangles the enemy's limbs mid-swing, slowing their blows. Her waltz grows with her effective rank (base stars + synthesis ranks): four syntheses take the 4★ puppeteer all the way to 8★.",
         more: [
           { name: "Puppet Dance", desc: "Party critical chance +2% per skill level. A second, smaller puppet joins the act — it cannot hurt anything, but it dances exactly where the enemy is about to look, and a blade that lands while the enemy watches the wrong dancer lands deep. Her second skill, known from the start alongside Marionette Waltz." },
           { name: "Curtain Call", desc: "Gold from clears +5% per skill level — tower clears, grind clears, and offline earnings alike. No performance ends without a collection, and Vesper's audiences have never once left without paying — the tower, it turns out, is an audience like any other. Her third skill, known from the start alongside Marionette Waltz and Puppet Dance." }
@@ -1138,6 +1144,7 @@
     var SAVE_KEY = "pick-me-up-idle-gacha-shared-save-v1";
     var SUMMON_COST = 100;
     var SUMMON10_COST = 900;
+    var SUMMON100_COST = 9000; // same 90 gems per pull as the 10-summon
     var PITY_LIMIT = 80;
     var PITY4_LIMIT = 10;
     var MAX_PARTY = 5;
@@ -1195,16 +1202,16 @@
           }
         });
         // Soren Ashford rebuild: he used to be a 5★ base and is now a
-        // 1★ base with synthesis cap 6. Saves written before the
+        // 1★ base with synthesis cap 11. Saves written before the
         // rebuild (no sorenV2 flag) keep their EFFECTIVE rank: a 5★
         // Soren with asc n becomes a 1★ Soren with asc n+4 (clamped
-        // to the cap of 6), and his level clamps to the new cap for
+        // to the cap of 11), and his level clamps to the new cap for
         // that effective rank. Runs once — the flag is set below and
         // persisted with the save from then on.
         if (p.sorenV2 !== true && p.sorenV2 !== 1) {
           var so = heroes["han"];
           if (so && typeof so.asc === "number") {
-            so.asc = Math.min(6, Math.max(0, Math.floor(so.asc)) + 4);
+            so.asc = Math.min(11, Math.max(0, Math.floor(so.asc)) + 4);
             var sCap = 10 * (1 + so.asc);
             if (typeof so.level === "number" && so.level > sCap) so.level = sCap;
           }
@@ -2485,9 +2492,9 @@
         favored: ["Assassin", "Dragonkin"], unlockFloor: 20,
         desc: "Old dragons molt among the Frostwood roots, and their shed scales are forge gold. Quiet feet — or dragon blood — help enormously.",
         rewards: [{ mat: "scale", count: 3 }], gold: 6000 },
-      { id: "starfall", name: "Starfall Expedition", icon: "🌠", hours: 24, difficulty: 4500,
+      { id: "starfall", name: "Starfall Expedition", icon: "🌠", hours: 12, difficulty: 4500,
         favored: ["Weaver", "Lunar Oracle", "Battle Dancer"], unlockFloor: 30,
-        desc: "A full day below the tower's roots, where fallen stars condense into essence. Send your most uncanny heroes; the abyss respects strange talents.",
+        desc: "Half a day below the tower's roots, where fallen stars condense into essence. Send your most uncanny heroes; the abyss respects strange talents.",
         rewards: [{ mat: "essence", count: 2 }], gold: 15000 }
     ];
     var MAX_ACTIVE_QUESTS = 3;
@@ -2508,11 +2515,25 @@
     function questChance(s, q, heroIds) {
       if (heroIds.length === 0) return 0;
       var team = questTeamPower(s, q, heroIds);
-      return Math.min(0.98, Math.max(0.1, team / (team + q.difficulty)));
+      // The tower is generous to the unlucky: the chance never drops below
+      // 20% (and never rises above 98%), however weak the team.
+      return Math.min(0.98, Math.max(0.2, team / (team + q.difficulty)));
     }
+    /* What a successful run actually pays: the listed rewards boosted by
+       50% (rounded to whole materials/gold). A failed run still brings
+       home half of that — see questFailCount / questFailGold. */
+    function questSuccessCount(rw) { return Math.round(rw.count * 1.5); }
+    function questSuccessGold(q) { return Math.round(q.gold * 1.5); }
+    function questFailCount(rw) { return Math.floor(questSuccessCount(rw) / 2); }
+    function questFailGold(q) { return Math.floor(questSuccessGold(q) / 2); }
     function questRewardText(q) {
-      var parts = q.rewards.map(function (r) { return materialById(r.mat).icon + " " + materialById(r.mat).name + " ×" + r.count; });
-      parts.push("🪙 " + q.gold.toLocaleString("en-US"));
+      var parts = q.rewards.map(function (r) { return materialById(r.mat).icon + " " + materialById(r.mat).name + " ×" + questSuccessCount(r); });
+      parts.push("🪙 " + questSuccessGold(q).toLocaleString("en-US"));
+      return parts.join(" · ");
+    }
+    function questFailRewardText(q) {
+      var parts = q.rewards.map(function (r) { return materialById(r.mat).icon + " " + materialById(r.mat).name + " ×" + questFailCount(r); });
+      parts.push("🪙 " + questFailGold(q).toLocaleString("en-US"));
       return parts.join(" · ");
     }
     /* Heroes currently away: assigned to a run that hasn't ended yet.
@@ -2542,7 +2563,7 @@
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * (def.stars + o.asc); }
     function effRank(def, o) { return def.stars + o.asc; }
-    function maxAsc(def) { if (def.id === "diddle") return 1; if (def.id === "wren" || def.id === "han") return 6; if (def.id === "orin") return 4; if (def.id === "vesper" || def.id === "ondine" || def.id === "ysolde" || def.id === "morrigan") return 3; if (def.id === "tomas" || def.id === "pippa" || def.id === "brann") return 2; /* Everyday heroes: cap = max effective stars - base stars. Lena's 5 is the default, so she needs no entry. */ if (def.id === "nia" || def.id === "marlo" || def.id === "iris" || def.id === "yara" || def.id === "cassian" || def.id === "straw") return 4; if (def.id === "dun" || def.id === "bram" || def.id === "greta" || def.id === "hugo" || def.id === "odo" || def.id === "ruth" || def.id === "petra" || def.id === "ivo" || def.id === "eamon") return 3; if (def.id === "tam" || def.id === "anselm" || def.id === "joss" || def.id === "ash" || def.id === "milo" || def.id === "zinnia" || def.id === "hilda" || def.id === "agatha" || def.id === "rook" || def.id === "eldric" || def.id === "juno" || def.id === "yurneth") return 2; return 5; }
+    function maxAsc(def) { if (def.id === "han") return 11; /* 1★ → 12★, the absolute max, tying Luna */ if (def.id === "orin") return 7; /* 3★ → 10★ */ if (def.id === "jenna") return 6; /* 3★ → 9★ */ if (def.id === "morrigan") return 5; /* 4★ → 9★ */ if (def.id === "vesper") return 4; /* 4★ → 8★ */ if (def.id === "wren") return 6; /* 1★ → 7★ */ if (def.id === "diddle") return 1; /* 6★ → 7★ */ if (def.id === "amara" || def.id === "orien") return 1; /* 6★ → 7★ */ if (def.id === "draven" || def.id === "durnan" || def.id === "lyra" || def.id === "brynn" || def.id === "faye" || def.id === "ilya" || def.id === "nix" || def.id === "mari") return 2; /* 5★ → 7★, 6★ → 8★ */ if (def.id === "nerissa" || def.id === "nyx" || def.id === "kael" || def.id === "rurik" || def.id === "eolka") return 3; /* 4★ → 7★ */ if (def.id === "ondine" || def.id === "ysolde") return 3; /* 3★ → 6★ */ if (def.id === "tomas" || def.id === "pippa" || def.id === "brann") return 2; /* 1★ → 3★ */ /* Everyday heroes: cap = max effective stars - base stars. Lena's 5 is the default, so she needs no entry. */ if (def.id === "nia" || def.id === "marlo" || def.id === "iris" || def.id === "yara" || def.id === "cassian" || def.id === "straw") return 4; if (def.id === "dun" || def.id === "bram" || def.id === "greta" || def.id === "hugo" || def.id === "odo" || def.id === "ruth" || def.id === "petra" || def.id === "ivo" || def.id === "eamon") return 3; if (def.id === "tam" || def.id === "anselm" || def.id === "joss" || def.id === "ash" || def.id === "milo" || def.id === "zinnia" || def.id === "hilda" || def.id === "agatha" || def.id === "rook" || def.id === "eldric" || def.id === "juno" || def.id === "yurneth") return 2; return 5; }
     function skillLevel(o) { return 1 + o.asc; }
     function selfSkillMult(def, o) {
       var lv = skillLevel(o);
@@ -3167,7 +3188,7 @@
       return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
     }
     function monsterMaxHp(f) {
-      var base = 130 * Math.pow(1.24, f - 1);
+      var base = 130 * Math.pow(1.18, f - 1);
       return Math.round(isLordFloor(f) ? base * 6 : isGateFloor(f) ? base * 2.5 : base);
     }
     function monsterAtk(f) {
@@ -3231,26 +3252,33 @@
       var pool = total >= 12 ? MEMORY_HINTS_HIGH : total >= 5 ? MEMORY_HINTS_MID : MEMORY_HINTS_LOW;
       return pool[(m.deaths * 3 + m.reClears + f) % pool.length];
     }
-    /* Clear rewards scale with the floor, and within each floor type
-       they never dip as you climb — payouts only step down right
-       after a boss floor, where the Gate / Lord bonus falls away.
-       Gold grows ×1.23 per floor (raised from ×1.21, so income keeps
-       closer pace with monster HP's ×1.24 growth instead of falling
-       behind it: normal floors pay 🪙 664 at Floor 19, 14,825 at 34,
-       330,800 at 49 — up from 495 / 8,631 / 150,597). Gems grow too,
-       at ×1.08 per floor — deliberately well below gold's rate so
-       they stay scarce — on EVERY floor type, normal floors included
-       (a normal floor's grind pays 1 💎 on Floor 1, 4 at 19, 13 at
-       34, 40 at 49; first clears pay the bigger base). The Gate and
-       Lord bonuses ride on top through the base amounts (first
-       clear 3 / 12 / 40, grind 1 / 4 / 10). Offline earnings share
-       these numbers via goldForClear / gemsForClear, so active and
-       idle income scale together. */
+    /* Per-clear rewards scale with the floor. Gold grows ×1.23 per floor
+       (normal floors pay 🪙 664 at Floor 19, 14,825 at 34, 330,800 at 49)
+       — gold per clear is unchanged by the gem rebalance below. Gems grow
+       ×1.20 per floor (was ×1.08) while monster HP grows ×1.18 per floor
+       (was ×1.24, see monsterMaxHp), so gems PER HOUR now rise slightly as
+       you climb instead of collapsing: each floor pays ≈1.7% more gems per
+       hour than the one below (×1.20 ÷ ×1.18). To keep the steeper payouts
+       from flooding the summon economy, the gem BASES were lowered (first
+       clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal / gate /
+       lord floors, repeats floored at 1 💎): a Floor 20 grind clear pays
+       16 💎 but the monster has ~2.6× less HP, so the hourly rate lands
+       close to the old Floor 20 rate while Floor 30 finally pays more.
+       The tower still climbs hard — HP ×5.2 per ten floors, and monster
+       attack growth (×1.19 per floor) is untouched. Offline earnings ride
+       these same per-clear numbers via goldForClear / gemsForClear. */
+    var GEM_GROWTH = 1.2;
     function clearGold(f) { return Math.round(16 * Math.pow(1.23, f - 1) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
-    function gemScale(f) { return Math.pow(1.08, f - 1); }
-    function clearGems(f) { return Math.round((isLordFloor(f) ? 40 : isGateFloor(f) ? 12 : 3) * gemScale(f)); }
+    function clearGems(f) { return Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * Math.pow(GEM_GROWTH, f - 1)); }
     function repeatGold(f) { return Math.round(clearGold(f) * 0.85); }
-    function repeatGems(f) { return Math.round((isLordFloor(f) ? 10 : isGateFloor(f) ? 4 : 1) * gemScale(f)); }
+    function repeatGems(f) {
+      // Bases were lowered in the gem rebalance (see GEM_GROWTH) and the
+      // result is floored at 1 💎 so a grind clear never pays nothing: a
+      // normal grind clear pays 1 💎 on Floor 1, 3 on Floor 20, 49 on
+      // Floor 35, 759 on Floor 50 under the ×1.20 growth; a Floor Lord
+      // grind clear pays 1 💎 on Floor 1, 16 on Floor 20, 99 on Floor 30.
+      return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * Math.pow(GEM_GROWTH, f - 1)));
+    }
     function goldForClear(f, isRepeat) { return isRepeat ? repeatGold(f) : clearGold(f); }
     function gemsForClear(f, isRepeat) { return isRepeat ? repeatGems(f) : clearGems(f); }
 
@@ -3274,9 +3302,12 @@
     function upgradeCost(def, o) { return Math.round(28 * Math.pow(def.stars, 1.6) * Math.pow(1.16, o.level - 1)); }
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
        (0-based): spare copies r + 2 (so 2, 3, 4, 5, 6, 7…), gems
-       20 × (r + 1) (so 💎 20, 40, 60, 80, 100, 120), plus dungeon materials from synthesis #3 on:
+       20 × (r + 1) (so 💎 20, 40, 60, 80, 100, 120 … up to 220 at #11),
+       plus dungeon materials from synthesis #3 on:
        #3 → 2 Moonstones, #4 → 2 Dragon Scales, #5 → 1 Starlight
-       Essence, #6 → 2 Starlight Essence. The hero must also be at the
+       Essence, #6 → 2 Starlight Essence, #7 → 10 Starlight Essence,
+       #8 → 15, #9 → 20, #10 → 25, #11 → 30 Starlight Essence.
+       The hero must also be at the
        max level of its current rank. Nothing fuses automatically —
        duplicates bank until the player taps Synthesize. */
     function ascCost(o) { return o.asc + 2; }
@@ -3287,6 +3318,11 @@
       if (n === 4) return { id: "scale", count: 2 };
       if (n === 5) return { id: "essence", count: 1 };
       if (n === 6) return { id: "essence", count: 2 };
+      if (n === 7) return { id: "essence", count: 10 };
+      if (n === 8) return { id: "essence", count: 15 };
+      if (n === 9) return { id: "essence", count: 20 };
+      if (n === 10) return { id: "essence", count: 25 };
+      if (n === 11) return { id: "essence", count: 30 };
       return null;
     }
     function synthStatus(def, o) {
@@ -3328,7 +3364,7 @@
        RATES above apply. Checked per pull against save.totalSummons, so a
        10-pull crossing the boundary mixes both tables. Both pities apply
        under either table: the 80-pull pity forces 5★, and the 10-pull
-       4★ pity forces a 4★-or-higher roll. */
+       4★ pity forces a roll inside the 4★–6★ pool. */
     var NEWBIE_LIMIT = 100;
     var NEWBIE_RATES = [
       { stars: 7, pct: 0.5 }, { stars: 6, pct: 1 }, { stars: 5, pct: 2 },
@@ -3340,11 +3376,12 @@
     function activeRates(totalSummons) {
       return isNewbieActive(totalSummons) ? NEWBIE_RATES : RATES;
     }
-    /* 4★ pity roll: pick a tier from the 4★-and-above pool of the active
+    /* 4★ pity roll: pick a tier from the 4★–6★ pool of the active
        rate table, weighted by that table's own percentages — so the
-       guaranteed pull can still come out 5★, 6★ or 7★. */
+       guaranteed pull can still come out 5★ or 6★, but never 7★: a 7★
+       only ever comes from the normal rates roll. */
     function rollStars4Plus(totalSummons) {
-      var table = activeRates(totalSummons).filter(function (r) { return r.stars >= 4; });
+      var table = activeRates(totalSummons).filter(function (r) { return r.stars >= 4 && r.stars < 7; });
       var total = 0;
       table.forEach(function (r) { total += r.pct; });
       var r = Math.random() * total, acc = 0;
@@ -4869,7 +4906,7 @@
         h += '<div class="anime-card mt4 card-pad quest-done-card" role="region" aria-label="Quest complete: ' + esc(q.name) + '">';
         h += '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem"><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " Quest complete — " + esc(q.name) + '!</p><span class="quest-returned">✨ RETURNED</span></div>';
         h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">' + r.heroIds.map(function (id) { return esc(heroById(id).name); }).join(", ") + " came back " + (r.success ? "triumphant" : "battered — the haul is partial") + " · sent at " + Math.round(r.chance * 100) + "% odds.</p>";
-        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? esc(questRewardText(q)) : "Salvage: " + q.rewards.map(function (rw) { return materialById(rw.mat).icon + " ×" + Math.floor(rw.count / 2); }).join(" · ")) + "</p>";
+        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? esc(questRewardText(q)) : "Partial haul: " + esc(questFailRewardText(q))) + "</p>";
         h += '<button type="button" class="btn-wide anime-btn-gold" data-quest-collect="' + r.id + '" style="margin-top:0.75rem" aria-label="Collect rewards from ' + esc(q.name) + '">🎁 COLLECT REWARDS</button>';
         h += "</div>";
       });
@@ -5024,14 +5061,16 @@
       var next = JSON.parse(JSON.stringify(s));
       if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
       var gained = [];
+      // Success pays the listed rewards +50%; failure still brings home
+      // half of that — materials and gold alike.
       q.rewards.forEach(function (rw) {
-        var n = run.success ? rw.count : Math.floor(rw.count / 2);
+        var n = run.success ? questSuccessCount(rw) : questFailCount(rw);
         if (n > 0) {
           next.materials[rw.mat] = (next.materials[rw.mat] || 0) + n;
           gained.push(materialById(rw.mat).icon + " " + materialById(rw.mat).name + " ×" + n);
         }
       });
-      var gold = run.success ? q.gold : 0;
+      var gold = run.success ? questSuccessGold(q) : questFailGold(q);
       next.gold += gold;
       next.quests = next.quests.filter(function (r) { return r.id !== runId; });
       persist(next);
@@ -5039,7 +5078,7 @@
       playClearSfx();
       setNotice(run.success
         ? "📜 Quest complete — " + q.name + " was a triumph! Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + "."
-        : "📜 Quest complete — " + q.name + " didn't go to plan. The party salvaged what it could: " + (gained.length ? gained.join(" · ") : "nothing but stories") + ".");
+        : "📜 Quest complete — " + q.name + " didn't go to plan, but the party didn't come home empty-handed: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ".");
     }
 
     /* ============================== RENDER: SAVE CODE TAB ============================== */
@@ -5230,6 +5269,7 @@
       h += '<div class="summon-btns">';
       h += '<button type="button" class="summon-btn btn-lav" id="summon-1" ' + (s.gems < SUMMON_COST ? "disabled" : "") + ' aria-label="Summon once for ' + SUMMON_COST + ' gems">SUMMON ×1<br /><span class="cost dim">💎 ' + SUMMON_COST + "</span></button>";
       h += '<button type="button" class="summon-btn anime-btn-primary anim-glow" id="summon-10" ' + (s.gems < SUMMON10_COST ? "disabled" : "") + ' aria-label="Summon ten times for ' + SUMMON10_COST + ' gems">✨ SUMMON ×10 ✨<br /><span class="cost">💎 ' + SUMMON10_COST + " — save 100!</span></button>";
+      h += '<button type="button" class="summon-btn anime-btn-gold" id="summon-100" ' + (s.gems < SUMMON100_COST ? "disabled" : "") + ' aria-label="Summon one hundred times for ' + SUMMON100_COST + ' gems">🌟 SUMMON ×100 🌟<br /><span class="cost">💎 ' + SUMMON100_COST.toLocaleString("en-US") + " — save 1,000!</span></button>";
       h += "</div></div>";
       var newbie = isNewbieActive(s.totalSummons);
       var displayRates = activeRates(s.totalSummons);
@@ -5262,14 +5302,15 @@
     }
 
     /* ============================== GIFT CODES ==============================
-       Three gift codes, each claimable once per save. Claimed codes live
+       Four gift codes, each claimable once per save. Claimed codes live
        in the save itself (save.redeemedCodes), so the localStorage
        autosave — and save codes / cloud copies built from the save —
        keep them claimed after reload. */
     var GIFT_CODES = {
       WELCOME: { type: "gems", amount: 100 },
       MOONLIGHT: { type: "gems", amount: 50 },
-      ECHORIA100: { type: "gold", amount: 10000 }
+      ECHORIA100: { type: "gold", amount: 10000 },
+      ECHORIA10M: { type: "gold", amount: 10000000 }
     };
     function giftRewardLabel(r) {
       return "+" + r.amount.toLocaleString("en-US") + (r.type === "gems" ? " 💎 gems" : " 🪙 gold");
@@ -5573,9 +5614,9 @@
         }
         if (def.id === "han") {
           var erH = effRank(def, o);
-          h += '<p class="wren-box" style="border-color:rgba(229,72,77,0.5)">⚔️ Effective rank <span style="' + starTextStyle(erH) + '">' + starsStr(erH) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>7★</span> · Veteran's Insight ✓ party damage +5%/level" +
+          h += '<p class="wren-box" style="border-color:rgba(229,72,77,0.5)">⚔️ Effective rank <span style="' + starTextStyle(erH) + '">' + starsStr(erH) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>12★</span> · Veteran's Insight ✓ party damage +5%/level" +
             (erH >= 4 ? " · Duelist's Edge ✓ active (own damage +12%/level, growing +2% every 5s of battle up to +40%)" : " · something in him is still waking up…") +
-            (erH >= 7 ? " · 🌟 7★ REACHED — the 1-star who wouldn't die, all the way at the top." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 7★") + "</p>";
+            (erH >= 12 ? " · 🌟 12★ REACHED — the 1-star who wouldn't die, all the way at the top." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 12★") + "</p>";
         }
         if (def.id === "wren") {
           var er = effRank(def, o);
@@ -5585,21 +5626,29 @@
         }
         if (def.id === "vesper") {
           var erV = effRank(def, o);
-          h += '<p class="wren-box" style="border-color:rgba(232,195,74,0.45)">🎭 Effective rank <span style="' + starTextStyle(erV) + '">' + starsStr(erV) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>7★</span> · Marionette Waltz ✓ party damage +3%/level, enemy attack −2%/level · " +
-            (erV >= 7 ? "🌟 7★ REACHED — the little puppet bows; the whole tower is her stage now." : (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 7★") + "</p>";
+          h += '<p class="wren-box" style="border-color:rgba(232,195,74,0.45)">🎭 Effective rank <span style="' + starTextStyle(erV) + '">' + starsStr(erV) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>8★</span> · Marionette Waltz ✓ party damage +3%/level, enemy attack −2%/level · " +
+            (erV >= 8 ? "🌟 8★ REACHED — the little puppet bows; the whole tower is her stage now." : (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 8★") + "</p>";
         }
         if (def.id === "orin") {
           var erOr = effRank(def, o);
-          h += '<p class="wren-box" style="border-color:rgba(224,154,62,0.5)">🎵 Effective rank <span style="' + starTextStyle(erOr) + '">' + starsStr(erOr) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>7★</span> · Ballad of the Paradise ✓ healing + party damage +3%/level · Verse of Light " +
+          h += '<p class="wren-box" style="border-color:rgba(224,154,62,0.5)">🎵 Effective rank <span style="' + starTextStyle(erOr) + '">' + starsStr(erOr) + '</span> <span class="dim">(' + def.stars + "★ base + " + o.asc + " synthesis)</span> — growth potential <span class='bold star-rainbow'>10★</span> · Ballad of the Paradise ✓ healing + party damage +3%/level · Verse of Light " +
             (erOr >= 5 ? "✓ active (party crit +3%/level)" : "🔒 unlocks at rank 5★") + " · Paradise Requiem " +
             (erOr >= 7 ? "✓ SUNG WHOLE (party damage +6%/level, healing +30%/level)" : "🔒 unlocks at rank 7★") +
-            (erOr >= 7 ? " · 🌟 7★ REACHED — the paradise sings again, all of it, and the Unmaking still cannot eat a single note." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 7★") + "</p>";
+            (erOr >= 10 ? " · 🌟 10★ REACHED — the paradise sings again, all of it, and the Unmaking still cannot eat a single note." : " · " + (maxAsc(def) - o.asc) + " more " + ((maxAsc(def) - o.asc) === 1 ? "synthesis" : "syntheses") + " to reach 10★") + "</p>";
         }
         var cost = upgradeCost(def, o);
         var capped = o.level >= maxLevel(def, o);
+        var bulk5 = bulkUpgradeCost(def, o, 5);
+        var bulk10 = bulkUpgradeCost(def, o, 10);
+        var bulkMax = bulkUpgradeCost(def, o, Infinity);
         h += '<div class="detail-actions">';
         h += '<button type="button" class="btn-pill anime-btn-gold" id="upgrade-btn" ' + (s.gold < cost || capped ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize duplicates to raise it" : "Level up " + esc(def.name) + " for " + fmt(cost) + " gold") + '">' +
           (capped ? "⬆ MAX LEVEL — Synthesize to raise cap" : "⬆ Level Up! — 🪙 " + fmt(cost)) + "</button>";
+        h += '<div style="display:flex;gap:0.5rem;margin-top:0.5rem">';
+        h += '<button type="button" class="btn-pill anime-btn-sky" id="upgrade-bulk-5" style="flex:1" ' + (capped || s.gold < bulk5.cost ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize duplicates to raise it" : "Level up " + esc(def.name) + " by " + bulk5.levels + " levels for " + fmt(bulk5.cost) + " gold") + '">+5' + (capped ? "" : " — 🪙 " + fmt(bulk5.cost)) + "</button>";
+        h += '<button type="button" class="btn-pill anime-btn-sky" id="upgrade-bulk-10" style="flex:1" ' + (capped || s.gold < bulk10.cost ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize duplicates to raise it" : "Level up " + esc(def.name) + " by " + bulk10.levels + " levels for " + fmt(bulk10.cost) + " gold") + '">+10' + (capped ? "" : " — 🪙 " + fmt(bulk10.cost)) + "</button>";
+        h += '<button type="button" class="btn-pill anime-btn-sky" id="upgrade-bulk-max" style="flex:1" ' + (capped || s.gold < bulkMax.cost ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize duplicates to raise it" : "Level up " + esc(def.name) + " to their level cap, level " + maxLevel(def, o) + ", for " + fmt(bulkMax.cost) + " gold") + '">Max' + (capped ? "" : " — 🪙 " + fmt(bulkMax.cost)) + "</button>";
+        h += "</div>";
         if (o.asc >= maxAsc(def)) {
           h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
         } else {
@@ -5685,6 +5734,8 @@
       if (s1) s1.addEventListener("click", function () { doSummon(1); });
       var s10 = document.getElementById("summon-10");
       if (s10) s10.addEventListener("click", function () { doSummon(10); });
+      var s100 = document.getElementById("summon-100");
+      if (s100) s100.addEventListener("click", function () { doSummon(100); });
       var redeemBtn = document.getElementById("redeem-code-btn");
       if (redeemBtn) redeemBtn.addEventListener("click", redeemGiftCode);
       var redeemInput = document.getElementById("redeem-code-input");
@@ -5704,6 +5755,12 @@
       if (close) close.addEventListener("click", function () { selectedHero = null; expandedHero = null; renderMain(); });
       var up = document.getElementById("upgrade-btn");
       if (up) up.addEventListener("click", function () { upgradeHero(selectedHero); });
+      var b5 = document.getElementById("upgrade-bulk-5");
+      if (b5) b5.addEventListener("click", function () { upgradeHeroBulk(selectedHero, 5); });
+      var b10 = document.getElementById("upgrade-bulk-10");
+      if (b10) b10.addEventListener("click", function () { upgradeHeroBulk(selectedHero, 10); });
+      var bmax = document.getElementById("upgrade-bulk-max");
+      if (bmax) bmax.addEventListener("click", function () { upgradeHeroBulk(selectedHero, Infinity); });
       var sb = document.getElementById("synth-btn");
       if (sb) sb.addEventListener("click", function () { synthesizeHero(selectedHero); });
       var pb = document.getElementById("party-btn");
@@ -5791,9 +5848,9 @@
     function doSummon(count) {
       var s = save;
       if (!s || pulls) return;
-      var cost = count === 10 ? SUMMON10_COST : SUMMON_COST;
+      var cost = count === 100 ? SUMMON100_COST : count === 10 ? SUMMON10_COST : SUMMON_COST;
       if (s.gems < cost) {
-        setNotice("Not enough gems — a " + (count === 10 ? "10-summon" : "summon") + " costs " + cost + " 💎. Boss floors and every 5th floor pay gems.");
+        setNotice("Not enough gems — a " + (count === 100 ? "100-summon" : count === 10 ? "10-summon" : "summon") + " costs " + cost + " 💎. Boss floors and every 5th floor pay gems.");
         return;
       }
       var next = JSON.parse(JSON.stringify(s));
@@ -5850,6 +5907,36 @@
       next.heroes[id] = { level: o.level + 1, dupes: o.dupes, asc: o.asc };
       persist(next);
     }
+    /* Bulk level-ups (+5 / +10 / Max): the cost is the sum of each covered
+       level's own upgradeCost, and the run stops at the level cap — so a +5
+       with only 3 levels left buys (and charges for) exactly those 3. The
+       full bulk cost must be affordable — no partial buys. */
+    function bulkUpgradeCost(def, o, count) {
+      var levels = Math.max(0, Math.min(count, maxLevel(def, o) - o.level));
+      var cost = 0;
+      for (var i = 0; i < levels; i++) cost += upgradeCost(def, { level: o.level + i, dupes: o.dupes, asc: o.asc });
+      return { levels: levels, cost: cost };
+    }
+    function upgradeHeroBulk(id, count) {
+      var s = save;
+      if (!s || !id) return;
+      var o = s.heroes[id];
+      if (!o) return;
+      var def = heroById(id);
+      var bc = bulkUpgradeCost(def, o, count);
+      if (bc.levels <= 0) {
+        setNotice(def.name + " has hit the level cap for their star rank (Lv " + maxLevel(def, o) + "). Meet the synthesis requirements in their detail panel and tap Synthesize to raise their rank — and the cap.");
+        return;
+      }
+      if (s.gold < bc.cost) {
+        setNotice("Not enough gold — " + def.name + " needs " + fmt(bc.cost) + " gold to level up " + bc.levels + "× to Lv " + (o.level + bc.levels) + ".");
+        return;
+      }
+      var next = JSON.parse(JSON.stringify(s));
+      next.gold -= bc.cost;
+      next.heroes[id] = { level: o.level + bc.levels, dupes: o.dupes, asc: o.asc };
+      persist(next);
+    }
     /* Manual synthesis: spends banked copies, gems, and (from #3 on)
        dungeon materials — but only when every requirement is met:
        current-rank max level included. Gains are unchanged: +25%
@@ -5879,7 +5966,7 @@
       persist(next);
       writeSave();
       playClearSfx();
-      setNotice("✦ SYNTHESIS COMPLETE! " + def.name + " rises to synthesis rank " + no.asc + " — effective rank " + effRank(def, no) + "★ · level cap " + maxLevel(def, no) + " · skill Lv " + skillLevel(no) + (effRank(def, no) >= 7 && def.stars < 7 ? " · 🌟 7★ growth potential REACHED!" : "") + "!");
+      setNotice("✦ SYNTHESIS COMPLETE! " + def.name + " rises to synthesis rank " + no.asc + " — effective rank " + effRank(def, no) + "★ · level cap " + maxLevel(def, no) + " · skill Lv " + skillLevel(no) + (effRank(def, no) >= def.stars + maxAsc(def) && def.stars < 7 ? " · 🌟 " + effRank(def, no) + "★ growth potential REACHED!" : "") + "!");
       if (tab === "heroes") renderMain();
     }
     function setFightFloor(target) {
@@ -6490,13 +6577,27 @@
     function showPullsModal() {
       var root = document.getElementById("modal-root");
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Summon results">';
-      h += '<div class="anime-card modal-card" style="max-width:32rem;border-color:#ff7eb6;box-shadow:0 0 50px rgba(255,126,182,0.4)">';
+      h += '<div class="anime-card modal-card" style="max-width:' + (pulls.length > 10 ? "42rem" : "32rem") + ';border-color:#ff7eb6;box-shadow:0 0 50px rgba(255,126,182,0.4)">';
       h += '<span aria-hidden="true" class="sparkle anim-twinkle" style="left:16px;top:12px;color:#ffd94d">✦</span>';
       h += '<span aria-hidden="true" class="sparkle anim-twinkle" style="right:16px;top:12px;color:#ff9ecf;animation-delay:0.9s">✦</span>';
       h += '<h2 class="anime-title font-display center" style="font-size:1.5rem;font-weight:700;margin:0">☆ THE TOWER ANSWERS ☆</h2>';
-      h += '<div class="pull-grid ' + (pulls.length > 1 ? "multi" : "single") + '">';
+      if (pulls.length > 10) {
+        var best = pulls.filter(function (r) { return r.hero.stars >= 5; }).slice().sort(function (a, b) { return b.hero.stars - a.hero.stars; });
+        var newCount = pulls.filter(function (r) { return r.isNew; }).length;
+        var tiers = [7, 6, 5, 4, 3].map(function (t) { return { t: t, n: pulls.filter(function (r) { return r.hero.stars === t; }).length }; }).filter(function (x) { return x.n > 0; });
+        h += '<div style="margin-top:0.75rem;border-radius:16px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem 1rem;text-align:left">';
+        h += '<p class="font-display" style="font-size:1rem;font-weight:600;margin:0">' + pulls.length + ' heroes answered · ' + newCount + ' brand new</p>';
+        h += '<p class="xs bold dim" style="margin-top:0.25rem">' + tiers.map(function (x) { return starsStr(x.t) + " ×" + x.n; }).join("  ·  ") + '</p>';
+        if (best.length > 0) {
+          h += '<p class="small" style="margin-top:0.5rem;font-weight:700">🌟 Best pulls: ' + best.map(function (r) { return '<span style="' + starTextStyle(r.hero.stars) + '">' + esc(r.hero.name) + ' (' + r.hero.stars + '★)</span>' + (r.isNew ? ' ✨NEW' : ''); }).join(", ") + '</p>';
+        } else {
+          h += '<p class="small bold dim" style="margin-top:0.5rem">No 5★+ this time — both pity counters keep climbing toward their guarantees.</p>';
+        }
+        h += '</div>';
+      }
+      h += '<div class="pull-grid ' + (pulls.length > 10 ? "multi compact" : pulls.length > 1 ? "multi" : "single") + '">';
       pulls.forEach(function (r, i) {
-        h += '<div class="pull-card anim-summon-pop" style="border-color:' + starColor(r.hero.stars) + ";background:linear-gradient(165deg," + r.hero.color + "38, var(--surface2));animation-delay:" + (i * 110) + 'ms">';
+        h += '<div class="pull-card anim-summon-pop" style="border-color:' + starColor(r.hero.stars) + ";background:linear-gradient(165deg," + r.hero.color + "38, var(--surface2));animation-delay:" + (Math.min(i * (pulls.length > 10 ? 30 : 110), 1200)) + 'ms">';
         h += '<span class="portrait"><img src="' + AVATARS[r.hero.id] + '" alt="Anime portrait of ' + esc(r.hero.name) + ", " + esc(r.hero.title) + '" loading="lazy" /><span class="sticker" style="border-color:' + r.hero.color + '" aria-hidden="true">' + chibiSVG(r.hero, 30) + "</span></span>";
         h += '<p class="pname">' + esc(r.hero.name) + '</p><p style="' + starTextStyle(r.hero.stars) + ';font-size:0.875rem;margin:0">' + starsStr(r.hero.stars) + '</p><p class="xs bold dim" style="margin:0">' + esc(r.hero.cls) + "</p>";
         if (r.isNew) h += '<span class="pull-badge badge-new">✨ NEW!</span>';
