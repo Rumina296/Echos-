@@ -213,6 +213,7 @@
       .cur-gold { border-color: #ffd94d66; background: #ffd94d1f; }
       .cur-gems { border-color: #7dd3fc66; background: #7dd3fc1f; }
       .cur-floor { color: var(--dim); font-weight: 700; }
+      .cur-plus { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; flex: none; border-radius: 999px; border: 2px solid #ffd94d; background: #ffd94d33; color: #ffd94d; font-family: var(--font-display); font-size: 0.875rem; font-weight: 900; line-height: 1; cursor: pointer; }
       @media (max-width: 480px) { .cur-floor { display: none; } }
       nav.tabs { display: flex; gap: 0.375rem; }
       .tabbtn { border-radius: 999px; padding: 0.375rem 0.75rem; font-family: var(--font-display); font-size: 0.875rem; font-weight: 600; border: 2px solid var(--border); background: var(--surface); color: var(--text); }
@@ -1168,10 +1169,10 @@
         pity: 0, pity4: 0, totalSummons: 0, totalClears: 0, totalGrindClears: 0,
         lastSeen: now, seenOffline: now,
         starterId: starter.id, starterSeen: false, keeperSeen: false,
-        dailyStreak: 1, dailyLastClaim: null,
+        dailyStreak: 1, dailyLastClaim: null, lastBigExchange: null, smallExchange: { date: "", counts: {} },
         materials: { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: [], equipped: {},
-        dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 },
+        dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 }, dungeonExtra: { ember: 0, frost: 0, star: 0 },
         redeemedCodes: [],
         redeemedGiftIds: [],
         floorMemory: {},
@@ -1238,6 +1239,21 @@
         if (typeof merged.dailyStreak !== "number" || merged.dailyStreak < 1 || merged.dailyStreak > 7) merged.dailyStreak = 1;
         else merged.dailyStreak = Math.floor(merged.dailyStreak);
         if (typeof merged.dailyLastClaim !== "string") merged.dailyLastClaim = null;
+        // Migration: older saves have never used the big daily exchange.
+        if (typeof merged.lastBigExchange !== "string") merged.lastBigExchange = null;
+        // Migration: older saves have no small-exchange daily counts — no tier
+        // has been used yet. Sanitize: counts are whole uses, clamped to the
+        // 5-per-tier daily cap.
+        if (!merged.smallExchange || typeof merged.smallExchange.date !== "string" || !merged.smallExchange.counts || typeof merged.smallExchange.counts !== "object") {
+          merged.smallExchange = { date: "", counts: {} };
+        } else {
+          var cleanSmall = {};
+          for (var k in merged.smallExchange.counts) {
+            var v = merged.smallExchange.counts[k];
+            if (typeof v === "number" && v > 0) cleanSmall[k] = Math.min(SMALL_EXCHANGE_PER_DAY, Math.floor(v));
+          }
+          merged.smallExchange = { date: merged.smallExchange.date, counts: cleanSmall };
+        }
         // --- Equipment / Dungeon fields (added later; older saves get defaults) ---
         var mats = { iron: 0, moon: 0, scale: 0, essence: 0 };
         if (p.materials && typeof p.materials === "object") {
@@ -1274,10 +1290,18 @@
         var dr = { ember: 0, frost: 0, star: 0 };
         if (p.dungeonRuns && typeof p.dungeonRuns === "object") {
           ["ember", "frost", "star"].forEach(function (dk) {
-            if (typeof p.dungeonRuns[dk] === "number" && p.dungeonRuns[dk] >= 0) dr[dk] = Math.min(3, Math.floor(p.dungeonRuns[dk]));
+            if (typeof p.dungeonRuns[dk] === "number" && p.dungeonRuns[dk] >= 0) dr[dk] = Math.min(6, Math.floor(p.dungeonRuns[dk]));
           });
         }
         merged.dungeonRuns = dr;
+        // Extra runs bought with gems (added later; older saves bought none).
+        var dx = { ember: 0, frost: 0, star: 0 };
+        if (p.dungeonExtra && typeof p.dungeonExtra === "object") {
+          ["ember", "frost", "star"].forEach(function (dk) {
+            if (typeof p.dungeonExtra[dk] === "number" && p.dungeonExtra[dk] >= 0) dx[dk] = Math.min(3, Math.floor(p.dungeonExtra[dk]));
+          });
+        }
+        merged.dungeonExtra = dx;
         // --- Gift codes (added later; older saves get an empty list) ---
         var rc = [];
         if (Array.isArray(p.redeemedCodes)) {
@@ -1382,10 +1406,10 @@
         pity: save.pity, pity4: typeof save.pity4 === "number" ? save.pity4 : 0, totalSummons: save.totalSummons,
         totalClears: save.totalClears, totalGrindClears: save.totalGrindClears || 0,
         starterId: save.starterId || null, starterSeen: !!save.starterSeen, keeperSeen: save.keeperSeen ? 1 : 0,
-        dailyStreak: save.dailyStreak || 1, dailyLastClaim: save.dailyLastClaim || null,
+        dailyStreak: save.dailyStreak || 1, dailyLastClaim: save.dailyLastClaim || null, lastBigExchange: save.lastBigExchange || null, smallExchange: save.smallExchange || { date: "", counts: {} },
         materials: save.materials || { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: save.gearInv || [], equipped: save.equipped || {},
-        dungeonDate: save.dungeonDate || null, dungeonRuns: save.dungeonRuns || { ember: 0, frost: 0, star: 0 },
+        dungeonDate: save.dungeonDate || null, dungeonRuns: save.dungeonRuns || { ember: 0, frost: 0, star: 0 }, dungeonExtra: save.dungeonExtra || { ember: 0, frost: 0, star: 0 },
         redeemedCodes: save.redeemedCodes || [],
         floorMemory: save.floorMemory || {},
         graveKills: save.graveKills || 0,
@@ -1423,9 +1447,9 @@
         pity: payload.pity, pity4: payload.pity4, totalSummons: payload.totalSummons,
         totalClears: payload.totalClears, totalGrindClears: payload.totalGrindClears,
         starterId: payload.starterId, starterSeen: payload.starterSeen, keeperSeen: payload.keeperSeen === 1 || payload.keeperSeen === true,
-        dailyStreak: payload.dailyStreak, dailyLastClaim: payload.dailyLastClaim,
+        dailyStreak: payload.dailyStreak, dailyLastClaim: payload.dailyLastClaim, lastBigExchange: payload.lastBigExchange, smallExchange: payload.smallExchange,
         materials: payload.materials, gearInv: payload.gearInv, equipped: payload.equipped,
-        dungeonDate: payload.dungeonDate, dungeonRuns: payload.dungeonRuns,
+        dungeonDate: payload.dungeonDate, dungeonRuns: payload.dungeonRuns, dungeonExtra: payload.dungeonExtra,
         redeemedCodes: payload.redeemedCodes,
         floorMemory: payload.floorMemory, graveKills: payload.graveKills, quests: payload.quests,
         sorenV2: payload.sorenV2 === 1 || payload.sorenV2 === true,
@@ -2401,6 +2425,23 @@
       return tier === "normal" ? Math.max(min, scaled) : Math.max(base, scaled);
     }
     function dungeonById(id) { for (var i = 0; i < DUNGEONS.length; i++) if (DUNGEONS[i].id === id) return DUNGEONS[i]; return DUNGEONS[0]; }
+    /* ---------- Extra dungeon runs (gems) ----------
+       On top of the 3 free daily runs, each dungeon sells up to 3 extra
+       runs per day for gems — priced per dungeon below. Purchases live in
+       dungeonExtra under the same local calendar date as the free-run
+       counts (save.dungeonDate), so both reset together at local midnight. */
+    var DUNGEON_RUNS_PER_DAY = 3;
+    var DUNGEON_EXTRA_RUNS_PER_DAY = 3;
+    var DUNGEON_EXTRA_PRICES = { ember: 1000, frost: 2000, star: 5000 };
+    function dungeonExtraPrice(dgId) { return DUNGEON_EXTRA_PRICES[dgId] || 1000; }
+    function dungeonExtraPurchased(s, dgId) {
+      if (!s || s.dungeonDate !== dailyDateStr(new Date())) return 0;
+      var n = (s.dungeonExtra || {})[dgId] || 0;
+      return Math.max(0, Math.min(DUNGEON_EXTRA_RUNS_PER_DAY, Math.floor(n) || 0));
+    }
+    function dungeonExtraLeft(s, dgId) { return DUNGEON_EXTRA_RUNS_PER_DAY - dungeonExtraPurchased(s, dgId); }
+    function dungeonRunsAllowed(s, dgId) { return DUNGEON_RUNS_PER_DAY + dungeonExtraPurchased(s, dgId); }
+    function dungeonRunsLeft(s, dgId) { return dungeonRunsAllowed(s, dgId) - (((s.dungeonRuns || {})[dgId]) || 0); }
     /* Forge recipes: cost is fixed; the STAR result comes from the
        hammer-timing game, floored by the recipe (see forgeStarsFor).
        Hammer speed is per-recipe and constant for all 3 strikes —
@@ -2451,8 +2492,10 @@
       if (save.dungeonDate !== today) {
         save.dungeonDate = today;
         save.dungeonRuns = { ember: 0, frost: 0, star: 0 };
+        save.dungeonExtra = { ember: 0, frost: 0, star: 0 };
         dirty = true;
       }
+      if (!save.dungeonExtra || typeof save.dungeonExtra !== "object") save.dungeonExtra = { ember: 0, frost: 0, star: 0 };
       if (!save.materials) save.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
       if (!Array.isArray(save.gearInv)) save.gearInv = [];
       if (!save.equipped || typeof save.equipped !== "object") save.equipped = {};
@@ -4091,6 +4134,7 @@
     var tab = "battle";
     var heroesTab = "team";
     var pulls = null;
+    var showAllPulls = false;
     var offlineReport = null;
     var offlineDismissed = false;
     var selectedHero = null;
@@ -4366,8 +4410,15 @@
       var grinding = f < save.floor;
       cur.innerHTML =
         '<span class="cur-pill cur-gold" aria-label="Gold: ' + fmt(save.gold) + '">🪙 ' + fmt(save.gold) + "</span>" +
+        '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Open gem exchange — trade gems for gold">+</button>' +
         '<span class="cur-pill cur-gems" aria-label="Gems: ' + save.gems + '">💎 ' + save.gems.toLocaleString("en-US") + "</span>" +
         '<span class="cur-floor">' + (grinding ? "🔁 Grinding " + f + " · Highest " + save.floor : "Floor " + save.floor) + "</span>";
+      var exPlus = document.getElementById("exchange-plus");
+      if (exPlus) exPlus.addEventListener("click", function () {
+        var root = document.getElementById("modal-root");
+        if (root && root.innerHTML) return; // another modal is open — never stack overlays
+        showExchangeModal();
+      });
       var btns = document.querySelectorAll(".tabbtn");
       btns.forEach(function (b) {
         var on = b.getAttribute("data-tab") === tab;
@@ -4837,7 +4888,12 @@
       DUNGEONS.forEach(function (dg) {
         var unlocked = s.floor >= dg.unlock;
         var used = s.dungeonRuns[dg.id] || 0;
-        var left = 3 - used;
+        var allowed = dungeonRunsAllowed(s, dg.id);
+        var left = allowed - used;
+        var extraPurchased = dungeonExtraPurchased(s, dg.id);
+        var extraLeft = DUNGEON_EXTRA_RUNS_PER_DAY - extraPurchased;
+        var extraPrice = dungeonExtraPrice(dg.id);
+        var canAffordExtra = s.gems >= extraPrice;
         h += '<div class="dungeon-card' + (unlocked ? "" : " locked") + '"><p class="dg-icon" aria-hidden="true">' + dg.icon + '</p><p class="dg-name">' + esc(dg.name) + '</p>';
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
         h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + " · 🪙 " + dg.gold.toLocaleString("en-US") + " gold</p>";
@@ -4845,13 +4901,15 @@
         if (!unlocked) {
           h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#fda4af">🔒 Unlocks at Tower Floor ' + dg.unlock + " (you're on " + s.floor + ")</p>";
         } else {
-          h += '<p class="xs bold dim" style="margin-top:0.5rem">Runs left today: ' + left + " / 3</p>";
+          h += '<p class="xs bold dim" style="margin-top:0.5rem">Runs left today: ' + left + " / " + allowed + "</p>";
           h += '<button type="button" class="btn-pill anime-btn-primary" data-dungeon-run="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (left <= 0 || dungeonBattle ? "disabled" : "") + ' aria-label="Run ' + esc(dg.name) + '">' + (left <= 0 ? "Done for today — back tomorrow!" : dungeonBattle ? "Delving…" : "▶ Run Dungeon (free)") + "</button>";
+          h += '<button type="button" class="btn-pill anime-btn-gold" data-dungeon-extra="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (extraLeft <= 0 || !canAffordExtra || dungeonBattle ? "disabled" : "") + ' aria-label="' + (extraLeft <= 0 ? esc(dg.name) + ": all " + DUNGEON_EXTRA_RUNS_PER_DAY + " extra runs bought today" : !canAffordExtra ? "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, not enough gems (you hold " + s.gems.toLocaleString("en-US") + ")" : "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, " + extraLeft + " left today") + '">' + (extraLeft <= 0 ? "🎟️ Extra runs maxed today" : "🎟️ Buy extra run — " + extraPrice.toLocaleString("en-US") + "💎 (" + extraLeft + " left)") + "</button>";
+          h += '<p class="xs bold dim center" style="margin-top:0.375rem">' + (extraPurchased > 0 ? extraPurchased + " extra run" + (extraPurchased === 1 ? "" : "s") + " bought today · " : "") + "You hold " + s.gems.toLocaleString("en-US") + "💎" + (extraLeft > 0 && !canAffordExtra ? " · need " + (extraPrice - s.gems).toLocaleString("en-US") + " more for an extra run" : "") + "</p>";
         }
         h += "</div>";
       });
       h += "</div>";
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). Your current party delves as-is — gear, skills and synergies all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills and synergies all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
 
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
@@ -5220,6 +5278,7 @@
       selectedSlot = -1;
       questPicks = {};
       pulls = null;
+      showAllPulls = false;
       offlineReport = null;
       offlineDismissed = false;
       lunaScene = false;
@@ -5822,6 +5881,9 @@
       main.querySelectorAll("[data-dungeon-run]").forEach(function (el) {
         el.addEventListener("click", function () { startDungeonRun(el.getAttribute("data-dungeon-run")); });
       });
+      main.querySelectorAll("[data-dungeon-extra]").forEach(function (el) {
+        el.addEventListener("click", function () { buyExtraDungeonRun(el.getAttribute("data-dungeon-extra")); });
+      });
       main.querySelectorAll("[data-forge-slot]").forEach(function (el) {
         el.addEventListener("click", function () { forgeSlot = el.getAttribute("data-forge-slot"); renderMain(); });
       });
@@ -5848,7 +5910,105 @@
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
     }
 
+    /* Small gem-exchange tiers: each of the three small tiers (100 / 500 /
+       1,000 💎) can be used up to 5 times per local calendar day. The counts
+       live in smallExchange under the same dailyDateStr() date stamp as the
+       big exchange and the daily login, so all of them reset at local
+       midnight. */
+    var SMALL_EXCHANGE_PER_DAY = 5;
+    function smallExchangeUsed(s, gemCost) {
+      if (!s.smallExchange || s.smallExchange.date !== dailyDateStr(new Date())) return 0;
+      var n = s.smallExchange.counts[String(gemCost)] || 0;
+      return Math.max(0, Math.min(SMALL_EXCHANGE_PER_DAY, Math.floor(n) || 0));
+    }
+    function smallExchangeLeft(s, gemCost) {
+      return SMALL_EXCHANGE_PER_DAY - smallExchangeUsed(s, gemCost);
+    }
+
     /* ============================== ACTIONS ============================== */
+    /* Gem exchange panel (opened from the + button beside the header
+       gold): the same tiers as before — 1 gem = 300 gold in three preset
+       bundles, plus the big daily exchange. Renders into #modal-root,
+       the single overlay slot, so it can never stack with the daily or
+       account modals. */
+    function showExchangeModal() {
+      var root = document.getElementById("modal-root");
+      if (!root) return;
+      var s = save;
+      var bigUsedToday = s.lastBigExchange === dailyDateStr(new Date());
+      var h = '<div class="overlay" id="exchange-modal" role="dialog" aria-modal="true" aria-label="Gem exchange">';
+      h += '<div class="anime-card modal-card" style="max-width:24rem;border-color:#ffd94d;box-shadow:0 0 44px rgba(255,217,77,0.3);text-align:center">';
+      h += '<button type="button" id="exchange-close" aria-label="Close gem exchange" style="position:absolute;right:0.75rem;top:0.75rem;border-radius:999px;border:2px solid var(--border);background:var(--surface2);padding:0.125rem 0.625rem;font-size:0.875rem;font-weight:900">✕</button>';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">💰</p>';
+      h += '<h2 class="anime-title font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">GEM EXCHANGE</h2>';
+      h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">Trade gems for gold — 1 💎 = 300 gold, paid out instantly.</p>';
+      h += '<p class="small" style="margin-top:0.5rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems · 🪙 " + fmt(s.gold) + " gold</p>";
+      h += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:0.5rem;margin-top:0.625rem">';
+      [100, 500, 1000].forEach(function (gemCost) {
+        var left = smallExchangeLeft(s, gemCost);
+        h += '<div style="display:flex;flex-direction:column;align-items:center;gap:0.25rem">';
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="exchange-' + gemCost + '" ' + (s.gems < gemCost || left <= 0 ? "disabled" : "") + ' aria-label="' + (left <= 0 ? "Exchange " + gemCost + " gems for " + (gemCost * 300).toLocaleString("en-US") + " gold — no uses left today, resets at midnight" : "Exchange " + gemCost + " gems for " + (gemCost * 300).toLocaleString("en-US") + " gold — " + left + " of " + SMALL_EXCHANGE_PER_DAY + " uses left today") + '">💎 ' + gemCost + " → " + (gemCost * 300).toLocaleString("en-US") + " gold</button>";
+        h += '<span style="font-size:0.6875rem;font-weight:700;color:var(--dim)">' + left + " left today</span>";
+        h += "</div>";
+      });
+      h += "</div>";
+      h += '<p class="xs bold dim" style="margin-top:0.5rem">Each small tier can be used ' + SMALL_EXCHANGE_PER_DAY + " times a day — uses reset at midnight.</p>";
+      h += '<div style="margin-top:0.75rem;border-top:2px dashed var(--border);padding-top:0.75rem">';
+      h += '<button type="button" class="btn-pill anime-btn-primary" id="exchange-big" ' + (bigUsedToday || s.gems < 10000 ? "disabled" : "") + ' aria-label="' + (bigUsedToday ? "Big exchange already used today — 10,000 gems for 100,000,000 gold, available again tomorrow at midnight" : "Big daily exchange: 10,000 gems for 100,000,000 gold, once per day") + '">🌟 BIG EXCHANGE 🌟<br /><span style="font-size:0.75rem">💎 10,000 → 100,000,000 gold · once a day</span></button>';
+      h += '<p class="xs bold dim" style="margin-top:0.375rem">' + (bigUsedToday ? "✅ Used today — the big exchange opens again at midnight tonight." : "One big exchange per day — it resets at midnight.") + "</p>";
+      h += "</div></div></div>";
+      root.innerHTML = h;
+      document.getElementById("exchange-close").addEventListener("click", function () { root.innerHTML = ""; });
+      [100, 500, 1000].forEach(function (gemCost) {
+        var b = document.getElementById("exchange-" + gemCost);
+        if (b) b.addEventListener("click", function () { exchangeGems(gemCost); });
+      });
+      var big = document.getElementById("exchange-big");
+      if (big) big.addEventListener("click", function () { exchangeGemsBig(); });
+    }
+
+    /* Gems-for-gold exchange (panel opened from the + button beside the
+       header gold): a flat 1 gem = 300 gold rate, sold in three preset
+       bundles. Instant and permanent — gems out, gold in, saved like any
+       other spend. Each small tier is capped at 5 uses per local calendar
+       day (counts in smallExchange, same dailyDateStr() stamp as the big
+       exchange), resetting at local midnight. */
+    function exchangeGems(gemCost) {
+      var s = save;
+      if (!s || s.gems < gemCost) return;
+      if (smallExchangeLeft(s, gemCost) <= 0) return;
+      var goldGain = gemCost * 300;
+      var today = dailyDateStr(new Date());
+      var counts = s.smallExchange && s.smallExchange.date === today ? JSON.parse(JSON.stringify(s.smallExchange.counts)) : {};
+      counts[String(gemCost)] = (counts[String(gemCost)] || 0) + 1;
+      var next = JSON.parse(JSON.stringify(s));
+      next.gems -= gemCost;
+      next.gold += goldGain;
+      next.smallExchange = { date: today, counts: counts };
+      persist(next);
+      writeSave();
+      setNotice("💰 Exchanged " + gemCost + " 💎 for " + goldGain.toLocaleString("en-US") + " gold!");
+      if (document.getElementById("exchange-modal")) showExchangeModal();
+    }
+
+    /* The big daily exchange: 10,000 💎 → 100,000,000 gold, once per local
+       calendar day (same dailyDateStr() date stamp as the daily login and
+       the dungeon-run reset). */
+    function exchangeGemsBig() {
+      var s = save;
+      if (!s) return;
+      if (s.lastBigExchange === dailyDateStr(new Date())) return;
+      if (s.gems < 10000) return;
+      var next = JSON.parse(JSON.stringify(s));
+      next.gems -= 10000;
+      next.gold += 100000000;
+      next.lastBigExchange = dailyDateStr(new Date());
+      persist(next);
+      writeSave();
+      setNotice("💰 BIG EXCHANGE! 10,000 💎 became 100,000,000 gold — see you tomorrow for the next one!");
+      if (document.getElementById("exchange-modal")) showExchangeModal();
+    }
+
     function doSummon(count) {
       var s = save;
       if (!s || pulls) return;
@@ -5884,6 +6044,7 @@
       next.pity4 = pity4;
       next.totalSummons = s.totalSummons + count;
       pulls = results;
+      showAllPulls = false;
       persist(next);
       renderMain();
       showPullsModal();
@@ -6368,7 +6529,15 @@
       normalizeDungeon();
       var dg = dungeonById(dgId);
       if (save.floor < dg.unlock) { setNotice("🔒 " + dg.name + " unlocks at Tower Floor " + dg.unlock + "."); return; }
-      if ((save.dungeonRuns[dgId] || 0) >= 3) { setNotice("You've used all 3 runs of " + dg.name + " today — back tomorrow!"); return; }
+      var usedRuns = (save.dungeonRuns[dgId] || 0);
+      var allowedRuns = dungeonRunsAllowed(save, dgId);
+      if (usedRuns >= allowedRuns) {
+        var extraLeftNow = dungeonExtraLeft(save, dgId);
+        setNotice(extraLeftNow > 0
+          ? "🌙 " + dg.name + " has used all " + allowedRuns + " of today's runs — buy an extra run below for " + dungeonExtraPrice(dgId).toLocaleString("en-US") + "💎 (" + extraLeftNow + " left to buy today), or come back tomorrow!"
+          : "🌙 " + dg.name + " is exhausted for today — " + allowedRuns + " runs a day (including every extra run), and the depths need their rest. Come back tomorrow!");
+        return;
+      }
       var baseHp = monsterMaxHp(dg.unlock);
       dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: Math.round(baseHp * dg.hpMult), enemyHp: Math.round(baseHp * dg.hpMult), lastTick: performance.now(), atkTimers: {} };
       lastDungeonReward = null;
@@ -6377,6 +6546,36 @@
       setNotice(dg.icon + " Your party delves into " + dg.name + " — " + dg.waves + " waves. Fight!");
       if (dungeonTimer) window.clearInterval(dungeonTimer);
       dungeonTimer = window.setInterval(dungeonTick, 150);
+    }
+    /* Buy one extra run of a dungeon for gems: +1 to today's allowed runs
+       for that dungeon only, capped at 3 extra per dungeon per day. The
+       purchase is stamped under today's date, so it expires at local
+       midnight with the free runs. The run itself is still charged on
+       clear, like every run in this copy. */
+    function buyExtraDungeonRun(dgId) {
+      normalizeDungeon();
+      var dg = dungeonById(dgId);
+      if (save.floor < dg.unlock) { setNotice("🔒 " + dg.name + " unlocks at Tower Floor " + dg.unlock + "."); return; }
+      var price = dungeonExtraPrice(dgId);
+      var purchased = dungeonExtraPurchased(save, dgId);
+      if (purchased >= DUNGEON_EXTRA_RUNS_PER_DAY) {
+        setNotice("🎟️ " + dg.name + " already has all " + DUNGEON_EXTRA_RUNS_PER_DAY + " extra runs for today — the depths need their rest. Come back tomorrow!");
+        return;
+      }
+      if (save.gems < price) {
+        setNotice("💎 Not enough gems — an extra " + dg.name + " run costs " + price.toLocaleString("en-US") + "💎 and you hold " + save.gems.toLocaleString("en-US") + "💎.");
+        return;
+      }
+      var next = JSON.parse(JSON.stringify(save));
+      if (!next.dungeonExtra) next.dungeonExtra = { ember: 0, frost: 0, star: 0 };
+      next.dungeonExtra[dgId] = purchased + 1;
+      next.gems -= price;
+      persist(next);
+      writeSave();
+      var left = dungeonRunsLeft(next, dgId);
+      var extraLeft = dungeonExtraLeft(next, dgId);
+      setNotice("🎟️ Extra run bought for " + dg.name + " — " + price.toLocaleString("en-US") + "💎 spent. " + left + " run" + (left === 1 ? "" : "s") + " left here today (" + extraLeft + " extra left to buy today).");
+      renderMain();
     }
     function dungeonTick() {
       if (!dungeonBattle || !save) { if (dungeonTimer) window.clearInterval(dungeonTimer); dungeonTimer = null; return; }
@@ -6450,7 +6649,7 @@
       writeSave();
       playClearSfx();
       renderMain();
-      setNotice("🎉 " + dg.name + " cleared! " + LUCK_INFO[luck].emoji + " " + LUCK_INFO[luck].label + " Hauled out: " + lastDungeonReward + ". Runs left today: " + (3 - next.dungeonRuns[dgId]) + ".");
+      setNotice("🎉 " + dg.name + " cleared! " + LUCK_INFO[luck].emoji + " " + LUCK_INFO[luck].label + " Hauled out: " + lastDungeonReward + ". Runs left today: " + (dungeonRunsAllowed(next, dgId) - next.dungeonRuns[dgId]) + ".");
     }
 
     /* ---- Forge: hammer-timing skill game ----
@@ -6578,6 +6777,19 @@
     }
 
     /* ============================== MODALS ============================== */
+    /* One pull card — shared by the condensed notable grid and the full
+       grid, so 1x/10x results render exactly as before. delayIdx is the
+       index used for the staggered pop-in animation. */
+    function pullCardHTML(r, delayIdx) {
+      var h = '<div class="pull-card anim-summon-pop" style="border-color:' + starColor(r.hero.stars) + ";background:linear-gradient(165deg," + r.hero.color + "38, var(--surface2));animation-delay:" + (Math.min(delayIdx * (pulls.length > 10 ? 30 : 110), 1200)) + 'ms">';
+      h += '<span class="portrait"><img src="' + AVATARS[r.hero.id] + '" alt="Anime portrait of ' + esc(r.hero.name) + ", " + esc(r.hero.title) + '" loading="lazy" /><span class="sticker" style="border-color:' + r.hero.color + '" aria-hidden="true">' + chibiSVG(r.hero, 30) + "</span></span>";
+      h += '<p class="pname">' + esc(r.hero.name) + '</p><p style="' + starTextStyle(r.hero.stars) + ';font-size:0.875rem;margin:0">' + starsStr(r.hero.stars) + '</p><p class="xs bold dim" style="margin:0">' + esc(r.hero.cls) + "</p>";
+      if (r.isNew) h += '<span class="pull-badge badge-new">✨ NEW!</span>';
+      else if (r.dupeToAsc) h += '<span class="pull-badge badge-asc">SYNTHESIS ⬆ RANK UP!</span>';
+      else h += '<p class="xs bold dim" style="margin-top:0.25rem">Duplicate — copy banked</p>';
+      h += "</div>";
+      return h;
+    }
     function showPullsModal() {
       var root = document.getElementById("modal-root");
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Summon results">';
@@ -6599,22 +6811,52 @@
         }
         h += '</div>';
       }
-      h += '<div class="pull-grid ' + (pulls.length > 10 ? "multi compact" : pulls.length > 1 ? "multi" : "single") + '">';
-      pulls.forEach(function (r, i) {
-        h += '<div class="pull-card anim-summon-pop" style="border-color:' + starColor(r.hero.stars) + ";background:linear-gradient(165deg," + r.hero.color + "38, var(--surface2));animation-delay:" + (Math.min(i * (pulls.length > 10 ? 30 : 110), 1200)) + 'ms">';
-        h += '<span class="portrait"><img src="' + AVATARS[r.hero.id] + '" alt="Anime portrait of ' + esc(r.hero.name) + ", " + esc(r.hero.title) + '" loading="lazy" /><span class="sticker" style="border-color:' + r.hero.color + '" aria-hidden="true">' + chibiSVG(r.hero, 30) + "</span></span>";
-        h += '<p class="pname">' + esc(r.hero.name) + '</p><p style="' + starTextStyle(r.hero.stars) + ';font-size:0.875rem;margin:0">' + starsStr(r.hero.stars) + '</p><p class="xs bold dim" style="margin:0">' + esc(r.hero.cls) + "</p>";
-        if (r.isNew) h += '<span class="pull-badge badge-new">✨ NEW!</span>';
-        else if (r.dupeToAsc) h += '<span class="pull-badge badge-asc">SYNTHESIS ⬆ RANK UP!</span>';
-        else h += '<p class="xs bold dim" style="margin-top:0.25rem">Duplicate — copy banked</p>';
+      /* 100x results are condensed: summary + SKIP + notable pulls + folded
+         duplicates, with a toggle for the full grid. 1x/10x render the
+         full grid exactly as before. */
+      if (pulls.length > 10 && !showAllPulls) {
+        var notable = [];
+        pulls.forEach(function (r, i) { if (r.hero.stars >= 4 || r.isNew) notable.push({ r: r, i: i }); });
+        var folded = [1, 2, 3].map(function (t) { return { t: t, n: pulls.filter(function (r) { return r.hero.stars === t && !r.isNew; }).length }; }).filter(function (x) { return x.n > 0; });
+        h += '<button type="button" class="btn-wide anime-btn-gold" id="pulls-skip" aria-label="Skip the results — collect all summoned heroes and return to the Summon tab">⏭ SKIP — COLLECT ALL</button>';
+        if (notable.length > 0) {
+          h += '<p class="xs bold dim" style="margin-top:1rem;text-align:left;letter-spacing:0.15em">✨ NOTABLE PULLS · ' + notable.length + '</p>';
+          h += '<div class="pull-grid multi compact">';
+          notable.forEach(function (n, j) { h += pullCardHTML(n.r, j); });
+          h += "</div>";
+        } else {
+          h += '<p class="small bold dim" style="margin-top:0.75rem;text-align:left">No 4★+ or brand-new heroes this time — the whole haul was banked as duplicates.</p>';
+        }
+        if (folded.length > 0) {
+          h += '<p class="small" style="margin-top:0.75rem;border-radius:16px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 1rem;text-align:left;font-weight:800">Duplicates banked for synthesis: ' + folded.map(function (x) { return x.t + "★ × " + x.n; }).join("  ·  ") + "</p>";
+        }
+        h += '<button type="button" class="btn-wide btn-ghost" id="pulls-show-all" style="margin-top:0.75rem" aria-expanded="false" aria-label="Show all ' + pulls.length + ' summoned heroes">👁 Show all ' + pulls.length + "</button>";
+      }
+      if (pulls.length <= 10 || showAllPulls) {
+        h += '<div class="pull-grid ' + (pulls.length > 10 ? "multi compact" : pulls.length > 1 ? "multi" : "single") + '">';
+        pulls.forEach(function (r, i) { h += pullCardHTML(r, i); });
         h += "</div>";
-      });
-      h += "</div>";
+      }
+      if (pulls.length > 10 && showAllPulls) {
+        h += '<button type="button" class="btn-wide btn-ghost" id="pulls-show-less" style="margin-top:0.75rem" aria-expanded="true" aria-label="Collapse back to the condensed results view">🙈 Show less</button>';
+      }
       h += '<button type="button" class="btn-wide anime-btn-primary" id="pulls-collect" aria-label="Collect summoned heroes and close">COLLECT ♪</button>';
       h += "</div></div>";
       root.innerHTML = h;
+      var skipBtn = document.getElementById("pulls-skip");
+      if (skipBtn) skipBtn.addEventListener("click", function () {
+        pulls = null;
+        showAllPulls = false;
+        root.innerHTML = "";
+        maybeShowPendingModals();
+      });
+      var showAllBtn = document.getElementById("pulls-show-all");
+      if (showAllBtn) showAllBtn.addEventListener("click", function () { showAllPulls = true; showPullsModal(); });
+      var showLessBtn = document.getElementById("pulls-show-less");
+      if (showLessBtn) showLessBtn.addEventListener("click", function () { showAllPulls = false; showPullsModal(); });
       document.getElementById("pulls-collect").addEventListener("click", function () {
         pulls = null;
+        showAllPulls = false;
         root.innerHTML = "";
         maybeShowPendingModals();
       });
