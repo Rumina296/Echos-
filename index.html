@@ -2353,10 +2353,46 @@
     ];
     function materialById(id) { for (var i = 0; i < MATERIALS.length; i++) if (MATERIALS[i].id === id) return MATERIALS[i]; return MATERIALS[0]; }
     var DUNGEONS = [
-      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, hpMult: 0.55, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)" },
-      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, hpMult: 0.8, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales" },
-      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, hpMult: 1.1, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence" }
+      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, hpMult: 0.55, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)", gold: 240 },
+      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, hpMult: 0.8, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales", gold: 560 },
+      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, hpMult: 1.1, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence", gold: 1200 }
     ];
+    /* ---------- Dungeon luck ----------
+       Every cleared run rolls its luck once, when the last wave falls:
+         Unlucky haul 15% — half materials and half gold
+         Normal haul  50% — the standard rewards
+         Lucky haul   25% — +50% materials and +50% gold
+         Jackpot      10% — double materials and double gold, plus +5 gems
+       The raw tier multipliers average ×1.15, so material counts are
+       scaled by LUCK_BALANCE (1/1.15) before the tier multiplier is
+       applied: the long-run material average stays right where it was
+       before luck existed — the variance is the fun, not a stealth buff
+       or nerf. Gold is a new, modest dungeon payout defined per dungeon
+       as its Normal amount, so it takes the tier multiplier straight.
+       The +5 jackpot gems are the one deliberate extra. */
+    var LUCK_BALANCE = 1 / 1.15;
+    var JACKPOT_GEMS = 5;
+    var LUCK_INFO = {
+      unlucky: { label: "Unlucky haul…", emoji: "🌧️", mult: 0.5, odds: "15%", blurb: "The tower was stingy today — half materials, half gold. The depths owe you one, Master." },
+      normal: { label: "Normal haul", emoji: "🍀", mult: 1, odds: "50%", blurb: "The depths gave fairly — a solid, honest haul." },
+      lucky: { label: "Lucky haul!", emoji: "🍀✨", mult: 1.5, odds: "25%", blurb: "+50% materials and +50% gold — the depths were feeling generous!" },
+      jackpot: { label: "JACKPOT!", emoji: "💎✨", mult: 2, odds: "10%", blurb: "Double materials, double gold, and +" + JACKPOT_GEMS + " gems — the depths spilled their treasure vault!" }
+    };
+    function rollLuckTier() {
+      var r = Math.random();
+      return r < 0.15 ? "unlucky" : r < 0.65 ? "normal" : r < 0.9 ? "lucky" : "jackpot";
+    }
+    /* Final material count for one drop line: roll the dungeon's usual
+       min–max, rebalance by LUCK_BALANCE, then apply the luck multiplier.
+       A Normal haul never pays below the drop's listed minimum, a
+       Lucky/Jackpot haul never pays less than the roll it is boosting,
+       and an Unlucky haul still pays at least 1 of everything. */
+    function luckDropCount(min, max, tier) {
+      var base = min + Math.floor(Math.random() * (max - min + 1));
+      var scaled = Math.round(base * LUCK_INFO[tier].mult * LUCK_BALANCE);
+      if (tier === "unlucky") return Math.max(1, scaled);
+      return tier === "normal" ? Math.max(min, scaled) : Math.max(base, scaled);
+    }
     function dungeonById(id) { for (var i = 0; i < DUNGEONS.length; i++) if (DUNGEONS[i].id === id) return DUNGEONS[i]; return DUNGEONS[0]; }
     /* Forge recipes: cost is fixed; the STAR result comes from the
        hammer-timing game, floored by the recipe (see forgeStarsFor).
@@ -2414,11 +2450,11 @@
       if (!Array.isArray(save.gearInv)) save.gearInv = [];
       if (!save.equipped || typeof save.equipped !== "object") save.equipped = {};
     }
-    function dungeonDrops(dgId) {
-      function rnd(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
-      if (dgId === "ember") return { iron: rnd(3, 5), moon: rnd(1, 2) };
-      if (dgId === "frost") return { moon: rnd(2, 4), scale: rnd(1, 2) };
-      return { scale: rnd(2, 3), essence: 1 };
+    function dungeonDrops(dgId, tier) {
+      var t = tier || "normal";
+      if (dgId === "ember") return { iron: luckDropCount(3, 5, t), moon: luckDropCount(1, 2, t) };
+      if (dgId === "frost") return { moon: luckDropCount(2, 4, t), scale: luckDropCount(1, 2, t) };
+      return { scale: luckDropCount(2, 3, t), essence: luckDropCount(1, 1, t) };
     }
     function dropsText(drops) {
       var parts = [];
@@ -4050,6 +4086,7 @@
     var dungeonBattle = null;
     var dungeonTimer = null;
     var lastDungeonReward = null;
+    var lastDungeonLuck = null;
     var forgeGame = null;
     var forgeTimer = null;
 
@@ -4725,7 +4762,7 @@
       var s = save;
       var h = '<section aria-label="Dungeons and the Forge">';
       h += '<div class="anime-card mt4 card-pad"><h2 class="font-display" style="font-size:1.375rem;font-weight:700;margin:0">🗺️ Dungeons — Delve for Materials</h2>';
-      h += '<p class="small dim" style="margin-top:0.375rem">Send your current party on a quick auto-battle delve — a few waves, fought with the same party damage, HP and crit (gear included) as the Tower. Each dungeon is free, up to <span class="bold" style="color:var(--text)">3 runs per day</span>. Clear a run to haul out crafting materials.</p>';
+      h += '<p class="small dim" style="margin-top:0.375rem">Send your current party on a quick auto-battle delve — a few waves, fought with the same party damage, HP and crit (gear included) as the Tower. Each dungeon is free, up to <span class="bold" style="color:var(--text)">3 runs per day</span>. Clear a run to haul out crafting materials and gold — and every clear rolls its luck.</p>';
       h += materialsHTML();
       h += '<p class="small" style="margin-top:0.5rem;font-weight:800">Party DPS ' + fmt(effectivePartyDps(s)) + " · Party HP " + fmt(partyMaxHp(s)) + "</p></div>";
 
@@ -4745,7 +4782,14 @@
         h += '<p class="party-status" id="dg-status">Delving… wave ' + dungeonBattle.wave + " of " + dungeonBattle.waves + "</p>";
         h += "</div>";
       } else if (lastDungeonReward) {
-        h += '<div class="anime-card mt4 card-pad center" aria-label="Dungeon cleared"><p style="font-size:2rem;margin:0" aria-hidden="true">🎉</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">Dungeon cleared!</h3><p class="small" style="margin-top:0.375rem;font-weight:800">You hauled out: ' + esc(lastDungeonReward) + '</p><button type="button" class="btn-pill anime-btn-gold" id="dg-reward-ok" style="margin-top:0.5rem">Nice!</button></div>';
+        var lk = lastDungeonLuck ? LUCK_INFO[lastDungeonLuck.tier] : null;
+        var lkBorder = !lastDungeonLuck ? "#ffd94d" : lastDungeonLuck.tier === "jackpot" ? "#ffd94d" : lastDungeonLuck.tier === "lucky" ? "#4ade80" : lastDungeonLuck.tier === "unlucky" ? "#94a3b8" : "#ffd94d";
+        var lkColor = !lastDungeonLuck ? "var(--text)" : lastDungeonLuck.tier === "jackpot" ? "#ffd94d" : lastDungeonLuck.tier === "lucky" ? "#4ade80" : lastDungeonLuck.tier === "unlucky" ? "#b6c2d2" : "var(--text)";
+        h += '<div class="anime-card mt4 card-pad center" style="border-color:' + lkBorder + '" aria-label="Dungeon cleared"><p style="font-size:2rem;margin:0" aria-hidden="true">🎉</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">Dungeon cleared!</h3>';
+        if (lk) {
+          h += '<p class="font-display" style="margin-top:0.5rem;font-size:1.25rem;font-weight:700;color:' + lkColor + '">' + lk.emoji + " " + esc(lk.label) + '</p><p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + esc(lk.blurb) + "</p>";
+        }
+        h += '<p class="small" style="margin-top:0.375rem;font-weight:800">You hauled out: ' + esc(lastDungeonReward) + '</p><button type="button" class="btn-pill anime-btn-gold" id="dg-reward-ok" style="margin-top:0.5rem">Nice!</button></div>';
       }
 
       h += '<div class="dungeon-grid">';
@@ -4755,7 +4799,8 @@
         var left = 3 - used;
         h += '<div class="dungeon-card' + (unlocked ? "" : " locked") + '"><p class="dg-icon" aria-hidden="true">' + dg.icon + '</p><p class="dg-name">' + esc(dg.name) + '</p>';
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
-        h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + "</p>";
+        h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + " · 🪙 " + dg.gold.toLocaleString("en-US") + " gold</p>";
+        h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + JACKPOT_GEMS + "💎</span></p>";
         if (!unlocked) {
           h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#fda4af">🔒 Unlocks at Tower Floor ' + dg.unlock + " (you're on " + s.floor + ")</p>";
         } else {
@@ -4765,6 +4810,7 @@
         h += "</div>";
       });
       h += "</div>";
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). Your current party delves as-is — gear, skills and synergies all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun.</p>';
 
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
@@ -5144,6 +5190,7 @@
       dungeonBattle = null;
       forgeGame = null;
       lastDungeonReward = null;
+      lastDungeonLuck = null;
       normalizeDaily();
       normalizeDungeon();
       importDraft = "";
@@ -5737,7 +5784,7 @@
         el.addEventListener("click", function () { collectQuest(el.getAttribute("data-quest-collect")); });
       });
       var dgOk = document.getElementById("dg-reward-ok");
-      if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; renderMain(); });
+      if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
     }
 
     /* ============================== ACTIONS ============================== */
@@ -6234,6 +6281,7 @@
       var baseHp = monsterMaxHp(dg.unlock);
       dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: Math.round(baseHp * dg.hpMult), enemyHp: Math.round(baseHp * dg.hpMult), lastTick: performance.now(), atkTimers: {} };
       lastDungeonReward = null;
+      lastDungeonLuck = null;
       renderMain();
       setNotice(dg.icon + " Your party delves into " + dg.name + " — " + dg.waves + " waves. Fight!");
       if (dungeonTimer) window.clearInterval(dungeonTimer);
@@ -6290,18 +6338,28 @@
       var dgId = dungeonBattle.dungeonId;
       var dg = dungeonById(dgId);
       dungeonBattle = null;
-      var drops = dungeonDrops(dgId);
+      /* 🍀 The run's luck is rolled once, here at the clear: it scales
+         every material line and the gold together, and a Jackpot adds
+         its gem bonus on top. The run is charged here too (only clears
+         count in this copy). */
+      var luck = rollLuckTier();
+      var drops = dungeonDrops(dgId, luck);
+      var luckGold = Math.round(dg.gold * LUCK_INFO[luck].mult);
+      var luckGems = luck === "jackpot" ? JACKPOT_GEMS : 0;
       var next = JSON.parse(JSON.stringify(save));
       if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
       for (var k in drops) next.materials[k] = (next.materials[k] || 0) + drops[k];
+      next.gold = (next.gold || 0) + luckGold;
+      next.gems = (next.gems || 0) + luckGems;
       if (!next.dungeonRuns) next.dungeonRuns = { ember: 0, frost: 0, star: 0 };
       next.dungeonRuns[dgId] = (next.dungeonRuns[dgId] || 0) + 1;
-      lastDungeonReward = dropsText(drops);
+      lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
+      lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
       persist(next);
       writeSave();
       playClearSfx();
       renderMain();
-      setNotice("🎉 " + dg.name + " cleared! Hauled out: " + lastDungeonReward + ". Runs left today: " + (3 - next.dungeonRuns[dgId]) + ".");
+      setNotice("🎉 " + dg.name + " cleared! " + LUCK_INFO[luck].emoji + " " + LUCK_INFO[luck].label + " Hauled out: " + lastDungeonReward + ". Runs left today: " + (3 - next.dungeonRuns[dgId]) + ".");
     }
 
     /* ---- Forge: hammer-timing skill game ----
