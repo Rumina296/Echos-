@@ -1528,6 +1528,17 @@
           ["iron", "moon", "scale", "essence"].forEach(function (mk) {
             if (typeof p.materials[mk] === "number" && p.materials[mk] >= 0) mats[mk] = Math.floor(p.materials[mk]);
           });
+          /* Migration (main-game saves): the main game stores materials
+             under moonstone / dragon / starlight; this copy uses
+             moon / scale / essence — map them so a main save loads intact
+             instead of silently dropping those counts to zero. Only
+             applies where this copy's own key is absent, so a native
+             shared save is never overwritten by a stray main key. */
+          var MAIN_MAT_KEYS = { moonstone: "moon", dragon: "scale", starlight: "essence" };
+          for (var mmk in MAIN_MAT_KEYS) {
+            var sharedKey = MAIN_MAT_KEYS[mmk];
+            if ((typeof p.materials[sharedKey] !== "number" || p.materials[sharedKey] < 0) && typeof p.materials[mmk] === "number" && p.materials[mmk] >= 0) mats[sharedKey] = Math.floor(p.materials[mmk]);
+          }
         }
         merged.materials = mats;
         var inv = [];
@@ -1537,7 +1548,12 @@
               var piece = { uid: g.uid, slot: g.slot, stars: Math.floor(g.stars) };
               /* Recipe / custom name / attunement ride along when present
                  (pieces forged before those systems existed have none). */
-              if (typeof g.recipe === "string" && ["iron", "moon", "scale", "essence"].indexOf(g.recipe) >= 0) piece.recipe = g.recipe;
+              /* Migration (main-game saves): the main game forges gear under
+                 recipe ids dragon / star; this copy uses scale / essence. */
+              var recipe = g.recipe;
+              if (recipe === "dragon") recipe = "scale";
+              else if (recipe === "star") recipe = "essence";
+              if (typeof recipe === "string" && ["iron", "moon", "scale", "essence"].indexOf(recipe) >= 0) piece.recipe = recipe;
               if (typeof g.name === "string" && g.name.trim()) piece.name = g.name.trim().slice(0, 40);
               /* Migration (battle-class / daily-job split): a piece attuned
                  to an old job name is remapped to that hero's battle class,
@@ -2800,7 +2816,7 @@
        dungeons stay the active faucet. (Reward material ids are this
        game's own: iron / moon / scale / essence.) Dispatch Quests scale
        with the player's highest stage: past each quest's unlock floor
-       the recommended power grows +3% a floor and the materials +1% a
+       the recommended power grows +1% a floor and the materials +1% a
        floor (rounded), and the gold pays 10% of what idling for the
        quest's duration would earn at that highest stage, on the flat
        idle gold rate (questIdleGoldPerSec — never the clear-rate AFK
@@ -2832,16 +2848,16 @@
        Everything scales off the player's highest stage (the frontier
        floor, `s.floor`) and off each quest's own unlock floor: floors at
        or below the unlock floor change nothing. Difficulty compounds at
-       +3% per floor above the unlock floor — measured at Floor 50:
-       Ember 150 → 567, Moonlit 600 → 1,957, Dragon 1,800 → 4,369,
-       Starfall 4,500 → 8,128. Materials compound at +1% per floor above
+       +1% per floor above the unlock floor — measured at Floor 50:
+       Ember 150 → 235, Moonlit 600 → 893, Dragon 1,800 → 2,426,
+       Starfall 4,500 → 5,491. Materials compound at +1% per floor above
        the unlock floor, rounded to the nearest whole material. Gold pays
        10% of what idling for the quest's duration would earn at the
        highest stage — the raw legacy idle gold rate (questIdleGoldPerSec),
        with no party gold multiplier or boost on top, rounded to the nearest whole
        gold piece: at Floor 40 that is ≈1,129,484 🪙 for the 1h Ember run
        and ≈13,553,811 🪙 for the 12h Starfall run. */
-    var QUEST_DIFFICULTY_GROWTH = 1.03; // +3% per floor above the unlock floor
+    var QUEST_DIFFICULTY_GROWTH = 1.01; // +1% per floor above the unlock floor
     var QUEST_MATERIAL_GROWTH = 1.01; // +1% per floor above the unlock floor
     var QUEST_GOLD_IDLE_SHARE = 0.1; // gold = 10% of idle earnings for the quest's duration
     function questFloorsAbove(q, highestFloor) {
@@ -3898,18 +3914,82 @@
     }
     function clearGold(f) { return Math.round(16 * goldGrowthFactor(f) * (isLordFloor(f) ? 3 : isGateFloor(f) ? 2 : 1)); }
     function clearGems(f) { return Math.max(1, Math.round((isLordFloor(f) ? 3.6 : isGateFloor(f) ? 2 : 0.5) * gemGrowthFactor(f))); }
-    function repeatGold(f) { return Math.round(clearGold(f) * 0.85); }
-    function repeatGems(f) {
-      // Repeat bases are 0.1 / 0.2 / 0.3 (normal / gate / lord) and the
-      // result is floored at 1 💎 so a grind clear never pays nothing:
-      // a normal grind clear pays 1 💎 on Floor 1 and 3 on Floor 20; a
-      // Floor Lord grind clear pays 1 💎 on Floor 1, 10 on Floor 20, 59 on
-      // Floor 30, 88 on Floor 40 and 130 on Floor 50 under the
-      // three-segment growth (see gemGrowthFactor).
-      return Math.max(1, Math.round((isLordFloor(f) ? 0.3 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f)));
+    /* Low-floor grind reduction (Nov 20, 2026): repeat-clear rewards are
+       scaled by a band multiplier keyed on the gap between the player's
+       highest floor reached and the floor being ground:
+         gap 0–4 → ×1.00 · 5–9 → ×0.90 · 10–20 → ×0.50 · 21–30 → ×0.30 ·
+         31–40 → ×0.15 · 41+ → ×0.05
+       As of the anchor extension below, this band prices GATE floors only
+       (and any floor above the anchor base): normal and Lord floors below
+       the base floor are always priced by the anchor instead. The band multiplies the finished repeat payout (after the Lord/Gate
+       multiplier inside it); first-clear rewards and quest gold are never
+       reduced. Because AFK earnings ride the repeat payouts
+       (idleGoldPerSec / idleGemsPerSec below), the welcome-back grant and
+       the per-second AFK display reflect the band automatically. */
+    function grindBandMult(f, highest) {
+      var gap = Math.max(0, Math.floor(highest) - f);
+      if (gap <= 4) return 1;
+      if (gap <= 9) return 0.9;
+      if (gap <= 20) return 0.5;
+      if (gap <= 30) return 0.3;
+      if (gap <= 40) return 0.15;
+      return 0.05;
     }
-    function goldForClear(f, isRepeat) { return isRepeat ? repeatGold(f) : clearGold(f); }
-    function gemsForClear(f, isRepeat) { return isRepeat ? repeatGems(f) : clearGems(f); }
+    /* Anchored grind rewards (Nov 20, 2026): for normal and Lord floors,
+       the flat grind bands are replaced by an anchor at EVERY depth.
+       baseFloor is the highest NORMAL floor (not a Lord, not a Gate) at
+       or below the player's highest floor. Any normal or Lord floor at or
+       below baseFloor (gap = baseFloor − floor, 0 or more) pays the base
+       floor's own repeat reward × 0.90^gap — 10% less per floor going
+       down — with the Lord multiplier (×3) applied on top for Lord
+       floors. Gate floors are NEVER anchored: they always use their
+       existing calculation (curve reward × Gate multiplier × band). */
+    function anchorBaseFloor(highest) {
+      var b = Math.max(1, Math.floor(highest));
+      while (b > 1 && (isLordFloor(b) || isGateFloor(b))) b--;
+      return b;
+    }
+    /* The anchor gap for a floor, or null when the floor is not anchored:
+       Gate floors and floors above the base floor. Every normal or Lord
+       floor at or below the base floor is anchored, at any depth. */
+    function anchorGap(f, highest) {
+      if (isGateFloor(f)) return null;
+      var gap = anchorBaseFloor(highest) - f;
+      return gap >= 0 ? gap : null;
+    }
+    /* Grinding rewards: repeat clears of an already-cleared floor pay 85% gold
+       (still very farmable, but pushing a new floor always pays more per clear
+       thanks to the floor scaling) and reduced gems so boss gem payouts stay
+       special on first clear. Normal and Lord floors at or below the base
+       floor are priced off the anchor above at any depth; Gate floors (and
+       any floor above the base) are scaled by the low-floor grind band
+       (grindBandMult), keyed on the player's highest floor. */
+    function repeatGold(f, highest) {
+      var gap = anchorGap(f, highest);
+      if (gap !== null) {
+        var base = anchorBaseFloor(highest);
+        var anchored = Math.round(Math.round(clearGold(base) * 0.85) * Math.pow(0.9, gap));
+        return isLordFloor(f) ? anchored * 3 : anchored;
+      }
+      return Math.round(clearGold(f) * 0.85 * grindBandMult(f, highest));
+    }
+    function repeatGems(f, highest) {
+      var gap = anchorGap(f, highest);
+      if (gap !== null) {
+        var base = anchorBaseFloor(highest);
+        var baseGems = Math.max(1, Math.round(0.1 * gemGrowthFactor(base)));
+        var anchored = Math.max(1, Math.round(baseGems * Math.pow(0.9, gap)));
+        return isLordFloor(f) ? anchored * 3 : anchored;
+      }
+      // Repeat bases are 0.1 / 0.2 / 0.3 (normal / gate / lord), scaled by
+      // the grind band, and the result is floored at 1 💎 so a grind clear
+      // never pays nothing. Only Gate floors (and floors above the base)
+      // reach this line — normal and Lord floors below the base are
+      // anchored above.
+      return Math.max(1, Math.round((isLordFloor(f) ? 0.3 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f) * grindBandMult(f, highest)));
+    }
+    function goldForClear(f, isRepeat, highest) { return isRepeat ? repeatGold(f, highest) : clearGold(f); }
+    function gemsForClear(f, isRepeat, highest) { return isRepeat ? repeatGems(f, highest) : clearGems(f); }
 
     var ZONES = [
       { to: 10, name: "The Tutorial Depths", desc: "Where every summoned hero first opens their eyes. The tower is almost kind here. Almost." },
@@ -4088,22 +4168,36 @@
       return battleDps(copy);
     }
 
+    /** The clear time that prices the idle / AFK per-second rates: the
+        party's raw clear time on the floor, monsterMaxHp(floor) / dps
+        seconds, with a 1-second minimum. The live battle is untouched —
+        a floor can still be cleared instantly in battle; only the time
+        used to price the idle payout is floored, so no floor can pay its
+        repeat reward more than once per second while away. */
+    function idleClearTime(dps, floor) {
+      return Math.max(monsterMaxHp(floor) / dps, 1);
+    }
+
     /** Idle gold-per-second for offline / AFK earnings: the floor's
-        repeat-clear gold (repeatGold — 85% of the first-clear amount)
+        repeat-clear gold (repeatGold — 85% of the first-clear amount,
+        anchor- or band-adjusted against the player's highest floor)
         spread over the party's clear time on that floor,
-        monsterMaxHp(floor) / dps seconds. `dps` is the party's tower
+        monsterMaxHp(floor) / dps seconds — floored at 1 second
+        (idleClearTime), so an instant clear can never pay the repeat
+        reward more than once per second. `dps` is the party's tower
         battle DPS on the floor (towerBattleDps); zero DPS earns zero. */
-    function idleGoldPerSec(dps, floor) {
+    function idleGoldPerSec(dps, floor, highest) {
       if (dps <= 0 || floor < 1) return 0;
-      return (repeatGold(floor) * dps) / monsterMaxHp(floor);
+      return repeatGold(floor, highest) / idleClearTime(dps, floor);
     }
 
     /** Idle gems-per-second for offline / AFK earnings: the floor's
-        repeat-clear gems (repeatGems) spread over the party's clear time
-        on that floor, exactly like idle gold. Zero DPS earns zero. */
-    function idleGemsPerSec(dps, floor) {
+        repeat-clear gems (repeatGems, adjusted like idle gold) spread
+        over the party's clear time on that floor, exactly like idle gold.
+        Zero DPS earns zero. */
+    function idleGemsPerSec(dps, floor, highest) {
       if (dps <= 0 || floor < 1) return 0;
-      return (repeatGems(floor) * dps) / monsterMaxHp(floor);
+      return repeatGems(floor, highest) / idleClearTime(dps, floor);
     }
 
     /* ==================== AFK RATE SWITCH (Nov 20, 2026, 8:00 AM local) ====================
@@ -4147,13 +4241,13 @@
 
     /** The AFK gold rate in force at moment `atMs`: the old flat rate
         before the Nov 20, 2026 8:00 AM switch, the clear rate from then. */
-    function afkGoldPerSec(dps, floor, atMs) {
-      return atMs >= AFK_RATE_SWITCH_AT ? idleGoldPerSec(dps, floor) : legacyIdleGoldPerSec(dps, floor);
+    function afkGoldPerSec(dps, floor, atMs, highest) {
+      return atMs >= AFK_RATE_SWITCH_AT ? idleGoldPerSec(dps, floor, highest) : legacyIdleGoldPerSec(dps, floor);
     }
 
     /** The AFK gem rate in force at moment `atMs` — same gate as gold. */
-    function afkGemsPerSec(dps, floor, atMs) {
-      return atMs >= AFK_RATE_SWITCH_AT ? idleGemsPerSec(dps, floor) : legacyIdleGemsPerSec(dps, floor);
+    function afkGemsPerSec(dps, floor, atMs, highest) {
+      return atMs >= AFK_RATE_SWITCH_AT ? idleGemsPerSec(dps, floor, highest) : legacyIdleGemsPerSec(dps, floor);
     }
 
     /* ============================== GACHA ============================== */
@@ -5336,7 +5430,7 @@
         }
       }
       if (grinding) {
-        h += '<p class="xs dim" style="margin:0.125rem 0 0">Grind reward: 🪙 ' + fmt(goldForClear(f, true)) + " · 💎 " + gemsForClear(f, true) + " per clear · " + s.totalClears + " clears (" + (s.totalGrindClears || 0) + " grind)</p>";
+        h += '<p class="xs dim" style="margin:0.125rem 0 0">Grind reward: 🪙 ' + fmt(goldForClear(f, true, highest)) + " · 💎 " + gemsForClear(f, true, highest) + " per clear · " + s.totalClears + " clears (" + (s.totalGrindClears || 0) + " grind)</p>";
       } else {
         h += '<p class="xs dim" style="margin:0.125rem 0 0">Clear reward: 🪙 ' + fmt(clearGold(f)) + " · 💎 " + clearGems(f) + " · " + s.totalClears + " floors cleared</p>";
         h += '<span class="badge badge-push">⚔ PUSHING — This is your highest floor!</span>';
@@ -5358,7 +5452,7 @@
         }
       }
       h += "</div>";
-      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(afkGoldPerSec(dps, f, Date.now()) * partyMods(s).goldMult * boostMult(s, Date.now())) + '</p><p>💎/sec ≈ ' + fmt(afkGemsPerSec(dps, f, Date.now()) * boostMult(s, Date.now())) + "</p></div>";
+      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(afkGoldPerSec(dps, f, Date.now(), highest) * partyMods(s).goldMult * boostMult(s, Date.now())) + '</p><p>💎/sec ≈ ' + fmt(afkGemsPerSec(dps, f, Date.now(), highest) * boostMult(s, Date.now())) + "</p></div>";
       h += "</div>";
       if (titheStarted(s)) {
         h += '<p class="tithe-chip" role="status">⚰️ Grave Tithe ×' + titheStacks(s) + " — Ossian has kept " + graveKillsOf(s) + " of your dead (+" + tithePct(s) + "% ATK &amp; HP waiting at Floor 90" + (titheStacks(s) >= 20 ? " — the tithe is full" : " · next stack in " + titheKillsToNext(s) + " kills") + ")</p>";
@@ -5438,6 +5532,7 @@
         (grinding ? "Grinding Floor " + f + " · Highest " + highest : "Pushing Floor " + highest) +
         ((s.totalGrindClears || 0) > 0 ? " · " + s.totalGrindClears + " grind clears" : "") + "</p></div>";
       h += '<p class="small dim" style="margin-top:0.25rem">Stuck on a floor? Drop back and farm a cleared floor on loop. Repeat clears pay <span class="bold" style="color:var(--text)">85% gold</span> and reduced gems (1 💎 on Floor 1 for every floor type, and gems grow ~20% per floor up to Floor 30, then more slowly from there) — great for leveling, while a brand-new floor still pays best. Your grind target is saved in this browser, and offline earnings use it too.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">One catch: grinding below your highest floor pays less. Repeat rewards (live and offline) are anchored to your highest normal floor: every floor below it pays a share of that floor\'s reward, <span class="bold" style="color:var(--text)">10% less for each floor you go down</span> (Floor Lords still get their ×3 on top). Gate floors keep their own rates throughout. First clears are never reduced.</p>';
       if (highest <= 1) {
         h += '<p class="note-box">Clear Floor 1 first — then you can come back here to grind it any time.</p>';
       } else {
@@ -5462,14 +5557,14 @@
         if (picks.length) {
           h += '<div class="quick-picks" aria-label="Quick grind picks"><span class="xs bold dim" style="padding:0.25rem 0">Quick picks:</span>';
           picks.forEach(function (pf) {
-            h += '<button type="button" class="qp' + (f === pf ? " on" : "") + '" data-grind="' + pf + '" aria-label="Grind floor ' + pf + '" aria-pressed="' + (f === pf) + '">Floor ' + pf + (isLordFloor(pf) ? " 👑" : isGateFloor(pf) ? " 🚪" : "") + " · 🪙 " + fmt(repeatGold(pf)) + "</button>";
+            h += '<button type="button" class="qp' + (f === pf ? " on" : "") + '" data-grind="' + pf + '" aria-label="Grind floor ' + pf + '" aria-pressed="' + (f === pf) + '">Floor ' + pf + (isLordFloor(pf) ? " 👑" : isGateFloor(pf) ? " 🚪" : "") + " · 🪙 " + fmt(repeatGold(pf, highest)) + "</button>";
           });
           h += "</div>";
         }
         if (grinding) {
-          h += '<p class="xs dim" style="margin-top:0.5rem">Now looping <span class="bold" style="color:var(--text)">Floor ' + f + "</span> — every clear pays 🪙 " + fmt(goldForClear(f, true)) + " and 💎 " + gemsForClear(f, true) + ". First-clear rewards on Floor " + highest + " are waiting when you push again.</p>";
+          h += '<p class="xs dim" style="margin-top:0.5rem">Now looping <span class="bold" style="color:var(--text)">Floor ' + f + "</span> — every clear pays 🪙 " + fmt(goldForClear(f, true, highest)) + " and 💎 " + gemsForClear(f, true, highest) + ". First-clear rewards on Floor " + highest + " are waiting when you push again.</p>";
         } else {
-          h += '<p class="xs dim" style="margin-top:0.5rem">Tip for Floor ' + highest + ": grind Floor " + Math.max(1, highest - 1) + " for 🪙 " + fmt(repeatGold(Math.max(1, highest - 1))) + " a clear, level up in Heroes, then push.</p>";
+          h += '<p class="xs dim" style="margin-top:0.5rem">Tip for Floor ' + highest + ": grind Floor " + Math.max(1, highest - 1) + " for 🪙 " + fmt(repeatGold(Math.max(1, highest - 1), highest)) + " a clear, level up in Heroes, then push.</p>";
         }
       }
       h += "</div>";
@@ -5931,7 +6026,7 @@
         h += '<div class="anime-card mt4 card-pad quest-done-card" role="region" aria-label="Quest complete: ' + esc(q.name) + '">';
         h += '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem"><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " Quest complete — " + esc(q.name) + '!</p><span class="quest-returned">✨ RETURNED</span></div>';
         h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">' + r.heroIds.map(function (id) { return esc(heroById(id).name); }).join(", ") + " came back " + (r.success ? "triumphant" : "battered — just a pity haul") + " · sent at " + Math.round(r.chance * 100) + "% odds.</p>";
-        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " : "Normal success: ") + esc(questRunRewardText(q, r)) : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold") + "</p>";
+        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " : "Normal success: ") + esc(questRunRewardText(q, r)) + " · ✨ Starlight Essence ×2–3" : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold · ✨ Starlight Essence ×1 (consolation)") + "</p>";
         h += '<button type="button" class="btn-wide anime-btn-gold" data-quest-collect="' + r.id + '" style="margin-top:0.75rem" aria-label="Collect rewards from ' + esc(q.name) + '">🎁 COLLECT REWARDS</button>';
         h += "</div>";
       });
@@ -5966,7 +6061,7 @@
         h += '<div class="anime-card card-pad" aria-label="Mission: ' + esc(q.name) + '"' + (locked ? ' style="opacity:0.75"' : "") + ">";
         h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(scaledDifficulty) + ' (a team at that power succeeds ≈80% of the time)</p></div><span class="quest-reward-pill">' + esc(questRewardText(q, s.floor)) + "</span></div>";
         h += '<p class="small dim" style="margin-top:0.375rem;font-weight:500">' + esc(q.desc) + "</p>";
-        h += '<p class="xs bold dim" style="margin-top:0.25rem">📈 Scaled to your highest stage (Floor ' + s.floor + '): past its Floor ' + q.unlockFloor + ' unlock, the recommended power grows +3% a floor and the materials +1% a floor, and the gold pays 10% of what idling ' + fmtClock(q.hours * 3600) + ' at Floor ' + s.floor + ' would earn. What you see is what a dispatch locks in.</p>';
+        h += '<p class="xs bold dim" style="margin-top:0.25rem">📈 Scaled to your highest stage (Floor ' + s.floor + '): past its Floor ' + q.unlockFloor + ' unlock, the recommended power grows +1% a floor and the materials +1% a floor, and the gold pays 10% of what idling ' + fmtClock(q.hours * 3600) + ' at Floor ' + s.floor + ' would earn. What you see is what a dispatch locks in.</p>';
         h += '<p class="xs bold dim" style="margin-top:0.25rem">Favored classes (power ×1.5): ' + q.favored.join(" · ") + "</p>";
         h += '<p class="xs bold" style="margin-top:0.25rem;color:#ffd94d">🎰 Jackpot — 5% chance on a success, rolled when you dispatch: ' + esc(questJackpotText(q, s.floor)) + "</p>";
         h += '<p class="xs bold dim" style="margin-top:0.25rem">🩹 Pity — a failed run still brings home ' + esc(questPityText(q)) + ", and no gold.</p>";
@@ -11049,8 +11144,8 @@
         }
       } else if (enemyHp <= 0) {
         var isRepeat = f < s.floor;
-        var gold = Math.round(goldForClear(f, isRepeat) * mods.goldMult);
-        var gems = gemsForClear(f, isRepeat);
+        var gold = Math.round(goldForClear(f, isRepeat, s.floor) * mods.goldMult);
+        var gems = gemsForClear(f, isRepeat, s.floor);
         var next = JSON.parse(JSON.stringify(s));
         next.gold += gold;
         next.gems += gems;
@@ -11146,8 +11241,8 @@
         var awayStartMs = now - awaySec * 1000;
         var preSec = Math.max(0, (Math.min(now, AFK_RATE_SWITCH_AT) - awayStartMs) / 1000);
         var postSec = Math.max(0, awaySec - preSec);
-        var gold = Math.floor((legacyIdleGoldPerSec(dps, target) * preSec + idleGoldPerSec(dps, target) * postSec) * partyMods(loaded).goldMult * boost);
-        var gems = Math.floor((legacyIdleGemsPerSec(dps, target) * preSec + idleGemsPerSec(dps, target) * postSec) * boost);
+        var gold = Math.floor((legacyIdleGoldPerSec(dps, target) * preSec + idleGoldPerSec(dps, target, loaded.floor) * postSec) * partyMods(loaded).goldMult * boost);
+        var gems = Math.floor((legacyIdleGemsPerSec(dps, target) * preSec + idleGemsPerSec(dps, target, loaded.floor) * postSec) * boost);
         if (gold > 0 || gems > 0) {
           loaded.gold += gold;
           loaded.gems += gems;
