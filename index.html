@@ -2962,25 +2962,29 @@
        idle gold rate (questIdleGoldPerSec — never the clear-rate AFK
        rate). The scaled difficulty, chance, and rewards all lock in at
        dispatch: a run already out keeps the values it was dispatched
-       at. The Starlight Essence bonus stays flat (2–3 on success, 1 on
-       failure) and is never scaled or multiplied. */
+       at. Only Starfall Expedition pays Starlight Essence: every quest
+       pays a flat bonus of its own material on success — Starfall 2–3
+       Starlight Essence, Ember 4–5 Iron, Moonlit 3–4 Moonstone, Dragon
+       3–4 Dragon Scales — flat, never scaled, never jackpot-multiplied.
+       A failure pays just 1 pity unit of the quest's own material and
+       no gold. */
     var QUESTS = [
       { id: "ember-mine", name: "Ember Mine Run", icon: "⛏️", hours: 1, difficulty: 150,
         favored: ["Spearman", "Berserker"], unlockFloor: 5,
         desc: "Chip iron out of the Ember Caverns' worked-out seams. Slow, sooty, honest work — strong arms make it faster.",
-        rewards: [{ mat: "iron", count: 4 }], gold: 800 },
+        rewards: [{ mat: "iron", count: 4 }], gold: 800, bonus: { mat: "iron", min: 4, max: 5 } },
       { id: "moonlit-gathering", name: "Moonlit Gathering", icon: "🌙", hours: 4, difficulty: 600,
         favored: ["Archer", "Mage"], unlockFloor: 10,
         desc: "Moonstones crystallize on Frostwood branches under a full moon. Keen eyes and a little magic coax them down whole.",
-        rewards: [{ mat: "moon", count: 3 }], gold: 2500 },
+        rewards: [{ mat: "moon", count: 3 }], gold: 2500, bonus: { mat: "moon", min: 3, max: 4 } },
       { id: "dragon-molt", name: "Dragon Molt Hunt", icon: "🐉", hours: 8, difficulty: 1800,
         favored: ["Assassin", "Dragonkin"], unlockFloor: 20,
         desc: "Old dragons molt among the Frostwood roots, and their shed scales are forge gold. Quiet feet — or dragon blood — help enormously.",
-        rewards: [{ mat: "scale", count: 3 }], gold: 6000 },
+        rewards: [{ mat: "scale", count: 3 }], gold: 6000, bonus: { mat: "scale", min: 3, max: 4 } },
       { id: "starfall", name: "Starfall Expedition", icon: "🌠", hours: 12, difficulty: 4500,
         favored: ["Weaver", "Lunar Oracle", "Battle Dancer"], unlockFloor: 30,
         desc: "Half a day below the tower's roots, where fallen stars condense into essence. Send your most uncanny heroes; the abyss respects strange talents.",
-        rewards: [{ mat: "essence", count: 2 }], gold: 15000 }
+        rewards: [{ mat: "essence", count: 2 }], gold: 15000, bonus: { mat: "essence", min: 2, max: 3 } }
     ];
     var MAX_ACTIVE_QUESTS = 3;
     function questById(id) { for (var i = 0; i < QUESTS.length; i++) if (QUESTS[i].id === id) return QUESTS[i]; return QUESTS[0]; }
@@ -3069,17 +3073,18 @@
        run — pays 1.5× the base material (rounded) and 1.5× the base
        gold; gold follows the same roll as the material. A failed run
        pays no gold at all, just exactly 1 pity unit of the quest's own
-       material. The Starlight Essence bonus rides along flat on every
-       quest (2–3 on success, 1 on failure) and is never multiplied by
-       the jackpot. */
+       material. Each quest also pays a flat bonus of its own material
+       on success — Starfall 2–3 Starlight Essence, Ember 4–5 Iron,
+       Moonlit 3–4 Moonstone, Dragon 3–4 Dragon Scales — never scaled,
+       never multiplied by the jackpot. */
     /* Quest payouts are a luck roll on the values locked in at dispatch: a
        NORMAL success pays the run's scaled rewards exactly; a JACKPOT
        success (5% of successes, rolled at dispatch alongside the success
        roll) pays 1.5× those scaled rewards — materials and gold alike.
        A failure pays no gold at all, just exactly 1 pity material — one
-       unit of the quest's own material. The Starlight Essence bonus rides
-       on top of all of this, flat as ever: it is never scaled and never
-       multiplied by the jackpot. */
+       unit of the quest's own material. The flat bonus rides on top of
+       all of this: extra of the quest's own material on success, never
+       scaled and never multiplied by the jackpot. */
     var QUEST_JACKPOT_CHANCE = 0.05;
     function questSuccessCount(rw, jackpot) { return jackpot ? Math.round(rw.count * 1.5) : rw.count; }
     function questSuccessGold(baseGold, jackpot) { return jackpot ? Math.round(baseGold * 1.5) : baseGold; }
@@ -3113,6 +3118,22 @@
     function questPityText(q) {
       var parts = q.rewards.map(function (r) { return materialById(r.mat).icon + " " + materialById(r.mat).name + " ×1"; });
       return parts.join(" · ");
+    }
+    /* The flat bonus: extra of the quest's own material on success,
+       rolled at collect, never floor-scaled and never jackpot-multiplied.
+       Only Starfall's bonus is Starlight Essence; the other quests pay
+       extra of their own forge material. On failure there is no bonus
+       on top — the 1 pity unit IS the quest's own material. */
+    function questBonusMat(q) { return (q.bonus && q.bonus.mat) || q.rewards[0].mat; }
+    function questBonusMin(q) { return (q.bonus && q.bonus.min) || 2; }
+    function questBonusMax(q) { return (q.bonus && q.bonus.max) || 3; }
+    function questBonusRoll(q) {
+      var lo = questBonusMin(q), hi = questBonusMax(q);
+      return lo + Math.floor(Math.random() * (hi - lo + 1));
+    }
+    function questBonusText(q) {
+      var m = materialById(questBonusMat(q));
+      return m.icon + " " + m.name + " ×" + questBonusMin(q) + "–" + questBonusMax(q);
     }
     /* What a finished run actually pays, by its stored outcome. Runs
        dispatched before the luck roll have no jackpot field and collect
@@ -6357,7 +6378,7 @@
         h += '<div class="anime-card mt4 card-pad quest-done-card" role="region" aria-label="Quest complete: ' + esc(q.name) + '">';
         h += '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem"><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " Quest complete — " + esc(q.name) + '!</p><span class="quest-returned">✨ RETURNED</span></div>';
         h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">' + r.heroIds.map(function (id) { return esc(heroById(id).name); }).join(", ") + " came back " + (r.success ? "triumphant" : "battered — just a pity haul") + " · sent at " + Math.round(r.chance * 100) + "% odds.</p>";
-        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " + esc(questRunJackpotText(q, r)) : "Normal success: " + esc(questRunRewardText(q, r))) + " · ✨ Starlight Essence ×2–3" : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold · ✨ Starlight Essence ×1 (consolation)") + "</p>";
+        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " + esc(questRunJackpotText(q, r)) : "Normal success: " + esc(questRunRewardText(q, r))) + " · " + esc(questBonusText(q)) : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold") + "</p>";
         h += '<button type="button" class="btn-wide anime-btn-gold" data-quest-collect="' + r.id + '" style="margin-top:0.75rem" aria-label="Collect rewards from ' + esc(q.name) + '">🎁 COLLECT REWARDS</button>';
         h += "</div>";
       });
@@ -6419,7 +6440,7 @@
           h += "</div>";
           h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">🎯 How the odds work: recommended power is a team built to succeed — at exactly the recommended power the chance is ≈80%. Half the recommended power is a 50/50 gamble, 1.5× it is ≈90%, and 2× it is ≈94%, topping out at 98%.</p>';
           h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⭐ Stars help indirectly: higher stars mean stronger heroes and a higher level cap, so more quest power — and a favored class can outshine a higher star.</p>';
-          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. A normal success pays the rewards shown plus 2–3 Starlight Essence; a 5% jackpot roll, made when you dispatch, pays 1.5× the material and gold instead — the Starlight bonus stays flat and is never multiplied. A failed run brings home just 1 pity material and no gold, plus a consolation of 1 Starlight Essence. And no quest\'s odds ever drop below 20%.</p>';
+          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. A normal success pays the rewards shown plus ' + esc(questBonusText(q)) + '; a 5% jackpot roll, made when you dispatch, pays 1.5× the material and gold instead — the bonus stays flat and is never multiplied. A failed run brings home just 1 pity material and no gold. And no quest\'s odds ever drop below 20%.</p>';
         }
         h += "</div>";
       });
@@ -6544,11 +6565,18 @@
         }
       });
       var gold = payout.gold;
-      // Starlight Essence rides along on every quest, on top of the rewards
-      // above: a success brings home 2 or 3 (50/50); a failure still brings 1.
-      // It stays flat — the jackpot never multiplies it.
-      var starlight = run.success ? (Math.random() < 0.5 ? 2 : 3) : 1;
-      next.materials.essence = (next.materials.essence || 0) + starlight;
+      // The flat bonus: extra of the quest's own material on success only,
+      // rolled here at collect — Starfall 2–3 Starlight Essence, Ember 4–5
+      // Iron, Moonlit 3–4 Moonstone, Dragon 3–4 Dragon Scales. It stays
+      // flat: never scaled, never multiplied by the jackpot. A failure pays
+      // just the 1 pity unit, already counted in the payout above.
+      var bonusMat = questBonusMat(q);
+      var bonus = 0;
+      if (run.success) {
+        bonus = questBonusRoll(q);
+        next.materials[bonusMat] = (next.materials[bonusMat] || 0) + bonus;
+      }
+      var bonusMatDef = materialById(bonusMat);
       next.gold += gold;
       next.quests = next.quests.filter(function (r) { return r.id !== runId; });
       persist(next);
@@ -6556,9 +6584,9 @@
       playClearSfx();
       setNotice(run.success
         ? (run.success && run.jackpot === true
-          ? "📜 Quest complete — 🎰 JACKPOT (1.5×)! " + q.name + " paid out big. Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". Starlight bonus: ✨ +" + starlight + " Starlight Essence."
-          : "📜 Quest complete — Normal success on " + q.name + "! Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". Starlight bonus: ✨ +" + starlight + " Starlight Essence.")
-        : "📜 Quest failed — " + q.name + " didn't go to plan. Pity haul: " + gained.join(" · ") + " — no gold this time. Consolation: ✨ +" + starlight + " Starlight Essence.");
+          ? "📜 Quest complete — 🎰 JACKPOT (1.5×)! " + q.name + " paid out big. Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". " + bonusMatDef.name + " bonus: " + bonusMatDef.icon + " +" + bonus + " " + bonusMatDef.name + "."
+          : "📜 Quest complete — Normal success on " + q.name + "! Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". " + bonusMatDef.name + " bonus: " + bonusMatDef.icon + " +" + bonus + " " + bonusMatDef.name + ".")
+        : "📜 Quest failed — " + q.name + " didn't go to plan. Pity haul: " + gained.join(" · ") + " — no gold this time.");
     }
 
     /* ============================== RENDER: SAVE TAB ============================== */
