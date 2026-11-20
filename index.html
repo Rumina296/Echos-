@@ -6409,7 +6409,12 @@
         var picks = (questPicks[q.id] || []).filter(function (id) { return s.heroes[id] && !away[id]; });
         var scaledDifficulty = questScaledDifficulty(q, s.floor);
         var chance = questChance(s, q, picks, scaledDifficulty);
+        /* Strongest first: sorted by quest power (heroPower — DPS +
+           5% of max HP, the same metric questTeamPower sums), so the
+           picker leads with the best dispatch picks and the pw
+           values on the chips read in descending order. */
         var available = HEROES.filter(function (hh) { return s.heroes[hh.id] && !away[hh.id]; });
+        available.sort(function (a, b) { return heroPower(s, b.id) - heroPower(s, a.id); });
         h += '<div class="anime-card card-pad" aria-label="Mission: ' + esc(q.name) + '"' + (locked ? ' style="opacity:0.75"' : "") + ">";
         h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(scaledDifficulty) + ' (a team at that power succeeds ≈80% of the time)</p></div><span class="quest-reward-pill">' + esc(questRewardText(q, s.floor)) + "</span></div>";
         h += '<p class="small dim" style="margin-top:0.375rem;font-weight:500">' + esc(q.desc) + "</p>";
