@@ -190,8 +190,18 @@
         30% { opacity: 1; }
         100% { opacity: 0; transform: rotate(130deg) scale(1.08); }
       }
+      @keyframes wave-crash {
+        0% { opacity: 0; transform: translateX(-120%) scaleY(0.55) rotate(-4deg); }
+        25% { opacity: 1; transform: translateX(-35%) scaleY(1) rotate(0deg); }
+        60% { opacity: 1; transform: translateX(35%) scaleY(1.08) rotate(2deg); }
+        100% { opacity: 0; transform: translateX(120%) scaleY(0.9) rotate(0deg); }
+      }
+      .anim-wave-crash { animation: wave-crash 0.9s ease-out forwards; }
+      .wave-crash-span { position: absolute; left: 50%; top: 33%; z-index: 20; white-space: nowrap; font-size: 3rem; pointer-events: none; text-shadow: 0 0 18px rgba(45,212,191,0.9); }
+      .timestop-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f59e0b, #fbbf24); color: #451a03; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(251,191,36,0.65); }
+      .silence-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f472b6, #ec4899); color: #500724; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,114,182,0.65); }
       @media (prefers-reduced-motion: reduce) {
-        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl { animation: none; }
+        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl, .anim-wave-crash { animation: none; }
       }
 
       /* ---------- layout ---------- */
@@ -855,97 +865,118 @@
         desc: "Party critical chance +3% per skill level. She calls her target before she looses.",
         more: [
           { name: "Eagle Eye", desc: "Enemy attack −2% per skill level. Where Keen Eye picks the target, Eagle Eye picks the moment — the held breath, the gap in the armor, the half-second the monster forgets to guard — and the shot she lands there leaves the monster's next swing weaker for it. Her second skill, known from the start alongside Keen Eye." },
-          { name: "Twin Shot", desc: "Her own damage +12% per skill level. Two arrows on one string, loosed in a single breath — the second rides the first's wind and lands a heartbeat later, in the same hole. Her third skill, known from the start alongside Keen Eye and Eagle Eye." }
-        ]
+          { name: "Twin Shot", desc: "Her own damage +12% per skill level. Two arrows on one string, loosed in a single breath — the second rides the first's wind and lands a heartbeat later, in the same hole. Her third skill, known from the start alongside Keen Eye and Eagle Eye." },
+          { name: "Deadeye — unlocks at effective rank 7★", desc: "When the enemy's HP falls below 30%, Arden's attacks deal +10% damage per skill level. At skill level 5: +50% damage below 30% HP. The farm girl who never misses the killing shot." }]
       },
       han: {
         name: "Veteran's Insight",
         desc: "Party damage +5% per skill level. Ten years of clears, memorized down to the last spawn timer.",
         more: [
-          { name: "Duelist's Edge", unlock: 4, desc: "His own damage +12% per skill level — and he gets stronger the longer he fights: +2% more damage for every 5 seconds the current battle has lasted, up to +40% extra (reached at 100 seconds). The ramp resets when a new battle begins. Ten years of clears taught him exactly where a blade lands hardest — every duel is one he has already fought a hundred times in his head, and the longer it runs, the more of it he remembers. His second skill, hidden until effective rank 4★ — the edge only a Soren who refused to die long enough ever learns." }
-        ]
+          { name: "Duelist's Edge", unlock: 4, desc: "His own damage +12% per skill level — and he gets stronger the longer he fights: +2% more damage for every 5 seconds the current battle has lasted, up to +40% extra (reached at 100 seconds). The ramp resets when a new battle begins. Ten years of clears taught him exactly where a blade lands hardest — every duel is one he has already fought a hundred times in his head, and the longer it runs, the more of it he remembers. His second skill, hidden until effective rank 4★ — the edge only a Soren who refused to die long enough ever learns." },
+          { name: "Undying Star — unlocks at effective rank 12★", desc: "The first time Soren would fall in a battle, he refuses: he survives at 1 HP, and his attacks deal +5% damage per skill level for 8s. Once per battle. At skill level 12: +60% damage for 8s after the save. The 1-star that doesn't die." }]
       },
-      aaron: { name: "Spear Wall", desc: "Enemy attack −4% per skill level while he holds the front line." },
+      aaron: { name: "Spear Wall", desc: "Enemy attack −4% per skill level while he holds the front line." ,
+        more: [
+          { name: "Shield Wall — unlocks at effective rank 7★", desc: "Every 20 seconds, Rhys raises his spear-wall: the party gains a shield absorbing 5% of party max HP + 1% per skill level. At skill level 6: an 11% max HP shield every 20s." }
+        ]},
       eolka: {
         name: "Mana Overflow",
         desc: "Her own damage +12% per skill level. Control was never the point; volume is.",
         more: [
-          { name: "Frostbite", desc: "While she is in the party, her frost CHILLS the enemy — it takes frost damage every second equal to 10% of her attack per skill level. Each chill tick has a 10% chance to FREEZE the enemy solid: a frozen enemy cannot attack. The freeze lasts 2 seconds at skill Lv 1, +0.5 seconds per skill level (4s at Lv 5), and a fresh freeze while already frozen refreshes its duration. Her second skill, known from the start alongside Mana Overflow." }
-        ]
+          { name: "Frostbite", desc: "While she is in the party, her frost CHILLS the enemy — it takes frost damage every second equal to 10% of her attack per skill level. Each chill tick has a 10% chance to FREEZE the enemy solid: a frozen enemy cannot attack. The freeze lasts 2 seconds at skill Lv 1, +0.5 seconds per skill level (4s at Lv 5), and a fresh freeze while already frozen refreshes its duration. Her second skill, known from the start alongside Mana Overflow." },
+          { name: "Glacier — unlocks at effective rank 7★", desc: "While the enemy is chilled, it deals 3% + 1% per skill level less damage. At skill level 4: -7% enemy damage while chilled. Her frost bites deeper." }]
       },
       velkist: {
         name: "Frenzy",
         desc: "His own damage +9% per skill level. Every duel makes the next swing wilder.",
         more: [
           { name: "Blood Frenzy", desc: "His own damage +10% per skill level — and his attacks open wounds that BLEED: the enemy takes bleed damage every second equal to 10% of his attack per skill level, for as long as Torin is in the party. Frenzy is the spark; Blood Frenzy is the fire catching — once Torin tastes a real fight, the madness stops being a mood and becomes momentum, and every swing after the first lands harder than the one before it. His second skill, known from the start alongside Frenzy." },
-          { name: "Last Stand", desc: "Torin deals +1% own damage for every 2% of the party's HP missing, up to +50% — the lower the party's pooled HP, the harder he hits. At half HP he is already +25%; with the party on its last legs, he swings at full fury. Wounded is not beaten. Wounded is warming up. His third skill, known from the start alongside Frenzy and Blood Frenzy." }
-        ]
+          { name: "Last Stand", desc: "Torin deals +1% own damage for every 2% of the party's HP missing, up to +50% — the lower the party's pooled HP, the harder he hits. At half HP he is already +25%; with the party on its last legs, he swings at full fury. Wounded is not beaten. Wounded is warming up. His third skill, known from the start alongside Frenzy and Blood Frenzy." },
+          { name: "Blood Pact — unlocks at effective rank 8★", desc: "Torin's bleed also heals the party for 10% of the bleed damage + 5% per skill level. At skill level 6: 40% of bleed damage returned as healing. The mad swordsman's blood feeds his party." }]
       },
       nerissa: {
         name: "Sanctuary",
         desc: "Priest healing +35% per skill level. The fallen order's last blessing, still potent.",
         more: [
           { name: "Blessing of Light", desc: "Party damage +2% per skill level. A warmer, simpler prayer than Sanctuary — no cathedral, no rite, just light laid gently over the party's weapons until every blow lands brighter and harder. Her second skill, known from the start alongside Sanctuary." },
-          { name: "Divine Shield", desc: "Enemy attack −2% per skill level. Her faith made visible: a thin veil of light between the party and every incoming blow, turning the edge of each strike just enough to matter. Her third skill, known from the start alongside Sanctuary and Blessing of Light." }
-        ]
+          { name: "Divine Shield", desc: "Enemy attack −2% per skill level. Her faith made visible: a thin veil of light between the party and every incoming blow, turning the edge of each strike just enough to matter. Her third skill, known from the start alongside Sanctuary and Blessing of Light." },
+          { name: "Sacred Cleansing — unlocks at effective rank 7★", desc: "Every 20 seconds, Celeste cleanses the party of ALL debuffs and grants immunity to new debuffs for 2s + 0.5s per skill level. At skill level 4: a full cleanse + 4s immunity every 20s." }]
       },
-      mira: { name: "Cartographer's Eye", desc: "Gold from floor clears +4% per skill level. She knows where the tower hides its coin." },
-      dain: { name: "Immovable", desc: "Enemy attack −3% per skill level. Doorways fear him." },
-      sella: { name: "Chain Lightning", desc: "Her own damage +15% per skill level. Aim is improving; enthusiasm is not." },
-      tomas: { name: "Underdog Spirit", desc: "His own damage +12% per skill level. Proof a 1-star can climb — Soren is the precedent." },
-      pippa: { name: "Sure Shot", desc: "Party critical chance +2% per skill level. Bigger sheep, same sling." },
-      brann: { name: "Bell of Courage", desc: "Healing +20% and party damage +2% per skill level. The tower knows they're coming, and regrets it." },
+      mira: { name: "Cartographer's Eye", desc: "Gold from floor clears +4% per skill level. She knows where the tower hides its coin." ,
+        more: [
+          { name: "Lucky Shot — unlocks at effective rank 7★", desc: "Mira's arrows have a 10% + 2% per skill level chance to strike twice (deal double damage). At skill level 6: a 22% chance per arrow to double." }
+        ]},
+      dain: { name: "Immovable", desc: "Enemy attack −3% per skill level. Doorways fear him." ,
+        more: [
+          { name: "Counter-Thrust — unlocks at effective rank 7★", desc: "Whenever the enemy attacks, Dain counter-thrusts for 25% of his attack x skill level. At skill level 6: 150% of Dain's attack per enemy attack." }
+        ]},
+      sella: { name: "Chain Lightning", desc: "Her own damage +15% per skill level. Aim is improving; enthusiasm is not." ,
+        more: [
+          { name: "Storm Surge — unlocks at effective rank 7★", desc: "Every 15 seconds, lightning strikes: 120% of her attack x skill level damage, with a 25% chance to stun for 2s. At skill level 6: 720% attack, 25% stun chance." }
+        ]},
+      tomas: { name: "Underdog Spirit", desc: "His own damage +12% per skill level. Proof a 1-star can climb — Soren is the precedent." ,
+        more: [
+          { name: "First Sword — unlocks at effective rank 3★", desc: "Tomas's first strike in each battle deals 200% of his attack x skill level. At skill level 3: 600% attack on the first strike." }
+        ]},
+      pippa: { name: "Sure Shot", desc: "Party critical chance +2% per skill level. Bigger sheep, same sling." ,
+        more: [
+          { name: "Skylark — unlocks at effective rank 3★", desc: "Every 20 seconds, Pippa's sling stone finds its mark: 150% of her attack x skill level damage, and the party gains +2% damage per skill level for 5s. At skill level 3: 450% attack, +6% damage for 5s." }
+        ]},
+      brann: { name: "Bell of Courage", desc: "Healing +20% and party damage +2% per skill level. The tower knows they're coming, and regrets it." ,
+        more: [
+          { name: "Blessing of the Hearth — unlocks at effective rank 3★", desc: "Every 25 seconds, Brann rings his handbell: heals the party for 3% of max HP + 0.5% per skill level. At skill level 3: a 4.5% max HP heal every 25s." }
+        ]},
       nyx: {
         name: "Shadowstep",
         desc: "Party critical chance +3% per skill level. She is already behind the enemy before the fight begins.",
         more: [
-          { name: "Venom Strike", desc: "Her attacks POISON the enemy — it takes poison damage every second equal to 12% of her attack per skill level, for as long as Nyx is in the party. Nyx does not need to swing twice: the first cut is a delivery, and the venom she leaves in the wound does the rest of the work in silence. Her second skill, known from the start alongside Shadowstep." }
-        ]
+          { name: "Venom Strike", desc: "Her attacks POISON the enemy — it takes poison damage every second equal to 12% of her attack per skill level, for as long as Nyx is in the party. Nyx does not need to swing twice: the first cut is a delivery, and the venom she leaves in the wound does the rest of the work in silence. Her second skill, known from the start alongside Shadowstep." },
+          { name: "Numbing Venom — unlocks at effective rank 7★", desc: "While poisoned, the enemy attacks 5% + 2% per skill level less often. At skill level 4: 13% less often while poisoned. Her venom numbs." }]
       },
       kael: {
         name: "Twin Fang",
         desc: "His own damage +14% per skill level — and when Nyx fights beside him, party damage +2% per skill level. Two fangs, one shadow.",
         more: [
           { name: "Twin Strike", desc: "Party damage +2% per skill level. Kael does not only strike second — he strikes in rhythm, and a rhythm is contagious: the whole party starts timing their blows to land in the breath his opens up. His second skill, known from the start alongside Twin Fang." },
-          { name: "Silent Hunt", desc: "Enemy attack −2% per skill level. A hunted thing fights worse — it flinches at shadows, guards the wrong side, spends its strength on a second fang that is not there yet. Kael makes sure every enemy feels hunted. His third skill, known from the start alongside Twin Fang and Twin Strike." }
-        ]
+          { name: "Silent Hunt", desc: "Enemy attack −2% per skill level. A hunted thing fights worse — it flinches at shadows, guards the wrong side, spends its strength on a second fang that is not there yet. Kael makes sure every enemy feels hunted. His third skill, known from the start alongside Twin Fang and Twin Strike." },
+          { name: "Twin's Oath — unlocks at effective rank 7★", desc: "Kael's attacks mark the enemy; at 5 marks, the mark detonates for 200% of his attack + 25% per skill level. If Nyx is in the party, marks build twice as fast. At skill level 4: 300% attack per detonation." }]
       },
       lyra: {
         name: "Crimson Waltz",
         desc: "Party damage +5% per skill level. The whole party falls into her rhythm — every step timed, every strike landing on the beat of a dance only she can hear.",
         more: [
           { name: "Veil Waltz", desc: "Enemy attack −3% per skill level. Her ribbons veil the enemy's eyes mid-step — a turn too late, a strike gone wide, a blow that lands on empty air where the dance already moved on. Her second skill, known from the start alongside Crimson Waltz." },
-          { name: "Dancer's Grace", desc: "Party critical chance +2% per skill level. A dancer's timing is catching — the whole party starts landing on the beat she sets, and blows that land exactly on the beat land exactly where it hurts. Deliberately light-footed, like everything she does. Her third skill, known from the start alongside Crimson Waltz and Veil Waltz." }
-        ]
+          { name: "Dancer's Grace", desc: "Party critical chance +2% per skill level. A dancer's timing is catching — the whole party starts landing on the beat she sets, and blows that land exactly on the beat land exactly where it hurts. Deliberately light-footed, like everything she does. Her third skill, known from the start alongside Crimson Waltz and Veil Waltz." },
+          { name: "Blood Waltz — unlocks at effective rank 7★", desc: "The party heals for 2% of the damage it deals + 0.5% per skill level. At skill level 3: 3.5% of party damage returned as healing." }]
       },
       brynn: {
         name: "Bulwark",
         desc: "Enemy attack −3% per skill level. She plants her tower shield and becomes the wall — every blow the enemy throws lands on dark steel first, and arrives at the party already spent.",
         more: [
-          { name: "Rallying Banner", desc: "Party damage +3% per skill level. A warden's banner does not fly for decoration — while it stands, the whole party stands taller, and every strike lands with the weight of everyone sheltering behind it. Her second skill, known from the start alongside Bulwark." }
-        ]
+          { name: "Rallying Banner", desc: "Party damage +3% per skill level. A warden's banner does not fly for decoration — while it stands, the whole party stands taller, and every strike lands with the weight of everyone sheltering behind it. Her second skill, known from the start alongside Bulwark." },
+          { name: "Iron Aegis — unlocks at effective rank 7★", desc: "Every 20 seconds, Brynn raises her tower shield: the party gains a shield absorbing 8% of party max HP + 2% per skill level. At skill level 3: a 14% max HP shield every 20s." }]
       },
       faye: {
         name: "Stormcall",
         desc: "Party damage +4% per skill level. When Faye calls, the sky answers — every friendly strike comes down carrying a little thunder borrowed from her storm.",
         more: [
-          { name: "Static Charge", desc: "Party critical chance +3% per skill level. The air around her party crackles with gold static — blades spark, arrows hum, and blows keep finding the exact spot where the charge wants to land. Her second skill, known from the start alongside Stormcall." }
-        ]
+          { name: "Static Charge", desc: "Party critical chance +3% per skill level. The air around her party crackles with gold static — blades spark, arrows hum, and blows keep finding the exact spot where the charge wants to land. Her second skill, known from the start alongside Stormcall." },
+          { name: "Thunderclap — unlocks at effective rank 7★", desc: "Every 20 seconds, a thunderclap deals 100% of her attack x skill level damage and silences the enemy for 2s + 0.2s per skill level (boss timed abilities paused while silenced). At skill level 3: 300% attack, 2.6s silence." }]
       },
       draven: {
         name: "Inferno Breath",
         desc: "Party damage +6% per skill level — and his attacks set the enemy ablaze, burning it over time (25% of his attack per second for 3s, refreshed with every strike). Dragonfire does not ask permission, and it does not go out on schedule.",
         more: [
           { name: "Dragon's Hoard", desc: "Gold from clears +10% per skill level — tower clears, grind clears, and offline earnings alike. A dragon does not merely win; a dragon collects, and the tower's coin has a way of drifting toward his hoard. His second skill, known from the start alongside Inferno Breath." },
-          { name: "Dragon's Wrath", desc: "His own damage +15% per skill level. Beneath the prince's calm manners, the furnace is always lit — when Draven stops being polite, every strike lands with the full weight of the old dragon clan behind it. His third skill, known from the start alongside Inferno Breath and Dragon's Hoard." }
-        ]
+          { name: "Dragon's Wrath", desc: "His own damage +15% per skill level. Beneath the prince's calm manners, the furnace is always lit — when Draven stops being polite, every strike lands with the full weight of the old dragon clan behind it. His third skill, known from the start alongside Inferno Breath and Dragon's Hoard." },
+          { name: "Dread Flame — unlocks at effective rank 8★", desc: "Every 25 seconds, Draven roars with dragonfire: the enemy is frightened and attacks 20% + 2% per skill level less often for 5s. At skill level 3: 26% less often for 5s." }]
       },
       diddle: {
         name: "Silent Polyglot",
         desc: "Enemy attack \u22122% per skill level. He reads the enemy's battle plans in any tongue — but cannot speak a word of them, so the warning comes out as arrows instead.",
         more: [
-          { name: "Instant Calculation", desc: "Party critical chance +3% per skill level. Every arrow is a computed perfect shot — range, wind, and weakness solved in the instant before the string is loosed. His second skill, known from the start alongside Silent Polyglot." }
-        ]
+          { name: "Instant Calculation", desc: "Party critical chance +3% per skill level. Every arrow is a computed perfect shot — range, wind, and weakness solved in the instant before the string is loosed. His second skill, known from the start alongside Silent Polyglot." },
+          { name: "Checkmate — unlocks at effective rank 9★", desc: "Every 20 seconds, Diddle calculates the perfect move: the party's next attack is a guaranteed critical hit dealing +50% damage + 10% per skill level (on top of the x1.8 crit). At skill level 4: a guaranteed crit dealing +90% damage." }]
       },
       /* ---- The synergy six's skills (Nov 18, 2026) ----
          Personalized effects, not flat auras — every one of them lives in
@@ -956,54 +987,54 @@
         name: "Thornmail",
         desc: "Whenever the enemy attacks, its own thorns bite back — it takes damage equal to 10% of its own attack per skill level, as every blow it throws comes home through the thorns. The garden wall was planted to guard the paradise; the thorns never learned the difference between a wall and a warning.",
         more: [
-          { name: "Entangle", desc: "Every 15 seconds in battle, roots wrap the enemy whole and hold it fast — it cannot attack for 2 seconds. The paradise's last garden does not ask permission to grow, and it does not let go once it has hold of something." }
-        ]
+          { name: "Entangle", desc: "Every 15 seconds in battle, roots wrap the enemy whole and hold it fast — it cannot attack for 2 seconds. The paradise's last garden does not ask permission to grow, and it does not let go once it has hold of something." },
+          { name: "Briar Thorns — unlocks at effective rank 8★", desc: "Whenever the enemy attacks, it takes damage equal to 25% of Ilya's attack x skill level. At skill level 4: 100% of Ilya's attack per enemy attack. Thorns that bite back on ILYA's attack, never the enemy's." }]
       },
       nix: {
         name: "Glacial Edge",
         desc: "Each of her hits stacks a chill on the enemy — at 5 stacks, the cold closes and the enemy freezes solid for 3 seconds, unable to attack. Frostbite is a chance; Glacial Edge is a sentence, served one cut at a time.",
         more: [
-          { name: "Hoarfrost", desc: "Frost creeps in with every blow the enemy throws: each time it attacks, its attack drops another 2%, stacking to \u221220% until the battle ends. The frost does not hurry. It does not need to — it is already winning by the time the enemy notices the cold." }
-        ]
+          { name: "Hoarfrost", desc: "Frost creeps in with every blow the enemy throws: each time it attacks, its attack drops another 2%, stacking to \u221220% until the battle ends. The frost does not hurry. It does not need to — it is already winning by the time the enemy notices the cold." },
+          { name: "Shatter — unlocks at effective rank 7★", desc: "Nix's attacks against a frozen enemy deal +30% damage + 10% per skill level. At skill level 3: +60% damage vs frozen." }]
       },
       mari: {
         name: "Cut Strings",
         desc: "Every 15 seconds in battle, Mari yanks the enemy's strings — it strikes itself for 50% of its attack. He was Vesper's finest puppet; he knows exactly where the strings are, and exactly how hard to pull.",
         more: [
-          { name: "Second Act", desc: "His dance quickens as the fight goes on: party damage +3% for every 10 seconds of the same battle, up to +30%. The first act is a performance. The second act is a promise — and the tempo only ever rises." }
-        ]
+          { name: "Second Act", desc: "His dance quickens as the fight goes on: party damage +3% for every 10 seconds of the same battle, up to +30%. The first act is a performance. The second act is a promise — and the tempo only ever rises." },
+          { name: "Curtain Call — unlocks at effective rank 7★", desc: "Every 25 seconds, Mari forces the enemy to bow: it cannot attack for 3s and the party heals for 2% of max HP + 0.5% per skill level. At skill level 3: a 3s root, 3.5% max HP heal." }]
       },
       amara: {
         name: "Tidal Edict",
         desc: "Every 15 seconds in battle, a tidal wave crashes down for damage equal to 100% of her attack per skill level. The last of the paradise's ocean, summoned by the queen it drowned for — and it has not forgotten how to be a sea.",
         more: [
           { name: "Sunken Guard", desc: "The tide swallows blows: enemy attacks have a 10% chance per skill level to deal no damage at all. The sea takes what it is owed, one swing at a time, and it is owed a great deal." },
-          { name: "Pearlescent Aegis", desc: "Every 10 seconds, pearl light washes over the party, healing 2% of its max HP. The pearls in her crown were never decoration — they are the ocean's memory of gentleness, and it still knows how to mend." }
-        ]
+          { name: "Pearlescent Aegis", desc: "Every 10 seconds, pearl light washes over the party, healing 2% of its max HP. The pearls in her crown were never decoration — they are the ocean's memory of gentleness, and it still knows how to mend." },
+          { name: "Tidecaller's Wrath — unlocks at effective rank 11★", desc: "Every 25 seconds, a massive wave crashes: deals 150% of her attack x skill level and slows the enemy (attacks 15% + 2% per skill level less often) for 5s. At skill level 6: 900% attack, 27% less often for 5s." }]
       },
       durnan: {
         name: "Mountain's Weight",
         desc: "His weight slows the enemy itself: it attacks 15% less often while the Mountain King stands in the party. A mountain does not hurry, and it does not let anything else hurry either — least of all something trying to kill its people.",
         more: [
           { name: "Warlord's Roar", desc: "Every 15 seconds he roars — party damage +25% for 5 seconds. The roar that once moved armies still moves the party: five seconds of the mountain itself shouting, and every blade in the room swings like it heard the order." },
-          { name: "Unbreakable", desc: "The first time the party would fall in a battle, Durnan holds the line: the party survives at 1 HP instead of wiping, and Luna's vigil and Wren's tonic stay unspent. The mountain does not fall. Not once. Not while he is standing on it." }
-        ]
+          { name: "Unbreakable", desc: "The first time the party would fall in a battle, Durnan holds the line: the party survives at 1 HP instead of wiping, and Luna's vigil and Wren's tonic stay unspent. The mountain does not fall. Not once. Not while he is standing on it." },
+          { name: "Bulwark of the Mountain — unlocks at effective rank 8★", desc: "Every 25 seconds, Durnan raises his shield: the party gains a shield absorbing 8% of party max HP + 2% per skill level. At skill level 3: a 14% max HP shield every 25s." }]
       },
       orien: {
         name: "Star Chart",
         desc: "He reads the fated blow: every 10th party attack is a guaranteed critical strike. The stars the Unmaking ate still had their say — Orien kept the charts, and the charts remember exactly where the weak point is.",
         more: [
           { name: "Eclipse", desc: "Every 25 seconds, darkness falls for 4 seconds: the enemy cannot attack, and party damage +20% while the stars are out. An eclipse is not the absence of light — it is the sky holding its breath, and the party striking in the dark it made." },
-          { name: "Cometfall", desc: "Every 20 seconds, a comet strikes for 150% of his attack per skill level. The stars he charts are gone, but their light is still falling — and Orien has learned to aim it." }
-        ]
+          { name: "Cometfall", desc: "Every 20 seconds, a comet strikes for 150% of his attack per skill level. The stars he charts are gone, but their light is still falling — and Orien has learned to aim it." },
+          { name: "Supernova — unlocks at effective rank 10★", desc: "Every 40 seconds, a star explodes: deals 250% of his attack x skill level. At skill level 5: 1,250% of his attack per 40s — the single biggest burst in the game." }]
       },
       rurik: {
         name: "Ember Cleave",
         desc: "His own damage +14% per skill level. Every swing trails cinders, and every cinder is a promise of the next swing.",
         more: [
           { name: "Ember Aura", desc: "Party damage +3% per skill level. Rurik runs hot enough to share — the heat rolling off his armor keeps every nearby blade limber, every nearby temper short, and every nearby strike a little more eager than it should be. His second skill, known from the start alongside Ember Cleave." },
-          { name: "Crimson Roar", desc: "Party critical chance +2% per skill level. A dragonkin roar does something to the blood — the party's, mostly. Everything feels hittable for a moment after it, and somehow, everything is. His third skill, known from the start alongside Ember Cleave and Ember Aura." }
-        ]
+          { name: "Crimson Roar", desc: "Party critical chance +2% per skill level. A dragonkin roar does something to the blood — the party's, mostly. Everything feels hittable for a moment after it, and somehow, everything is. His third skill, known from the start alongside Ember Cleave and Ember Aura." },
+          { name: "Cinder Trail — unlocks at effective rank 7★", desc: "His attacks leave cinders: the enemy burns for 8% of his attack x skill level/s. At skill level 4: 32% attack/s burn." }]
       },
       aurelia: {
         name: "Golden Snare",
@@ -1011,14 +1042,15 @@
         more: [
           { name: "Golden Web", desc: "Party critical chance +4% per skill level. The wider web is strung with threads only her spiders can see — every strand guides a friendly blade to the one soft place the silk has already found. Her second skill, known from the start alongside Golden Snare." },
           { name: "Silk Cocoon", desc: "Every 15 seconds in battle, her silk wraps the enemy whole and STUNS it — it cannot attack while stunned. The stun lasts 2 seconds + 0.5 seconds per skill level past the first (2s at skill Lv 1, up to 4s at Lv 5), and it works on normal monsters, gate bosses, and Floor Lords alike. Her third skill, known from the start alongside Golden Snare and Golden Web." },
-          { name: "Widow's Feast", desc: "While the enemy is stunned by her Silk Cocoon, the whole party deals +10% damage per skill level — a wrapped enemy cannot dodge, parry, or even flinch away, so every blade lands true. The feast lasts exactly as long as the stun does. Her fourth skill, known from the start alongside Golden Snare, Golden Web, and Silk Cocoon." }
-        ]
+          { name: "Widow's Feast", desc: "While the enemy is stunned by her Silk Cocoon, the whole party deals +10% damage per skill level — a wrapped enemy cannot dodge, parry, or even flinch away, so every blade lands true. The feast lasts exactly as long as the stun does. Her fourth skill, known from the start alongside Golden Snare, Golden Web, and Silk Cocoon." },
+          { name: "Widow's Embrace — unlocks at effective rank 12★", desc: "Every 25 seconds, Aurelia wraps the enemy in golden silk: rooted (cannot attack) for 2s + 0.3s per skill level, and while wrapped it takes +8% damage per skill level from all sources. At skill level 6: a 3.8s root and +48% damage taken while wrapped." }]
       },
       vesper: {
         name: "Marionette Waltz",
         desc: "Party damage +3% per skill level, and enemy attack −2% per skill level — her puppet strikes on its own dancing strings, and every so often it tangles the enemy's limbs mid-swing, slowing their blows. Her waltz grows with her effective rank (base stars + synthesis ranks): four syntheses take the 4★ puppeteer all the way to 8★.",
         more: [
           { name: "Puppet Dance", desc: "Party critical chance +2% per skill level. A second, smaller puppet joins the act — it cannot hurt anything, but it dances exactly where the enemy is about to look, and a blade that lands while the enemy watches the wrong dancer lands deep. Her second skill, known from the start alongside Marionette Waltz." },
+          { name: "Marionette's Masterpiece — unlocks at effective rank 8★", desc: "Every 25 seconds, Vesper weaves all her strings: the enemy is rooted (cannot attack) for 2s + 0.3s per skill level and takes 100% of her attack x skill level damage. At skill level 5: a 3.5s root, 500% attack." },
           { name: "Curtain Call", desc: "Gold from clears +5% per skill level — tower clears, grind clears, and offline earnings alike. No performance ends without a collection, and Vesper's audiences have never once left without paying — the tower, it turns out, is an audience like any other. Her third skill, known from the start alongside Marionette Waltz and Puppet Dance." }
         ]
       },
@@ -1027,7 +1059,8 @@
         desc: "Party damage +3% per skill level, and Orin counts as a healer — his song heals the party over time and lifts their damage, so everyone shines a little brighter while he plays. He has been singing since before the tower existed, and time has never once touched him. His ballad grows with his effective rank (base stars + synthesis ranks): the longer he climbs, the more of the paradise he remembers how to sing.",
         more: [
           { name: "Verse of Light — unlocks at effective rank 5★", desc: "A verse the paradise sang at dawn, remembered again: party critical chance +3% per skill level, as his melody finds the bright note inside every swing. A 3★ Orin reaches rank 5 after two syntheses." },
-          { name: "Paradise Requiem — unlocks at effective rank 7★", desc: "The last and greatest song of the paradise, sung whole at last: party damage +6% per skill level and healing +30% per skill level. Four syntheses restore the songkeeper's full voice — the song the Unmaking could never eat, remembered entire." }
+          { name: "Paradise Requiem — unlocks at effective rank 7★", desc: "The last and greatest song of the paradise, sung whole at last: party damage +6% per skill level and healing +30% per skill level. Four syntheses restore the songkeeper's full voice — the song the Unmaking could never eat, remembered entire." },
+          { name: "Paradise's Anthem — unlocks at effective rank 8★", desc: "Every 30 seconds, Orin sings the paradise's anthem: the party deals +5% damage per skill level for 10s and is cleansed of one debuff. At skill level 6: +30% damage for 10s. The song the paradise remembers." }
         ]
       },
       wren: {
@@ -1038,78 +1071,150 @@
           { name: "Phoenix Tonic", unlock: 7, desc: "When the party would fall, Wren's ultimate brew revives everyone at 40% HP and the fight continues — once per battle." }
         ]
       },
-      nia: { name: "Hearty Stew", desc: "Party healing +10% per skill level. A stew that tastes like the paradise's feasts — because her recipes are memories of them." },
-      dun: { name: "Quench", desc: "Enemy attack −1% per skill level. Fresh from the forge, every blow lands cooler and duller than it should." },
-      marlo: { name: "Patient Line", desc: "Gold from clears +3% per skill level. He waits. The tower's coin always bites eventually — his fish are the last from the paradise's rivers." },
-      tam: { name: "Trailblazer", desc: "Party damage +2% per skill level. She walks first, marks the safe path, and the party follows her lead into every fight." },
-      anselm: { name: "Steadfast Palm", desc: "Party max HP +4% per skill level. A monk's palm, pressed to the party's backs: stand firm, endure, do not fall." },
-      joss: { name: "Mocking Laugh", desc: "Enemy attack −2% per skill level. He laughs at the monster's best swing — and the monster starts believing him." },
-      bram: { name: "Flock's Courage", desc: "Party max HP +2% per skill level. His flock never scattered, and neither will this party while he watches over it." },
-      greta: { name: "Hard Swing", desc: "Her own damage +12% per skill level. Years underground taught her exactly where rock breaks — monsters are only harder rock." },
-      iris: { name: "Bloom", desc: "Party healing +8% per skill level. Her flowers remember the paradise's gardens, and they bloom for anyone still climbing." },
-      hugo: { name: "Swarm", desc: "His own damage +12% per skill level. A beekeeper never fights alone — his swarm arrives with him, furious and on time." },
-      lena: { name: "Guiding Light", desc: "Party critical chance +2% per skill level. Her lantern burns a fragment of Seraphina's light, the last light the Unmaking couldn't eat — and it shows the party exactly where to strike." },
-      odo: { name: "Sturdy Soles", desc: "Party max HP +2% per skill level. Well-made shoes carry a party further than any sword — his soles have never once given out." },
-      ruth: { name: "Swift Feet", desc: "Party damage +1% per skill level. The fastest feet in the tower, and the whole party hurries to keep up with her." },
-      petra: { name: "Volatile Mix", desc: "Her own damage +14% per skill level. Her potions are brewed from echoes — shake well, throw hard, stand back." },
-      ash: { name: "Pack Tactics", desc: "Party critical chance +2% per skill level. He hunts like his beasts do: together, and always at the throat." },
-      milo: { name: "Charted Path", desc: "Gold from clears +4% per skill level. Every floor mapped, every cache marked — the tower hides its coin, but never from Milo." },
-      yara: { name: "Echo Sight", desc: "Party damage +3% per skill level. She sees echoes of the paradise and remembers what the tower forgot — including where the enemy is weakest." },
-      zinnia: { name: "Daredevil", desc: "Her own damage +14% per skill level. A fox-girl acrobat who has never once looked before she leaps — and has never once missed the landing." },
-      hilda: { name: "Liquid Courage", desc: "Party healing +10% per skill level. One mug of Hilda's brew and the party remembers it is unbreakable." },
-      cassian: { name: "Guiding Star", desc: "Party critical chance +3% per skill level. He charts the hollow sky and remembers the stars the Unmaking ate — and by their light, every strike finds its mark." },
-      ivo: { name: "Elegy", desc: "Enemy attack −1% per skill level. He writes elegies for strangers and cries at sunsets — his sorrow is so heavy it slows even the monsters' swings. He is always damp, and never dries off." },
-      agatha: { name: "Mourning Thread", desc: "Party max HP +3% per skill level. She has sewn shrouds for a lifetime; now she sews her party's wounds shut before they are ever made." },
-      straw: { name: "Unwanted", desc: "His own damage +12% per skill level. Nobody wanted the scarecrow — not the crows, not the field, not the tower. Being unwanted only made him hit harder." },
-      eamon: { name: "Last Light", desc: "Party healing +8% per skill level. His lamp holds one ember of Seraphina's light, like Lena's lantern — and as long as it burns, no one in his party is left in the dark." },
+      nia: { name: "Hearty Stew", desc: "Party healing +10% per skill level. A stew that tastes like the paradise's feasts — because her recipes are memories of them." ,
+        more: [
+          { name: "Grand Feast — unlocks at effective rank 5★", desc: "Every 25 seconds, Nia serves a feast: the party heals for 4% of max HP + 1% per skill level and gains +3% damage per skill level for 5s. At skill level 5: a 9% max HP heal, +15% damage for 5s." }
+        ]},
+      dun: { name: "Quench", desc: "Enemy attack −1% per skill level. Fresh from the forge, every blow lands cooler and duller than it should." ,
+        more: [
+          { name: "Anvil's Ring — unlocks at effective rank 4★", desc: "Every 15 seconds, Dun's hammer strikes: 120% of his attack x skill level damage and the enemy is stunned for 1s + 0.2s per skill level. At skill level 4: 480% attack, 1.8s stun." }
+        ]},
+      marlo: { name: "Patient Line", desc: "Gold from clears +3% per skill level. He waits. The tower's coin always bites eventually — his fish are the last from the paradise's rivers." ,
+        more: [
+          { name: "Legendary Catch — unlocks at effective rank 5★", desc: "Every 30 seconds, Marlo hauls in a legendary catch: +500 gold x skill level and a 10% chance of +5 gems. At skill level 5: +2,500 gold per catch, 10% chance of +5 gems." }
+        ]},
+      tam: { name: "Trailblazer", desc: "Party damage +2% per skill level. She walks first, marks the safe path, and the party follows her lead into every fight." ,
+        more: [
+          { name: "Marked Trail — unlocks at effective rank 4★", desc: "Tam marks the enemy: it takes +3% damage per skill level from all sources while she is in the party. At skill level 3: +9% damage taken, always on." }
+        ]},
+      anselm: { name: "Steadfast Palm", desc: "Party max HP +4% per skill level. A monk's palm, pressed to the party's backs: stand firm, endure, do not fall." ,
+        more: [
+          { name: "Iron Palm — unlocks at effective rank 4★", desc: "Every 15 seconds, Anselm's palm strike deals 100% of his attack x skill level and delays the enemy's next attack by 2s. At skill level 3: 300% attack, next attack delayed 2s." }
+        ]},
+      joss: { name: "Mocking Laugh", desc: "Enemy attack −2% per skill level. He laughs at the monster's best swing — and the monster starts believing him." ,
+        more: [
+          { name: "Trick Mirror — unlocks at effective rank 4★", desc: "Every 20 seconds, Joss tricks the enemy into striking itself for 150% of Joss's attack x skill level. At skill level 3: 450% of Joss's attack as self-damage. The damage is Joss's, never the enemy's." }
+        ]},
+      bram: { name: "Flock's Courage", desc: "Party max HP +2% per skill level. His flock never scattered, and neither will this party while he watches over it." ,
+        more: [
+          { name: "Flock's Rally — unlocks at effective rank 4★", desc: "When party HP drops below 50%, the flock rallies: heals the party for 5% of max HP + 1% per skill level (20s cooldown). At skill level 4: a 9% max HP heal per rally." }
+        ]},
+      greta: { name: "Hard Swing", desc: "Her own damage +12% per skill level. Years underground taught her exactly where rock breaks — monsters are only harder rock." ,
+        more: [
+          { name: "Seam Strike — unlocks at effective rank 4★", desc: "Every 15 seconds, Greta strikes a weak seam: 150% of her attack x skill level damage, and the enemy takes +5% damage per skill level for 5s. At skill level 4: 600% attack, +20% damage taken for 5s." }
+        ]},
+      iris: { name: "Bloom", desc: "Party healing +8% per skill level. Her flowers remember the paradise's gardens, and they bloom for anyone still climbing." ,
+        more: [
+          { name: "Bloom Burst — unlocks at effective rank 5★", desc: "Every 20 seconds, her garden erupts: heals the party for 3% of max HP + 0.5% per skill level and roots the enemy for 1s + 0.3s per skill level. At skill level 5: a 5.5% max HP heal, 2.5s root." }
+        ]},
+      hugo: { name: "Swarm", desc: "His own damage +12% per skill level. A beekeeper never fights alone — his swarm arrives with him, furious and on time." ,
+        more: [
+          { name: "Bee Swarm — unlocks at effective rank 4★", desc: "Every 15 seconds, Hugo's bees swarm the enemy: it takes 10% of his attack x skill level/s for 5s. At skill level 4: 40% attack/s for 5s." }
+        ]},
+      lena: { name: "Guiding Light", desc: "Party critical chance +2% per skill level. Her lantern burns a fragment of Seraphina's light, the last light the Unmaking couldn't eat — and it shows the party exactly where to strike." ,
+        more: [
+          { name: "Beacon of Seraphina — unlocks at effective rank 6★", desc: "Every 20 seconds, her lantern flares: the enemy takes +8% damage per skill level for 5s. At skill level 6: +48% damage taken for 5s every 20s." }
+        ]},
+      odo: { name: "Sturdy Soles", desc: "Party max HP +2% per skill level. Well-made shoes carry a party further than any sword — his soles have never once given out." ,
+        more: [
+          { name: "Mender's Touch — unlocks at effective rank 4★", desc: "Every 20 seconds, Odo mends the party: heals for 2% of max HP + 0.5% per skill level and removes one debuff. At skill level 4: a 4% max HP heal, one debuff removed." }
+        ]},
+      ruth: { name: "Swift Feet", desc: "Party damage +1% per skill level. The fastest feet in the tower, and the whole party hurries to keep up with her." ,
+        more: [
+          { name: "Express Delivery — unlocks at effective rank 4★", desc: "Every 20 seconds, Ruth sprints: the party attacks 10% + 2% per skill level faster for 5s. At skill level 4: +18% attack speed for 5s every 20s." }
+        ]},
+      petra: { name: "Volatile Mix", desc: "Her own damage +14% per skill level. Her potions are brewed from echoes — shake well, throw hard, stand back." ,
+        more: [
+          { name: "Philosopher's Flask — unlocks at effective rank 5★", desc: "Every 18 seconds, Petra throws a flask: 150% of her attack x skill level damage, and the enemy burns for 8% of her attack x skill level/s for 5s. At skill level 4: 600% attack burst, 32% attack/s burn for 5s." }
+        ]},
+      ash: { name: "Pack Tactics", desc: "Party critical chance +2% per skill level. He hunts like his beasts do: together, and always at the throat." ,
+        more: [
+          { name: "Pack Hunt — unlocks at effective rank 4★", desc: "Every 20 seconds, Ash's beasts pounce: 150% of his attack x skill level damage. At skill level 3: 450% attack every 20s." }
+        ]},
+      milo: { name: "Charted Path", desc: "Gold from clears +4% per skill level. Every floor mapped, every cache marked — the tower hides its coin, but never from Milo." ,
+        more: [
+          { name: "Hidden Cache — unlocks at effective rank 4★", desc: "Every 30 seconds, Milo uncovers a hidden cache: +1,000 gold x skill level and 2 gems. At skill level 3: +3,000 gold and 2 gems per cache." }
+        ]},
+      yara: { name: "Echo Sight", desc: "Party damage +3% per skill level. She sees echoes of the paradise and remembers what the tower forgot — including where the enemy is weakest." ,
+        more: [
+          { name: "Foresight — unlocks at effective rank 6★", desc: "Every 18 seconds, Yara foresees the blow: the party completely avoids the enemy's next attack. Cooldown 18s - 1s per skill level — at skill level 5, the party avoids an attack every 13s." }
+        ]},
+      zinnia: { name: "Daredevil", desc: "Her own damage +14% per skill level. A fox-girl acrobat who has never once looked before she leaps — and has never once missed the landing." ,
+        more: [
+          { name: "Foxfire — unlocks at effective rank 4★", desc: "Every 15 seconds, Zinnia's foxfire ignites the enemy: burn of 8% of her attack x skill level/s for 5s. At skill level 3: 24% attack/s for 5s." }
+        ]},
+      hilda: { name: "Liquid Courage", desc: "Party healing +10% per skill level. One mug of Hilda's brew and the party remembers it is unbreakable." ,
+        more: [
+          { name: "Bottoms Up — unlocks at effective rank 4★", desc: "Every 20 seconds, Hilda raises a toast: the party heals for 4% of max HP + 1% per skill level. At skill level 3: a 7% max HP heal every 20s." }
+        ]},
+      cassian: { name: "Guiding Star", desc: "Party critical chance +3% per skill level. He charts the hollow sky and remembers the stars the Unmaking ate — and by their light, every strike finds its mark." ,
+        more: [
+          { name: "Starlight Blessing — unlocks at effective rank 6★", desc: "The party's critical hits deal +10% damage per skill level (on top of the x1.8 crit multiplier). At skill level 5: crits deal +50% more damage (x2.7 instead of x1.8)." }
+        ]},
+      ivo: { name: "Elegy", desc: "Enemy attack −1% per skill level. He writes elegies for strangers and cries at sunsets — his sorrow is so heavy it slows even the monsters' swings. He is always damp, and never dries off." ,
+        more: [
+          { name: "Storm of Sorrow — unlocks at effective rank 4★", desc: "Every 20 seconds, a sorrowful rain falls: the enemy attacks 10% + 2% per skill level less often for 5s. At skill level 4: 18% less often for 5s." }
+        ]},
+      agatha: { name: "Mourning Thread", desc: "Party max HP +3% per skill level. She has sewn shrouds for a lifetime; now she sews her party's wounds shut before they are ever made." ,
+        more: [
+          { name: "Funeral Song — unlocks at effective rank 4★", desc: "Every 25 seconds, Agatha hums a funeral song: the enemy deals 5% + 2% per skill level less damage for 5s. At skill level 3: -11% enemy damage for 5s." }
+        ]},
+      straw: { name: "Unwanted", desc: "His own damage +12% per skill level. Nobody wanted the scarecrow — not the crows, not the field, not the tower. Being unwanted only made him hit harder." ,
+        more: [
+          { name: "Crow's Feast — unlocks at effective rank 5★", desc: "Every 20 seconds, his crows feast: 100% of his attack x skill level damage, and the party heals for 25% of the damage dealt + 5% per skill level. At skill level 5: 500% attack burst, 50% of it returned as healing." }
+        ]},
+      eamon: { name: "Last Light", desc: "Party healing +8% per skill level. His lamp holds one ember of Seraphina's light, like Lena's lantern — and as long as it burns, no one in his party is left in the dark." ,
+        more: [
+          { name: "Beacon — unlocks at effective rank 5★", desc: "Every 25 seconds, his lamp sweeps the battlefield: heals the party for 3% of max HP + 0.5% per skill level and the enemy's next attack misses. At skill level 4: a 5% max HP heal, next attack misses." }
+        ]},
       ondine: {
         name: "Riptide",
         desc: "Party damage +3% per skill level. She hears the tower's drowned rivers — the paradise had an ocean the Unmaking drank — and the tide answers when she calls it. Every wave she raises breaks over the enemy and carries her allies forward with it.",
         more: [
-          { name: "Soothing Tide", desc: "Party healing +8% per skill level. The same tide that breaks over the enemy laps gently at her allies' wounds — the drowned rivers remember being a paradise, and for a little while, they remember how to heal." }
-        ]
+          { name: "Soothing Tide", desc: "Party healing +8% per skill level. The same tide that breaks over the enemy laps gently at her allies' wounds — the drowned rivers remember being a paradise, and for a little while, they remember how to heal." },
+          { name: "High Tide — unlocks at effective rank 6★", desc: "Every 20 seconds, a wave crashes: heals the party for 3% of max HP + 0.5% per skill level and deals 100% of her attack x skill level damage. At skill level 4: a 5% max HP heal, 400% attack." }]
       },
       rook: {
         name: "Tick Tock",
         desc: "Party critical chance +2% per skill level. His pocket watch keeps the party's time — every strike lands exactly on the tick, never a heartbeat early or late.",
         more: [
-          { name: "Borrowed Time", desc: "Gold from floor clears +3% per skill level. Rook lends the party minutes the tower forgot to count — and every borrowed minute pays for itself in coin." }
-        ]
+          { name: "Borrowed Time", desc: "Gold from floor clears +3% per skill level. Rook lends the party minutes the tower forgot to count — and every borrowed minute pays for itself in coin." },
+          { name: "Sands of Time — unlocks at effective rank 5★", desc: "Every 25 seconds, Rook stops time for 2s + 0.3s per skill level: the enemy cannot act, and the party's attacks during the stop deal +10% damage per skill level. At skill level 3: a 2.9s stop, +30% damage during it." }]
       },
       ysolde: {
         name: "Mirror Wall",
         desc: "Party max HP +3% per skill level. Her mirrored plate turns the party's health into a reflection of the paradise as it was — brighter, fuller, harder to break.",
         more: [
-          { name: "Shining Guard", desc: "Enemy attack −2% per skill level. Her mirror shows the enemy its own blow coming back at it, and most monsters flinch at what they see." }
-        ]
+          { name: "Shining Guard", desc: "Enemy attack −2% per skill level. Her mirror shows the enemy its own blow coming back at it, and most monsters flinch at what they see." },
+          { name: "Aegis Mirror — unlocks at effective rank 6★", desc: "The party takes 4% + 1% per skill level less damage from all sources. At skill level 4: 8% less damage taken, always on." }]
       },
       eldric: {
         name: "Rune of Power",
         desc: "Party damage +3% per skill level. He carves a rune of power into the air itself, and every ally's strike carries the old language's weight.",
         more: [
-          { name: "Rune of Fury", desc: "His own damage +16% per skill level. The rune on his own brow burns ember-bright, and Eldric's hammer — and his fury — hit like the mountain the rune was cut from." }
-        ]
+          { name: "Rune of Fury", desc: "His own damage +16% per skill level. The rune on his own brow burns ember-bright, and Eldric's hammer — and his fury — hit like the mountain the rune was cut from." },
+          { name: "Rune of Echoes — unlocks at effective rank 6★", desc: "Every 15 seconds, Eldric's runes echo the party's strongest blow: the next party attack deals +50% damage + 25% per skill level. At skill level 3: the next attack deals +125% damage every 15s." }]
       },
       morrigan: {
         name: "Hex",
         desc: "Enemy attack −3% per skill level. Her crows whisper the enemy's name the wrong way round, and every swing after that comes out crooked.",
         more: [
-          { name: "Murder of Crows", desc: "Her own damage +14% per skill level. A murder of crows descends on the enemy — beaks, wings, and one very smug witch directing the whole flock." }
-        ]
+          { name: "Murder of Crows", desc: "Her own damage +14% per skill level. A murder of crows descends on the enemy — beaks, wings, and one very smug witch directing the whole flock." },
+          { name: "Crowstorm — unlocks at effective rank 9★", desc: "Every 20 seconds, a murder of crows descends: the enemy takes 10% of her attack x skill level/s for 5s, and during the storm its attacks have a 10% + 2% per skill level chance to miss. At skill level 6: 60% attack/s for 5s, 22% miss chance." }]
       },
       juno: {
         name: "Tailwind",
         desc: "Party critical chance +3% per skill level. Her ship may be a memory, but the tailwind is real — it pushes every strike a little faster, a little truer.",
         more: [
-          { name: "Plunder", desc: "Gold from floor clears +4% per skill level. A sky captain knows treasure when she sees it, and Juno Skye has never once sailed past a coin without collecting it." }
-        ]
+          { name: "Plunder", desc: "Gold from floor clears +4% per skill level. A sky captain knows treasure when she sees it, and Juno Skye has never once sailed past a coin without collecting it." },
+          { name: "Fair Winds — unlocks at effective rank 6★", desc: "The party attacks 2% + 1% per skill level faster. At skill level 3: +5% attack speed, always on." }]
       },
       yurneth: {
         name: "Night's Edge",
         desc: "Own damage +15% per skill level. His daggers do the talking — every cut lands exactly where the enemy is weakest.",
         more: [
-          { name: "Ghost Step", desc: "Party critical chance +2% per skill level. He moves like he's not quite there, and the enemy's guard follows a ghost while the party strikes true." }
-        ]
+          { name: "Ghost Step", desc: "Party critical chance +2% per skill level. He moves like he's not quite there, and the enemy's guard follows a ghost while the party strikes true." },
+          { name: "Night's Requiem — unlocks at effective rank 6★", desc: "When Yurneth lands a critical hit, the enemy takes a bleed of 10% of his attack x skill level/s for 3s. At skill level 3: 30% attack/s for 3s per crit." }]
       },
       /* PLACEHOLDER ONLY — Silas & Mara's HERO skills are NOT final.
          Dirge of Forgetting (−5% enemy attack per skill level, already a
@@ -1125,8 +1230,8 @@
         more: [
           { name: "Moonbeam Guidance", desc: "Healing aura +210% per skill level, and her moonlight shields the party (enemy attacks −2% per level). The lowest ally is always wrapped in silver light first." },
           { name: "Waxing Insight", desc: "Party damage +4% per skill level. She names the crack in every defense before the first blow lands." },
-          { name: "Full Moon Vigil — ULTIMATE", desc: "When the party would fall, Luna revives everyone at 40% HP and the fight continues (once a minute). No one climbs alone. No one falls alone." }
-        ]
+          { name: "Full Moon Vigil — ULTIMATE", desc: "When the party would fall, Luna revives everyone at 40% HP and the fight continues (once a minute). No one climbs alone. No one falls alone." },
+          { name: "Seraphina's Voice — unlocks at effective rank 12★", desc: "Every 30 seconds, Luna speaks with the goddess's voice: cleanses the party of ALL debuffs, heals for 4% of party max HP + 1% per skill level, and grants a shield absorbing 4% of party max HP + 1% per skill level. At skill level 6: a 10% heal and a 10% shield every 30s. She IS Seraphina's voice — the strongest support skill in the game." }]
       }
     };
     function starColor(stars) {
@@ -2711,8 +2816,10 @@
        (1h / 4h / 8h / 24h) to gather forge materials and gold. Questing
        heroes are locked out of the tower party until the mission ends or is
        cancelled (cancelling pays nothing). Success is the team's power —
-       favored classes count 1.5x — against the mission difficulty; the
-       chance is shown before sending and locked in at dispatch. Rewards are
+       favored classes count 1.5x — against the mission's RECOMMENDED power;
+       the chance is shown before sending and locked in at dispatch.
+       "Recommended" means what it says: a team AT the recommended power
+       succeeds ~80% of the time (see questChance for the curve). Rewards are
        deliberately slower than dungeon runs: quests are the steady drip,
        dungeons stay the active faucet. (Reward material ids are this
        game's own: iron / moon / scale / essence.) */
@@ -2752,9 +2859,22 @@
     function questChance(s, q, heroIds) {
       if (heroIds.length === 0) return 0;
       var team = questTeamPower(s, q, heroIds);
+      /* The odds curve is anchored on the RECOMMENDED power (q.difficulty),
+         and "recommended" means a solid chance — not a coin flip. The old
+         curve (team / (team + difficulty)) made the recommended power itself
+         only 50%, and a team a good amount above it (×1.33) still read 57%,
+         with ×9 needed for 90% — the label promised safety the math never
+         delivered. The squared curve below is priced so the 50% point sits
+         at HALF the recommended power:
+           team = ½× recommended → 50%   ·  team = recommended → 80%
+           team = 1.5× recommended → 90% ·  team = 2× recommended → ~94%
+         so beating the recommendation is rewarded quickly, while sending a
+         half-strength team is the gamble it looks like. */
+      var halfPower = q.difficulty / 2; // team power for a 50% success chance
+      var raw = (team * team) / (team * team + halfPower * halfPower);
       // The tower is generous to the unlucky: the chance never drops below
       // 20% (and never rises above 98%), however weak the team.
-      return Math.min(0.98, Math.max(0.2, team / (team + q.difficulty)));
+      return Math.min(0.98, Math.max(0.2, raw));
     }
     /* What a successful run actually pays: the listed rewards boosted by
        50% (rounded to whole materials/gold). A failed run still brings
@@ -2802,6 +2922,34 @@
     function effRank(def, o) { return def.stars + o.asc; }
     function maxAsc(def) { if (def.id === "han") return 11; /* 1★ → 12★, the absolute max, tying Luna */ if (def.id === "orin") return 5; /* 3★ → 8★ */ if (def.id === "jenna") return 4; /* 3★ → 7★ */ if (def.id === "morrigan") return 5; /* 4★ → 9★ */ if (def.id === "vesper") return 4; /* 4★ → 8★ */ if (def.id === "wren") return 6; /* 1★ → 7★ */ if (def.id === "diddle") return 3; /* 6★ → 9★ */ if (def.id === "amara") return 5; /* 6★ → 11★ */ if (def.id === "orien") return 4; /* 6★ → 10★ */ if (def.id === "ilya") return 3; /* 5★ → 8★ */ if (def.id === "draven" || def.id === "durnan" || def.id === "lyra" || def.id === "brynn" || def.id === "faye" || def.id === "nix" || def.id === "mari") return 2; /* 5★ → 7★, 6★ → 8★ */ if (def.id === "nerissa" || def.id === "nyx" || def.id === "kael" || def.id === "rurik" || def.id === "eolka") return 3; /* 4★ → 7★ */ if (def.id === "ondine" || def.id === "ysolde") return 3; /* 3★ → 6★ */ if (def.id === "tomas" || def.id === "pippa" || def.id === "brann") return 2; /* 1★ → 3★ */ /* Everyday heroes: cap = max effective stars - base stars. Lena's 5 is the default, so she needs no entry. */ if (def.id === "nia" || def.id === "marlo" || def.id === "iris" || def.id === "yara" || def.id === "cassian" || def.id === "straw") return 4; if (def.id === "dun" || def.id === "bram" || def.id === "greta" || def.id === "hugo" || def.id === "odo" || def.id === "ruth" || def.id === "petra" || def.id === "ivo" || def.id === "eamon") return 3; if (def.id === "tam" || def.id === "anselm" || def.id === "joss" || def.id === "ash" || def.id === "milo" || def.id === "zinnia" || def.id === "hilda" || def.id === "agatha" || def.id === "rook" || def.id === "eldric" || def.id === "juno" || def.id === "yurneth") return 2; return 5; }
     function skillLevel(o) { return 1 + o.asc; }
+    /* ------- Max-potential capstone skills (Nov 19, 2026) -------
+       Every hero unlocks ONE new skill at their max effective rank (their
+       synthesis cap, stars + maxAsc) — 61 skills, Wren excluded (her Phoenix
+       Tonic already unlocks exactly at her max 7★). Skill level = 1 + asc, as
+       usual, so a capstone unlocks at skill level 1 + cap. The display names
+       live in SKILLS (Orin-style: shown locked from the start, with the
+       unlock rank in the name); the power lives here and in the battle loop.
+       Gates are ALWAYS `asc >= maxAsc` — never an enemy-attack scale: every
+       capstone damage number is priced off the hero's OWN attack, party
+       damage, or a fixed % of party max HP (the Ilya/Mari lesson). */
+    function capstoneActive(s, id) {
+      var o = s.heroes[id];
+      return !!o && s.party.indexOf(id) >= 0 && o.asc >= maxAsc(heroById(id));
+    }
+    function capstoneLv(s, id) {
+      var o = s.heroes[id];
+      return o ? skillLevel(o) : 1;
+    }
+    function capstoneAtk(s, id) {
+      var o = s.heroes[id];
+      return o ? heroAtk(heroById(id), o, s) : 0;
+    }
+    /* Party attack-speed multiplier from capstones (Juno's Fair Winds,
+       permanent). Ruth's Express Delivery is a timed window and lives in
+       the battle loop instead — it can never leak into idle/offline DPS. */
+    function capstoneAtkSpdMult(s) {
+      return capstoneActive(s, "juno") ? 1 + 0.02 + 0.01 * capstoneLv(s, "juno") : 1;
+    }
     function selfSkillMult(def, o) {
       var lv = skillLevel(o);
       switch (def.id) {
@@ -2882,7 +3030,7 @@
     var HEALER_IDS = { nia: true, iris: true, hilda: true, eamon: true };
     function isHealerDef(def) { return !!def && (HEALER_IDS[def.id] || def.cls === "Priest" || def.cls === "Lunar Oracle" || def.cls === "Pharmacist" || def.cls === "Bard"); }
     function partyMods(s) {
-      var dps = 0, crit = 0, def = 0, heal = 0, gold = 0, hp = 0;
+      var dps = 0, crit = 0, def = 0, heal = 0, gold = 0, hp = 0, dmgTaken = 0, critDmg = 0;
       s.party.forEach(function (id) {
         var o = s.heroes[id];
         if (!o) return;
@@ -2925,7 +3073,7 @@
           /* The tidecaller, the clockmaker, and the rest (Nov 18, 2026). */
           case "ondine": dps += 0.03 * lv; heal += 0.08 * lv; break; // Riptide — her tide breaks over the enemy and carries her allies forward; Soothing Tide (second skill) — the same tide laps gently at her allies' wounds (partyMods only — she is not a healer-class trickle)
           case "rook": crit += 0.02 * lv; gold += 0.03 * lv; break; // Tick Tock — every strike lands exactly on the tick; Borrowed Time (second skill) — minutes the tower forgot to count, paid back in coin
-          case "ysolde": hp += 0.03 * lv; def += 0.02 * lv; break; // Mirror Wall — the party's health reflects the paradise as it was (maxHpMult, riding partyMaxHp like Anselm/Bram/Odo/Agatha); Shining Guard (second skill) — the enemy flinches at its own blow coming back
+          case "ysolde": hp += 0.03 * lv; def += 0.02 * lv; if (o.asc >= maxAsc(heroById(id))) dmgTaken += 0.04 + 0.01 * lv; break; // Mirror Wall — the party's health reflects the paradise as it was (maxHpMult, riding partyMaxHp like Anselm/Bram/Odo/Agatha); Shining Guard (second skill) — the enemy flinches at its own blow coming back; Aegis Mirror (capstone) — her mirror turns blows aside: the party takes 4% + 1%/lv less damage from all sources
           case "eldric": dps += 0.03 * lv; break; // Rune of Power — the old language's weight in every ally's strike; Rune of Fury is his own damage (see selfSkillMult)
           case "morrigan": def += 0.03 * lv; break; // Hex — the enemy's name whispered the wrong way round, and every swing comes out crooked; Murder of Crows is her own damage (see selfSkillMult)
           case "juno": crit += 0.03 * lv; gold += 0.04 * lv; break; // Tailwind — the tailwind pushes every strike faster and truer; Plunder (second skill) — a sky captain never sails past a coin
@@ -2934,7 +3082,7 @@
           case "nia": heal += 0.10 * lv; break;
           case "dun": def += 0.01 * lv; break;
           case "marlo": gold += 0.03 * lv; break;
-          case "tam": dps += 0.02 * lv; break;
+          case "tam": dps += 0.02 * lv; if (o.asc >= maxAsc(heroById(id))) dps += 0.03 * lv; break; // Trailblazer — every shortcut is a blow unseen; Marked Trail (capstone) — the scout's mark never fades: the enemy takes +3%/lv damage, always on (priced as party damage here, like the loop)
           case "anselm": hp += 0.04 * lv; break;
           case "joss": def += 0.02 * lv; break;
           case "bram": hp += 0.02 * lv; break;
@@ -2946,7 +3094,7 @@
           case "milo": gold += 0.04 * lv; break;
           case "yara": dps += 0.03 * lv; break;
           case "hilda": heal += 0.10 * lv; break;
-          case "cassian": crit += 0.03 * lv; break;
+          case "cassian": crit += 0.03 * lv; if (o.asc >= maxAsc(heroById(id))) critDmg += 0.10 * lv; break; // Guiding Star — the remaining stars guide the strikes; Starlight Blessing (capstone) — the party's critical hits deal +10%/lv more damage, on top of the ×1.8 crit
           case "ivo": def += 0.01 * lv; break;
           case "agatha": hp += 0.03 * lv; break;
           case "eamon": heal += 0.08 * lv; break;
@@ -2989,14 +3137,28 @@
         enemyAtkMult: Math.max(0.5, 1 - def),
         healMult: 1 + heal,
         goldMult: 1 + gold,
-        hpMult: 1 + hp
+        hpMult: 1 + hp,
+        // Capstone auras: Ysolde's Aegis Mirror (party takes less damage from
+        // ALL sources — applied to the battle loop's incoming damage, the
+        // Ember Trail, and the Tolling alike) and Cassian's Starlight
+        // Blessing (crits hit harder — applied to the loop's crit roll only,
+        // never to a DPS number, since crit stays chance-based). Juno's Fair
+        // Winds (party attack speed) rides atkSpdMult, applied in partyDps.
+        dmgTakenMult: Math.max(0.5, 1 - dmgTaken),
+        atkSpdMult: capstoneAtkSpdMult(s),
+        critDmgMult: 1 + critDmg
       };
     }
     function partyDps(s) {
-      return s.party.reduce(function (sum, id) {
+      var sum = s.party.reduce(function (sum, id) {
         var o = s.heroes[id];
         return o ? sum + heroDps(heroById(id), o, s) * synergySelfMult(heroById(id), s.party) : sum;
       }, 0);
+      // Juno's Fair Winds (capstone): the whole party attacks faster, so the
+      // hit DPS itself rises — hero cards stay hit-only, and the battle loop
+      // prices the same speed into each hero's attack period so the fight
+      // matches the number.
+      return sum * partyMods(s).atkSpdMult;
     }
     function effectivePartyDps(s) { return partyDps(s) * partyMods(s).dpsMult; }
     function partyMaxHp(s) {
@@ -3300,13 +3462,81 @@
       if (!s || !s.heroes) return 0;
       var o = s.heroes["amara"];
       if (!o || s.party.indexOf("amara") < 0) return 0;
-      return heroAtk(heroById("amara"), o, s) * skillLevel(o) / 15;
+      var total = heroAtk(heroById("amara"), o, s) * skillLevel(o) / 15;
+      // Tidecaller's Wrath (capstone): one massive wave every 25s for
+      // 150% of her attack per skill level — time-averaged the same way.
+      if (capstoneActive(s, "amara")) total += heroAtk(heroById("amara"), o, s) * 1.5 * skillLevel(o) / 25;
+      return total;
     }
     function cometDps(s) {
       if (!s || !s.heroes) return 0;
       var o = s.heroes["orien"];
       if (!o || s.party.indexOf("orien") < 0) return 0;
-      return heroAtk(heroById("orien"), o, s) * 1.5 * skillLevel(o) / 20;
+      var total = heroAtk(heroById("orien"), o, s) * 1.5 * skillLevel(o) / 20;
+      // Supernova (capstone): one star every 40s for 250% of his attack
+      // per skill level — time-averaged to 1/40th of that per second.
+      if (capstoneActive(s, "orien")) total += heroAtk(heroById("orien"), o, s) * 2.5 * skillLevel(o) / 40;
+      return total;
+    }
+    /* ---- Max-potential capstone damage (Nov 19, 2026) ----
+       Timed bursts and DoTs fold into Tower DPS exactly like the DoTs
+       above — time-averaged over their cooldowns / uptimes, priced off
+       the hero's OWN attack, never the enemy's. Shields, cleanses,
+       evasion, and revives stay OUT (defensive, like revives today).
+       Chance-based hits (Mira's Lucky Shot, Diddle's Checkmate) and
+       conditionals (Arden's Deadeye below 30% HP, Nix's Shatter vs
+       frozen, Soren's Undying Star window, Tomas's first strike) stay
+       out too, exactly like crit and the other situational loop-only
+       bonuses — they are real in the fight, not in the number. */
+    function capstoneDotDps(s) {
+      if (!s || !s.heroes) return 0;
+      var total = 0;
+      s.party.forEach(function (id) {
+        var o = s.heroes[id];
+        if (!o || !capstoneActive(s, id)) return;
+        var def = heroById(id);
+        var atk = heroAtk(def, o, s);
+        var lv = skillLevel(o);
+        switch (id) {
+          case "morrigan": total += atk * 0.10 * lv * (5 / 20); break; // Crowstorm DoT: 10% ATK × lv/s for 5s of every 20s (the miss chance deals no damage)
+          case "rurik": total += atk * 0.08 * lv; break; // Cinder Trail: his attacks leave cinders burning 8% ATK × lv/s, refreshed per strike like the other persistent DoTs
+          case "hugo": total += atk * 0.10 * lv * (5 / 15); break; // Bee Swarm: 10% ATK × lv/s for 5s of every 15s
+          case "zinnia": total += atk * 0.08 * lv * (5 / 15); break; // Foxfire: 8% ATK × lv/s for 5s of every 15s
+          case "petra": total += atk * 1.5 * lv / 18 + atk * 0.08 * lv * (5 / 18); break; // Philosopher's Flask: 150% ATK × lv burst every 18s + 8% ATK × lv/s burn for 5s
+          case "ondine": total += atk * lv / 20; break; // High Tide: 100% ATK × lv wave every 20s (the heal is defensive)
+          case "sella": total += atk * 1.2 * lv / 15; break; // Storm Surge: 120% ATK × lv lightning every 15s (the 25% stun deals no damage)
+          case "faye": total += atk * lv / 20; break; // Thunderclap: 100% ATK × lv every 20s (the silence deals no damage)
+          case "dun": total += atk * 1.2 * lv / 15; break; // Anvil's Ring: 120% ATK × lv every 15s (the stun deals no damage)
+          case "anselm": total += atk * lv / 15; break; // Iron Palm: 100% ATK × lv every 15s (the delay deals no damage)
+          case "joss": total += atk * 1.5 * lv / 20; break; // Trick Mirror: the enemy strikes ITSELF for 150% of JOSS's attack × lv every 20s — own ATK, never the enemy's
+          case "greta": total += atk * 1.5 * lv / 15; break; // Seam Strike: 150% ATK × lv every 15s (the vulnerability window is a damage mult, not damage itself)
+          case "ash": total += atk * 1.5 * lv / 20; break; // Pack Hunt: 150% ATK × lv every 20s
+          case "vesper": total += atk * lv / 25; break; // Marionette's Masterpiece: 100% ATK × lv every 25s (the root deals no damage)
+          case "straw": total += atk * lv / 20; break; // Crow's Feast: 100% ATK × lv every 20s (the heal is defensive)
+          case "pippa": total += atk * 1.5 * lv / 20; break; // Skylark: 150% ATK × lv every 20s (the damage window is a mult, not damage itself)
+          case "kael": total += atk * (2 + 0.25 * lv) * def.atkSpeed * (s.party.indexOf("nyx") >= 0 ? 2 : 1) / 5; break; // Twin's Oath: marks detonate at 5 marks for 200% ATK + 25%/lv — one detonation per 5 of Kael's attacks (2.5 with Nyx beside him)
+          case "ilya": total += atk * 0.25 * lv / (s.party.indexOf("durnan") >= 0 ? 1.4 / 0.85 : 1.4); break; // Briar Thorns: 25% of ILYA's attack × lv per enemy attack — the enemy's lunge beat is ~1.4s (1.4/0.85 under Durnan's Weight), so the time-average is one counter per beat, while it can attack
+          case "dain": total += atk * 0.25 * lv / (s.party.indexOf("durnan") >= 0 ? 1.4 / 0.85 : 1.4); break; // Counter-Thrust: same family as Briar Thorns, a spear thrust for 25% of DAIN's attack × lv per enemy attack, one per lunge beat
+          case "yurneth": {
+            // Night's Requiem: a crit lands a 10% ATK × lv/s bleed for 3s —
+            // expected uptime is crits-per-second × 3s (crit is 12% + the
+            // party's crit bonus), capped at full uptime.
+            var critChance = 0.12 + partyMods(s).critBonus;
+            total += atk * 0.10 * lv * Math.min(1, def.atkSpeed * critChance * 3);
+            break;
+          }
+          case "eldric": {
+            // Rune of Echoes: every 15s the next party attack deals +50% +
+            // 25%/lv — the average party hit is the party's hit DPS divided
+            // by its attacks per second, boosted once per 15s.
+            var atkRate = 0;
+            s.party.forEach(function (id2) { if (s.heroes[id2]) atkRate += heroById(id2).atkSpeed; });
+            if (atkRate > 0) total += (effectivePartyDps(s) / atkRate) * (0.5 + 0.25 * lv) / 15;
+            break;
+          }
+        }
+      });
+      return total;
     }
     /* ---- Thornmail reflect (Ilya) & Cut Strings self-hit (Mari) ----
        The floor-aware companion to the DoT helpers above: both are
@@ -3365,7 +3595,7 @@
       var ratio = Math.max(0, Math.min(1, cur / max));
       return Math.min(0.50, (1 - ratio) * 0.50);
     }
-    function resetBattleTimers() { battleElapsed = 0; cocoonTimer = 0; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleTimer = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; mariTimer = 0; amaraWaveTimer = 0; amaraAegisTimer = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; durnanRoarTimer = 0; roarUntil = 0; unbreakableUsed = false; eclipseTimer = 0; eclipseUntil = 0; cometTimer = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; }
+    function resetBattleTimers() { battleElapsed = 0; cocoonTimer = 0; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleTimer = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; mariTimer = 0; amaraWaveTimer = 0; amaraAegisTimer = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; durnanRoarTimer = 0; roarUntil = 0; unbreakableUsed = false; eclipseTimer = 0; eclipseUntil = 0; cometTimer = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* The 61 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; }
     /* Party DPS as it actually lands in a tower battle: the Cantor
        Dirge on Floors 55/70 and the Keeper's Long Vigil on Floor 95
        shave party attack before it hits, Soren's
@@ -3408,7 +3638,7 @@
          order: hits (above) are lifted by Widow's Feast, the DoTs
          are not — but the Cantor Dirge shaves everything, DoTs
          included, exactly as it does in the tick. */
-      var dotDps = venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s);
+      var dotDps = venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s) + capstoneDotDps(s);
       /* Zone-boss skills that change damage land here too, like the
          Dirges: Sticky Grasp shaves 20% while the goo holds, and a
          Thorn-Snared party deals nothing at all. */
@@ -3422,18 +3652,27 @@
        tab so the breakdown is visible at a glance. Display only. */
     function partyDotDps(s) {
       if (partySnared() && bossSkillId(s.fightFloor) === "gravevine") return 0;
-      return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
+      return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s) + capstoneDotDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
     }
     function monsterMaxHp(f) {
       // HP flattens after Floor 30 so a boss 10 floors up is ~2×, not ~5×:
-      // ×1.18/floor for floors 1–30, then ×1.072/floor for floors 31+.
-      var base = f <= 30 ? 130 * Math.pow(1.18, f - 1) : 130 * Math.pow(1.18, 29) * Math.pow(1.072, f - 30);
+      // ×1.18/floor for floors 1–30, then ×1.072/floor for floors 31–60.
+      // Late-game taper (2026-11-19, matching the main game): past Floor 60
+      // the growth tapers again to ×1.025/floor, so boss HP tracks the
+      // heroes' own late-game growth instead of compounding away from it —
+      // Floor 60's Lord stays ≈763k HP, Floor 100's Lord is ≈2.05M HP (the
+      // untapered curve would have given ≈12.3M).
+      var base = f <= 30 ? 130 * Math.pow(1.18, f - 1) : f <= 60 ? 130 * Math.pow(1.18, 29) * Math.pow(1.072, f - 30) : 130 * Math.pow(1.18, 29) * Math.pow(1.072, 30) * Math.pow(1.025, f - 60);
       return Math.round(isLordFloor(f) ? base * 6 : isGateFloor(f) ? base * 2.5 : base);
     }
     function monsterAtk(f) {
       // Attack flattens after Floor 30 so a boss 10 floors up hits ~3×, not ~5.7×:
-      // ×1.19/floor for floors 1–30, then ×1.116/floor for floors 31+.
-      var base = f <= 30 ? 14 * Math.pow(1.19, f - 1) : 14 * Math.pow(1.19, 29) * Math.pow(1.116, f - 30);
+      // ×1.19/floor for floors 1–30, then ×1.116/floor for floors 31–60.
+      // Late-game taper (2026-11-19, matching the main game): past Floor 60
+      // the growth tapers to ×1.028/floor, matching the heroes' own HP
+      // growth up there — Floor 60's Lord stays ≈128,629 attack, Floor 100's
+      // Lord hits for ≈388,207 (the untapered curve would have given ≈10.4M).
+      var base = f <= 30 ? 14 * Math.pow(1.19, f - 1) : f <= 60 ? 14 * Math.pow(1.19, 29) * Math.pow(1.116, f - 30) : 14 * Math.pow(1.19, 29) * Math.pow(1.116, 30) * Math.pow(1.028, f - 60);
       return base * (isLordFloor(f) ? 2.2 : isGateFloor(f) ? 1.5 : 1);
     }
 
@@ -4699,6 +4938,34 @@
     var cometTimer = 0;
     var starChartCount = 0;
     var thornFx = { lastFloat: 0 };
+    /* Max-potential capstone skills (Nov 19, 2026) — one battle-scoped
+       state object, reset with the fight (resetBattleTimers) like the
+       synergy six's timers above. All windows run on battle-clock seconds
+       (battleElapsed); the capstone DoTs (crowstorm, flask burn, foxfire,
+       bee swarm, cinders, on-crit bleed) run on performance.now() like the
+       other DoT state. `next` holds each timed capstone's first trigger
+       second (its cooldown — nothing fires at battle-second 0). */
+    function freshCapstoneState() {
+      return {
+        next: { luna: 30, nerissa: 20, orin: 30, odo: 20, brynn: 20, durnan: 25, aaron: 20, amara: 25, orien: 40, morrigan: 20, sella: 15, faye: 20, dun: 15, anselm: 15, joss: 20, greta: 15, ash: 20, vesper: 25, aurelia: 25, mari: 25, iris: 20, ondine: 20, nia: 25, pippa: 20, petra: 18, straw: 20, eamon: 25, hilda: 20, brann: 25, hugo: 15, zinnia: 15, lena: 20, yara: 18, rook: 25, ruth: 20, eldric: 15, diddle: 20, draven: 25, ivo: 20, agatha: 25, marlo: 30, milo: 30 },
+        vulnUntil: 0, vulnPct: 0, weakenUntil: 0, weakenPct: 0, slowUntil: 0, slowPct: 0,
+        dmgWinUntil: 0, dmgWinPct: 0, asWinUntil: 0, asWinPct: 0,
+        timestopUntil: 0, timestopPct: 0, silenceUntil: 0,
+        rootUntil: 0, stunUntil: 0, delayUntil: 0,
+        shield: 0, immuneUntil: 0, evadeUntil: 0,
+        marks: 0, echoPending: false, diddlePending: false, tomasUsed: false,
+        sorenUsed: false, sorenWinUntil: 0, bramNext: 0,
+        morriganUntil: 0, morriganNextRoll: 0, morriganMissUntil: 0, lastCounterFloat: 0
+      };
+    }
+    var capState = freshCapstoneState();
+    /* Capstone damage-over-time effects, keyed by hero id — each entry is
+       { dps, until (performance.now() ms), lastFloat, glyph }. */
+    var capDots = {};
+    /* Amara's last tidal wave (performance.now() ms) — Tidal Edict or
+       Tidecaller's Wrath — drives the wave-crashing visual over the boss. */
+    var lastWaveAt = 0;
+    var waveShownAt = 0;
 
     function persist(next) {
       save = next;
@@ -4980,7 +5247,7 @@
         h += '<div class="monster-box"><div id="monster-wrap"><div class="anim-bob"><div class="monster-orb' + (isBossFloor(f) ? " anim-glow boss" : "") + '" id="monster-orb" aria-hidden="true">' + (f === 100 ? "💗" : isBossFloor(f) ? "👹" : "👾") + "</div></div></div>";
       }
       h += '<span id="spark-slot"></span><span id="floats-layer"></span>';
-      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p></div>';
+      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p><p class="timestop-badge" id="timestop-badge" style="display:none">⏳ TIME STOP — cannot act</p><p class="silence-badge" id="silence-badge" style="display:none">🌩 SILENCED — boss abilities paused</p><span class="wave-crash-span" id="wave-crash" style="display:none" aria-hidden="true">🌊🌊🌊</span></div>';
       h += "</div>";
       h += '<div style="margin-top:0.25rem;height:6px;border-radius:999px;background:rgba(0,0,0,0.5)" aria-hidden="true"></div>';
       h += "</div>"; /* battlefield */
@@ -5167,8 +5434,25 @@
       else if (s.party.indexOf("durnan") >= 0) status += " · 📯 Warlord's Roar — next roar in ~" + Math.max(0, Math.ceil(15 - durnanRoarTimer)) + "s (+25% party damage for 5s)";
       if (s.party.indexOf("mari") >= 0 && secondActRampBonus() > 0) status += " · 🎭 Mari's Second Act +" + Math.round(secondActRampBonus() * 100) + "% and building";
       if (s.party.indexOf("durnan") >= 0 && !unbreakableUsed) status += " · ⛰️ Durnan's Unbreakable stands ready — the party will not fall once";
+      /* Max-potential capstone live state — shield pool, time stop,
+         silence, and vulnerability, mirroring the main game's line. */
+      if (capState.shield > 0) status += " · 🛡 shield " + fmt(capState.shield);
+      if (battleElapsed < capState.timestopUntil) status += " · ⏳ TIME STOPPED — the enemy cannot act";
+      if (battleElapsed < capState.silenceUntil) status += " · 🌩 SILENCED — boss abilities paused";
+      if (battleElapsed < capState.vulnUntil) status += " · 🎯 VULNERABLE +" + Math.round(capState.vulnPct * 100) + "% damage taken";
+      var tsb = document.getElementById("timestop-badge");
+      if (tsb) tsb.style.display = battleElapsed < capState.timestopUntil ? "inline-block" : "none";
+      var sib = document.getElementById("silence-badge");
+      if (sib) sib.style.display = battleElapsed < capState.silenceUntil ? "inline-block" : "none";
+      var wv = document.getElementById("wave-crash");
+      if (wv) {
+        if (lastWaveAt > 0 && nowMs - lastWaveAt < 900) {
+          wv.style.display = "block";
+          if (waveShownAt !== lastWaveAt) { waveShownAt = lastWaveAt; restartAnim(wv, "anim-wave-crash"); }
+        } else wv.style.display = "none";
+      }
       var sb = document.getElementById("stun-badge");
-      if (sb) sb.style.display = enemyStunned() ? "inline-block" : "none";
+      if (sb) sb.style.display = (enemyStunned() || battleElapsed < capState.stunUntil) ? "inline-block" : "none";
       var pb = document.getElementById("poison-badge");
       if (pb) pb.style.display = venomDps(s) > 0 ? "inline-block" : "none";
       var bb = document.getElementById("bleed-badge");
@@ -5178,7 +5462,7 @@
       var fb = document.getElementById("frozen-badge");
       if (fb) fb.style.display = enemyFrozen() ? "inline-block" : "none";
       var rtb = document.getElementById("rooted-badge");
-      if (rtb) rtb.style.display = enemyRooted() ? "inline-block" : "none";
+      if (rtb) rtb.style.display = (enemyRooted() || battleElapsed < capState.rootUntil) ? "inline-block" : "none";
       var ecb = document.getElementById("eclipse-badge");
       if (ecb) ecb.style.display = enemyEclipsed() ? "inline-block" : "none";
       var rb = document.getElementById("regen-badge");
@@ -5345,7 +5629,7 @@
         });
         h += '</ul><div class="monster-box"><div class="anim-bob"><div class="monster-orb" aria-hidden="true">👾</div></div><p class="monster-tag">Dungeon Monster</p></div></div></div>';
         h += '<div class="bar-outer bar-enemy" role="progressbar" aria-label="Dungeon monster health"><div class="bar-inner" id="dg-enemy-bar"></div></div><p class="bar-label" id="dg-enemy-text"></p>';
-        h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dungeonBattle.partyHp) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run doesn't count — only clears do).</p>";
+        h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dungeonBattle.partyHp) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).</p>";
         h += '<p class="xs" id="dg-wave-line" style="margin-top:0.375rem;font-weight:700;color:var(--dim)">' + dungeonWaveLine(dg0, dungeonBattle.wave, dungeonFoeHeld(dungeonBattle.fx)) + "</p>";
         h += '<div id="dg-status-badges" style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.375rem">' + dungeonStatusBadges(dungeonBattle.fx) + "</div>";
         h += '<p class="party-status" id="dg-status">' + dungeonStatusLine() + "</p>";
@@ -5361,7 +5645,7 @@
         h += '<p class="small" style="margin-top:0.375rem;font-weight:800">You hauled out: ' + esc(lastDungeonReward) + '</p><button type="button" class="btn-pill anime-btn-gold" id="dg-reward-ok" style="margin-top:0.5rem">Nice!</button></div>';
       } else if (lastDungeonLost) {
         h += '<div class="anime-card mt4 card-pad center" aria-label="Dungeon run lost"><p style="font-size:2rem;margin:0" aria-hidden="true">💫</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">The depths win this time…</h3>';
-        h += '<p class="small dim" style="margin-top:0.375rem;font-weight:600">The party regroups at the mouth of ' + esc(lastDungeonLost) + ", empty-handed. Level up, forge better gear, and try again — the run doesn't count, only clears do.</p><button type=\"button\" class=\"btn-pill anime-btn-primary\" id=\"dg-lost-ok\" style=\"margin-top:0.5rem\">REGROUP</button></div>";
+        h += '<p class="small dim" style="margin-top:0.375rem;font-weight:600">The party regroups at the mouth of ' + esc(lastDungeonLost) + ", empty-handed. Level up, forge better gear, and try again.</p><button type=\"button\" class=\"btn-pill anime-btn-primary\" id=\"dg-lost-ok\" style=\"margin-top:0.5rem\">REGROUP</button></div>";
       }
 
       h += '<div class="dungeon-grid">';
@@ -5465,7 +5749,7 @@
       var pb = document.getElementById("dg-party-bar");
       if (pb) pb.style.width = Math.max(0, Math.min(100, dungeonBattle.partyHp / dungeonBattle.partyMax * 100)) + "%";
       var pt = document.getElementById("dg-party-text");
-      if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dungeonBattle.partyHp)) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run doesn't count — only clears do).";
+      if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dungeonBattle.partyHp)) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).";
       var fx = dungeonBattle.fx;
       var wl = document.getElementById("dg-wave-line");
       if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx));
@@ -5523,7 +5807,7 @@
         var chance = questChance(s, q, picks);
         var available = HEROES.filter(function (hh) { return s.heroes[hh.id] && !away[hh.id]; });
         h += '<div class="anime-card card-pad" aria-label="Mission: ' + esc(q.name) + '"' + (locked ? ' style="opacity:0.75"' : "") + ">";
-        h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(q.difficulty) + '</p></div><span class="quest-reward-pill">' + esc(questRewardText(q)) + "</span></div>";
+        h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(q.difficulty) + ' (a team at that power succeeds ≈80% of the time)</p></div><span class="quest-reward-pill">' + esc(questRewardText(q)) + "</span></div>";
         h += '<p class="small dim" style="margin-top:0.375rem;font-weight:500">' + esc(q.desc) + "</p>";
         h += '<p class="xs bold dim" style="margin-top:0.25rem">Favored classes (power ×1.5): ' + q.favored.join(" · ") + "</p>";
         if (locked) {
@@ -5541,9 +5825,15 @@
           h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
           h += '<button type="button" class="btn-pill anime-btn-sky" data-quest-start="' + q.id + '"' + (picks.length === 0 || activeRuns.length >= MAX_ACTIVE_QUESTS ? " disabled" : "") + ' aria-label="' + (picks.length === 0 ? "Choose at least one hero to send on " + esc(q.name) : "Send " + picks.map(function (id) { return esc(heroById(id).name); }).join(", ") + " on " + esc(q.name) + " for " + fmtClock(q.hours * 3600) + " at " + Math.round(chance * 100) + " percent success") + '">📜 SEND ' + (picks.length > 0 ? picks.length + " HERO" + (picks.length === 1 ? "" : "ES") : "— pick heroes") + "</button>";
           h += '<p class="small" style="margin:0;font-weight:900;color:' + (picks.length === 0 ? "var(--dim)" : chance >= 0.75 ? "#5eead4" : chance >= 0.5 ? "#ffd94d" : "#fda4af") + '">' + (picks.length === 0 ? "Success chance —" : "Success chance ≈ " + Math.round(chance * 100) + "%") + "</p>";
+          if (picks.length > 0) {
+            var teamPower = questTeamPower(s, q, picks);
+            h += '<p class="xs bold dim" style="margin:0" aria-label="Team power ' + fmt(teamPower) + ", " + Math.round((teamPower / q.difficulty) * 100) + " percent of the recommended " + fmt(q.difficulty) + '">Team power ' + fmt(teamPower) + " · " + Math.round((teamPower / q.difficulty) * 100) + "% of recommended</p>";
+          }
           if (activeRuns.length >= MAX_ACTIVE_QUESTS) h += '<p class="xs bold dim" style="margin:0">All ' + MAX_ACTIVE_QUESTS + " dispatch slots are out.</p>";
           h += "</div>";
-          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. Success pays full rewards; failure salvages half the materials (rounded down).</p>';
+          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">🎯 How the odds work: recommended power is a team built to succeed — at exactly the recommended power the chance is ≈80%. Half the recommended power is a 50/50 gamble, 1.5× it is ≈90%, and 2× it is ≈94%, topping out at 98%.</p>';
+          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⭐ Stars help indirectly: higher stars mean stronger heroes and a higher level cap, so more quest power — and a favored class can outshine a higher star.</p>';
+          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. Success pays the rewards shown (already +50%) plus 2–3 Starlight Essence; even a failed run brings home half of everything — materials and gold alike (rounded down) — plus a consolation of 1 Starlight Essence. And no quest\'s odds ever drop below 20%.</p>';
         }
         h += "</div>";
       });
@@ -5656,14 +5946,18 @@
         }
       });
       var gold = run.success ? questSuccessGold(q) : questFailGold(q);
+      // Starlight Essence rides along on every quest, on top of the rewards
+      // above: a success brings home 2 or 3 (50/50); a failure still brings 1.
+      var starlight = run.success ? (Math.random() < 0.5 ? 2 : 3) : 1;
+      next.materials.essence = (next.materials.essence || 0) + starlight;
       next.gold += gold;
       next.quests = next.quests.filter(function (r) { return r.id !== runId; });
       persist(next);
       writeSave();
       playClearSfx();
       setNotice(run.success
-        ? "📜 Quest complete — " + q.name + " was a triumph! Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + "."
-        : "📜 Quest complete — " + q.name + " didn't go to plan, but the party didn't come home empty-handed: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ".");
+        ? "📜 Quest complete — " + q.name + " was a triumph! Collected: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". Starlight bonus: ✨ +" + starlight + " Starlight Essence."
+        : "📜 Quest failed — " + q.name + " didn't go to plan, but the party didn't come home empty-handed: " + gained.concat(["🪙 " + gold.toLocaleString("en-US")]).join(" · ") + ". Consolation: ✨ +" + starlight + " Starlight Essence.");
     }
 
     /* ============================== RENDER: SAVE CODE TAB ============================== */
@@ -6538,7 +6832,7 @@
     function shopClone(s) { return JSON.parse(JSON.stringify(s)); }
 
     /* ============================== OFFLINE BOOST ==============================
-       +50% offline gold AND +50% offline gems for 24 hours, bought on the
+       +50% offline gold AND +50% offline gems for 8 hours, bought on the
        Tower screen for 5,000 💎, once per local calendar day (same
        dailyDateStr() date stamp as the big exchange and the daily login,
        resetting at local midnight). State lives in the save:
@@ -6549,7 +6843,7 @@
        idleGemsPerSec themselves, which keep their own curves (and their
        dps <= 0 guard, so zero DPS still earns zero even with the boost). */
     var OFFLINE_BOOST_COST = 5000;
-    var OFFLINE_BOOST_DURATION_MS = 24 * 3600 * 1000;
+    var OFFLINE_BOOST_DURATION_MS = 8 * 3600 * 1000;
     var OFFLINE_BOOST_MULT = 1.5;
     function boostActive(s, now) {
       return s.boostExpiresAt > 0 && now < s.boostExpiresAt;
@@ -6559,7 +6853,7 @@
     }
     /** Pure purchase: null when blocked (already bought today, or not
         enough gems), otherwise the save with exactly 5,000 💎 deducted and
-        the 24h expiry stamped from `now`. */
+        the 8h expiry stamped from `now`. */
     function applyOfflineBoostPurchase(s, now) {
       if (s.lastBoostBuy === dailyDateStr(new Date(now))) return null;
       if (s.gems < OFFLINE_BOOST_COST) return null;
@@ -7572,13 +7866,13 @@
       var now = Date.now();
       var h = '<div class="anime-card mt4 card-pad" aria-label="Offline Boost">';
       h += '<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0.5rem"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚡ Offline Boost</h3><p class="xs" style="margin:0;font-weight:800;color:var(--dim)">5,000 💎 · once a day</p></div>';
-      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 24 hours</span>. One purchase per day — it resets at local midnight.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 8 hours</span>. One purchase per day — it resets at local midnight.</p>';
       if (boostActive(s, now)) {
         h += '<p class="small" style="margin-top:0.75rem;display:inline-block;border-radius:999px;border:1px solid rgba(255,217,77,0.55);background:rgba(255,217,77,0.15);padding:0.375rem 0.875rem;font-weight:900;color:#ffd94d">⚡ Boost active — ' + fmtClock(Math.max(0, (s.boostExpiresAt - now) / 1000)) + " left of +50% offline gold &amp; gems</p>";
       } else if (s.lastBoostBuy === dailyDateStr(new Date())) {
         h += '<button type="button" class="btn-pill btn-ghost" disabled style="margin-top:0.75rem" aria-label="Offline Boost — already claimed today, back tomorrow">Already claimed today — back tomorrow</button>';
       } else {
-        h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 24 hours") + '">⚡ Buy Offline Boost — ' + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎</button>";
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Offline Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 8 hours") + '">⚡ Buy Offline Boost — ' + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎</button>";
       }
       h += "</div>";
       return h;
@@ -7595,7 +7889,7 @@
       if (!next) return;
       persist(next);
       writeSave();
-      setNotice("⚡ Offline Boost! Your party earns +50% offline gold and gems for the next 24 hours.");
+      setNotice("⚡ Offline Boost! Your party earns +50% offline gold and gems for the next 8 hours.");
       renderMain();
     }
 
@@ -8524,10 +8818,10 @@
     }
     /* Wave HP, priced the main game's way — off the dungeon's
        powerFloor (the tower-floor equivalent the wave stats are
-       scaled from), not the unlock floor. Growth stays +25% per
-       wave here; the main game uses +40% in its dungeonWaveHp. */
+       scaled from), not the unlock floor, and growing +40% per
+       wave, exactly like the main game's dungeonWaveHp. */
     function dungeonWaveHp(dg, wave) {
-      return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.25 * (wave - 1)));
+      return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.4 * (wave - 1)));
     }
     function dungeonHealPerSec(s) {
       var hasHealer = s.party.some(function (id) { return isHealerDef(heroById(id)) && s.heroes[id]; });
@@ -8578,7 +8872,7 @@
        they are priced off a floor's monster attack, which dungeons
        don't have) and without the tower's Dirge / sticky shaves. */
     function dungeonDotDps(s) {
-      return venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s);
+      return venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + capstoneDotDps(s);
     }
     /* Per-wave status-effect state for a dungeon run — the dungeon
        mirror of the tower battle loop's status timers. Every timer
@@ -8594,11 +8888,24 @@
         frostFrozenUntil: 0, frostRollAt: 1,
         nixStacks: 0, nixFrozenUntil: 0, nixHitAcc: 0,
         hoarfrostStacks: 0, hoarfrostBeatAcc: 0,
-        swallowUntil: 0, swallowRollAt: 1
+        swallowUntil: 0, swallowRollAt: 1,
+        /* Max-potential capstone state (Nov 19, 2026), the dungeon mirror
+           of the tower's capState — same fields, on fx.clock, resetting
+           with each wave like everything else here. */
+        capNext: { luna: 30, orin: 30, odo: 20, brynn: 20, durnan: 25, aaron: 20, amara: 25, morrigan: 20, sella: 15, dun: 15, anselm: 15, greta: 15, vesper: 25, aurelia: 25, mari: 25, iris: 20, ondine: 20, nia: 25, pippa: 20, straw: 20, eamon: 25, hilda: 20, brann: 25, lena: 20, yara: 18, rook: 25, ruth: 20, draven: 25, ivo: 20, agatha: 25, marlo: 30, milo: 30 },
+        capVulnUntil: 0, capVulnPct: 0, capWeakenUntil: 0, capWeakenPct: 0,
+        capSlowUntil: 0, capSlowPct: 0, capDmgWinUntil: 0, capDmgWinPct: 0,
+        capAsWinUntil: 0, capAsWinPct: 0, capTimestopUntil: 0, capTimestopPct: 0,
+        capRootUntil: 0, capStunUntil: 0, capDelayUntil: 0,
+        capShield: 0, capEvadeUntil: 0, capBramNext: 0,
+        capStormUntil: 0, capStormRollAt: 0, capMissUntil: 0,
+        capSorenUsed: false, capSorenWinUntil: 0
       };
     }
     function dungeonFoeHeld(fx) {
-      return fx.clock < fx.cocoonUntil || fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil || fx.clock < fx.entangleUntil || fx.clock < fx.eclipseUntil || fx.clock < fx.swallowUntil;
+      return fx.clock < fx.cocoonUntil || fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil || fx.clock < fx.entangleUntil || fx.clock < fx.eclipseUntil || fx.clock < fx.swallowUntil
+        || fx.clock < fx.capRootUntil || fx.clock < fx.capStunUntil || fx.clock < fx.capTimestopUntil
+        || fx.clock < fx.capDelayUntil || fx.clock < fx.capEvadeUntil || fx.clock < fx.capMissUntil;
     }
     /* The run card's status line, shared by the initial render and the
        per-tick update: wave, Party DPS with the DoT share folded in. */
@@ -8618,13 +8925,14 @@
     /* Live status badges for the run card — the same holds the dungeon
        loop is applying this tick. Returns "" when nothing is up. */
     function dungeonStatusBadges(fx) {
-      var foeStunned = fx.clock < fx.cocoonUntil;
+      var foeStunned = fx.clock < fx.cocoonUntil || fx.clock < fx.capStunUntil;
       var foeFrozen = fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil;
-      var foeRooted = fx.clock < fx.entangleUntil;
+      var foeRooted = fx.clock < fx.entangleUntil || fx.clock < fx.capRootUntil;
       var foeEclipsed = fx.clock < fx.eclipseUntil;
       var foeSwallowed = fx.clock < fx.swallowUntil;
+      var foeTimestop = fx.clock < fx.capTimestopUntil;
       var hoarfrostPct = fx.hoarfrostStacks * 2;
-      if (!foeStunned && !foeFrozen && !foeRooted && !foeEclipsed && !foeSwallowed && hoarfrostPct <= 0) return "";
+      if (!foeStunned && !foeFrozen && !foeRooted && !foeEclipsed && !foeSwallowed && !foeTimestop && hoarfrostPct <= 0) return "";
       var pill = "display:inline-block;white-space:nowrap;border-radius:999px;border:2px solid;padding:0.125rem 0.625rem;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;";
       var b = "";
       if (foeStunned) b += '<span style="' + pill + 'border-color:#f0abfc;background:#4a044e;color:#fae8ff">🕸 Stunned</span>';
@@ -8632,6 +8940,7 @@
       if (foeRooted) b += '<span style="' + pill + 'border-color:#4ade80;background:#052e16;color:#bbf7d0">🌿 Rooted</span>';
       if (foeEclipsed) b += '<span style="' + pill + 'border-color:#a78bfa;background:#1e1b4b;color:#ddd6fe">🌑 Eclipse</span>';
       if (foeSwallowed) b += '<span style="' + pill + 'border-color:#2dd4bf;background:#042f2e;color:#ccfbf1">🌊 Swallowed</span>';
+      if (foeTimestop) b += '<span style="' + pill + 'border-color:#fbbf24;background:#451a03;color:#fde68a">⏳ Time Stop</span>';
       if (hoarfrostPct > 0) b += '<span style="' + pill + 'border-color:#bae6fd;background:#0c2d48;color:#e0f2fe">❄ Hoarfrost −' + hoarfrostPct + '% attack</span>';
       return b;
     }
@@ -8649,6 +8958,14 @@
           : "🌙 " + dg.name + " is exhausted for today — " + allowedRuns + " runs a day (including every extra run), and the depths need their rest. Come back tomorrow!");
         return;
       }
+      /* The run is charged NOW, as the party delves in — matching the
+         main game: a run is spent when it starts, clear or wipe alike,
+         not only when it clears. */
+      var chargedSave = JSON.parse(JSON.stringify(save));
+      if (!chargedSave.dungeonRuns) chargedSave.dungeonRuns = { ember: 0, frost: 0, star: 0 };
+      chargedSave.dungeonRuns[dgId] = usedRuns + 1;
+      persist(chargedSave);
+      writeSave();
       dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1), enemyHp: dungeonWaveHp(dg, 1), partyHp: partyMaxHp(save), partyMax: partyMaxHp(save), status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {} };
       lastDungeonReward = null;
       lastDungeonLuck = null;
@@ -8661,8 +8978,8 @@
     /* Buy one extra run of a dungeon for gems: +1 to today's allowed runs
        for that dungeon only, capped at 3 extra per dungeon per day. The
        purchase is stamped under today's date, so it expires at local
-       midnight with the free runs. The run itself is still charged on
-       clear, like every run in this copy. */
+       midnight with the free runs. The run itself is charged when it
+       starts, like every run. */
     function buyExtraDungeonRun(dgId) {
       normalizeDungeon();
       var dg = dungeonById(dgId);
@@ -8759,6 +9076,107 @@
           if (Math.random() < 0.10 * skillLevel(amaraO)) fx.swallowUntil = fx.clock + 1;
         }
       }
+      /* ---- Max-potential capstones (Nov 19, 2026), dungeon mirror ----
+         Timed bursts and DoTs already ride dungeonDotDps (time-averaged);
+         this block runs the live windows, holds, shields, heals, and
+         evasion on fx.clock, resetting with each wave like the tower
+         resets per monster. Cleanses are no-ops here (dungeons lay no
+         debuffs), Faye's silence has no boss abilities to pause, and the
+         per-attack chance effects (Mira, Diddle, Tomas, Eldric's echo)
+         have no discrete attack to attach to in continuous-DPS damage —
+         like Orien's Star Chart, they stay tower-only. */
+      function capFireD(id) { var lv = capstoneLv(s, id); return capstoneActive(s, id) && fx.clock >= (fx.capNext[id] || 0) ? lv : 0; }
+      function capNextD(id, sec) { fx.capNext[id] = fx.clock + sec; }
+      function capHealD(pct) { dungeonBattle.partyHp = Math.min(partyMaxHp(s), dungeonBattle.partyHp + partyMaxHp(s) * pct); }
+      function capShieldD(pct) { fx.capShield = Math.max(fx.capShield, partyMaxHp(s) * pct); }
+      function capVulnD(pct, dur) { if (fx.clock >= fx.capVulnUntil || pct >= fx.capVulnPct) { fx.capVulnPct = pct; fx.capVulnUntil = fx.clock + dur; } }
+      function capSlowD(pct, dur) { if (fx.clock >= fx.capSlowUntil || pct >= fx.capSlowPct) { fx.capSlowPct = pct; fx.capSlowUntil = fx.clock + dur; } }
+      function capWeakenD(pct, dur) { if (fx.clock >= fx.capWeakenUntil || pct >= fx.capWeakenPct) { fx.capWeakenPct = pct; fx.capWeakenUntil = fx.clock + dur; } }
+      function capDmgWinD(pct, dur) { if (fx.clock >= fx.capDmgWinUntil || pct >= fx.capDmgWinPct) { fx.capDmgWinPct = pct; fx.capDmgWinUntil = fx.clock + dur; } }
+      var capLvD = capFireD("luna");
+      if (capLvD) { capHealD(0.04 + 0.01 * capLvD); capShieldD(0.04 + 0.01 * capLvD); capNextD("luna", 30); } // Seraphina's Voice (cleanse is a no-op here)
+      capLvD = capFireD("orin");
+      if (capLvD) { capDmgWinD(0.05 * capLvD, 10); capNextD("orin", 30); } // Paradise's Anthem (cleanse is a no-op here)
+      capLvD = capFireD("odo");
+      if (capLvD) { capHealD(0.02 + 0.005 * capLvD); capNextD("odo", 20); } // Mender's Touch (cleanse is a no-op here)
+      capLvD = capFireD("brynn");
+      if (capLvD) { capShieldD(0.08 + 0.02 * capLvD); capNextD("brynn", 20); } // Iron Aegis
+      capLvD = capFireD("durnan");
+      if (capLvD) { capShieldD(0.08 + 0.02 * capLvD); capNextD("durnan", 25); } // Bulwark of the Mountain
+      capLvD = capFireD("aaron");
+      if (capLvD) { capShieldD(0.05 + 0.01 * capLvD); capNextD("aaron", 20); } // Shield Wall
+      capLvD = capFireD("amara");
+      if (capLvD) { capSlowD(0.15 + 0.02 * capLvD, 5); capNextD("amara", 25); } // Tidecaller's Wrath slow (the wave itself rides dungeonDotDps)
+      capLvD = capFireD("morrigan");
+      if (capLvD) { fx.capStormUntil = fx.clock + 5; fx.capStormRollAt = fx.clock + 1; capNextD("morrigan", 20); } // Crowstorm blind (the DoT rides dungeonDotDps)
+      capLvD = capFireD("sella");
+      if (capLvD) { if (Math.random() < 0.25) fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + 2); capNextD("sella", 15); } // Storm Surge stun (the lightning rides dungeonDotDps)
+      capLvD = capFireD("dun");
+      if (capLvD) { fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + 1 + 0.2 * capLvD); capNextD("dun", 15); } // Anvil's Ring stun
+      capLvD = capFireD("anselm");
+      if (capLvD) { fx.capDelayUntil = Math.max(fx.capDelayUntil, fx.clock + 2); capNextD("anselm", 15); } // Iron Palm delay
+      capLvD = capFireD("greta");
+      if (capLvD) { capVulnD(0.05 * capLvD, 5); capNextD("greta", 15); } // Seam Strike vulnerability (the burst rides dungeonDotDps)
+      capLvD = capFireD("vesper");
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 2 + 0.3 * capLvD); capNextD("vesper", 25); } // Marionette's Masterpiece root
+      capLvD = capFireD("aurelia");
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 2 + 0.3 * capLvD); capVulnD(0.08 * capLvD, 2 + 0.3 * capLvD); capNextD("aurelia", 25); } // Widow's Embrace root + vulnerability
+      capLvD = capFireD("mari");
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 3); capHealD(0.02 + 0.005 * capLvD); capNextD("mari", 25); } // Curtain Call root + heal
+      capLvD = capFireD("iris");
+      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 1 + 0.3 * capLvD); capNextD("iris", 20); } // Bloom Burst heal + root
+      capLvD = capFireD("ondine");
+      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); capNextD("ondine", 20); } // High Tide heal (the wave rides dungeonDotDps)
+      capLvD = capFireD("nia");
+      if (capLvD) { capHealD(0.04 + 0.01 * capLvD); capDmgWinD(0.03 * capLvD, 5); capNextD("nia", 25); } // Grand Feast
+      capLvD = capFireD("pippa");
+      if (capLvD) { capDmgWinD(0.02 * capLvD, 5); capNextD("pippa", 20); } // Skylark damage window (the stone rides dungeonDotDps)
+      capLvD = capFireD("straw");
+      if (capLvD) { // Crow's Feast: the burst rides dungeonDotDps; the heal is its share of that averaged burst.
+        dungeonBattle.partyHp = Math.min(partyMaxHp(s), dungeonBattle.partyHp + capstoneAtk(s, "straw") * capLvD / 20 * (0.25 + 0.05 * capLvD));
+        capNextD("straw", 20);
+      }
+      capLvD = capFireD("eamon");
+      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); fx.capEvadeUntil = Math.max(fx.capEvadeUntil, fx.clock + 1.4); capNextD("eamon", 25); } // Beacon heal + evasion
+      capLvD = capFireD("hilda");
+      if (capLvD) { capHealD(0.04 + 0.01 * capLvD); capNextD("hilda", 20); } // Bottoms Up
+      capLvD = capFireD("brann");
+      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); capNextD("brann", 25); } // Blessing of the Hearth
+      capLvD = capFireD("lena");
+      if (capLvD) { capVulnD(0.08 * capLvD, 5); capNextD("lena", 20); } // Beacon of Seraphina
+      capLvD = capFireD("yara");
+      if (capLvD) { fx.capEvadeUntil = Math.max(fx.capEvadeUntil, fx.clock + 1.4); capNextD("yara", 18 - capLvD); } // Foresight
+      capLvD = capFireD("rook");
+      if (capLvD) { fx.capTimestopUntil = fx.clock + 2 + 0.3 * capLvD; fx.capTimestopPct = 0.10 * capLvD; capNextD("rook", 25); } // Sands of Time
+      capLvD = capFireD("ruth");
+      if (capLvD) { if (fx.clock >= fx.capAsWinUntil || 0.10 + 0.02 * capLvD >= fx.capAsWinPct) { fx.capAsWinPct = 0.10 + 0.02 * capLvD; fx.capAsWinUntil = fx.clock + 5; } capNextD("ruth", 20); } // Express Delivery
+      capLvD = capFireD("draven");
+      if (capLvD) { capSlowD(0.20 + 0.02 * capLvD, 5); capNextD("draven", 25); } // Dread Flame
+      capLvD = capFireD("ivo");
+      if (capLvD) { capSlowD(0.10 + 0.02 * capLvD, 5); capNextD("ivo", 20); } // Storm of Sorrow
+      capLvD = capFireD("agatha");
+      if (capLvD) { capWeakenD(0.05 + 0.02 * capLvD, 5); capNextD("agatha", 25); } // Funeral Song
+      capLvD = capFireD("marlo");
+      if (capLvD) { s.gold += 500 * capLvD; if (Math.random() < 0.10) s.gems += 5; dirty = true; renderHeader(); capNextD("marlo", 30); } // Legendary Catch
+      capLvD = capFireD("milo");
+      if (capLvD) { s.gold += 1000 * capLvD; s.gems += 2; dirty = true; renderHeader(); capNextD("milo", 30); } // Hidden Cache
+      if (capstoneActive(s, "bram") && dungeonBattle.partyHp < partyMaxHp(s) * 0.5 && fx.clock >= fx.capBramNext) {
+        capHealD(0.05 + 0.01 * capstoneLv(s, "bram"));
+        fx.capBramNext = fx.clock + 20;
+      } // Flock's Rally
+      if (fx.clock < fx.capStormUntil && fx.clock >= fx.capStormRollAt) {
+        fx.capStormRollAt += 1;
+        if (Math.random() < 0.10 + 0.02 * capstoneLv(s, "morrigan")) fx.capMissUntil = fx.clock + 1;
+      } // Crowstorm blind rolls
+      // Live capstone slows / weakens, priced like the tower's: the active
+      // slow window, plus Nyx's Numbing Venom while her poison holds
+      // (persistent in a dungeon); Agatha's window, or Aurelia Frost's
+      // Glacier while her chill holds (persistent in a dungeon).
+      var capSlowMultD = (durnanIn ? 0.85 : 1) * (fx.clock < fx.capSlowUntil ? 1 - fx.capSlowPct : 1) * (capstoneActive(s, "nyx") ? 1 - (0.05 + 0.02 * capstoneLv(s, "nyx")) : 1);
+      var capWeakenMultD = 1 - Math.max(
+        fx.clock < fx.capWeakenUntil ? fx.capWeakenPct : 0,
+        capstoneActive(s, "eolka") ? 0.03 + 0.01 * capstoneLv(s, "eolka") : 0
+      );
       var foeStunned = fx.clock < fx.cocoonUntil;
       var foeFrozen = fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil;
       var foeRooted = fx.clock < fx.entangleUntil;
@@ -8771,7 +9189,7 @@
          no blows, so the frost stops growing while it hangs fast. */
       if (nixIn && !foeStunned && !foeFrozen && !foeRooted && !foeEclipsed) {
         fx.hoarfrostBeatAcc += dt;
-        var beat = durnanIn ? 1.4 / 0.85 : 1.4;
+        var beat = 1.4 / capSlowMultD;
         while (fx.hoarfrostBeatAcc >= beat) {
           fx.hoarfrostBeatAcc -= beat;
           if (fx.hoarfrostStacks < 10) fx.hoarfrostStacks += 1;
@@ -8791,28 +9209,67 @@
       if (foeStunned && aurIn) dmgPerSec *= 1 + 0.10 * skillLevel(aurO);
       /* 🌑 Eclipse: while Orien's darkness holds, the party hits +20%. */
       if (foeEclipsed) dmgPerSec *= 1.20;
+      /* Capstone damage windows, as in the tower: vulnerability, damage
+         windows, time stop, Ruth's attack-speed window, Arden's execute
+         below 30% wave HP, and Nix's Shatter against a frozen foe. */
+      if (fx.clock < fx.capVulnUntil) dmgPerSec *= 1 + fx.capVulnPct;
+      if (fx.clock < fx.capDmgWinUntil) dmgPerSec *= 1 + fx.capDmgWinPct;
+      if (fx.clock < fx.capTimestopUntil) dmgPerSec *= 1 + fx.capTimestopPct;
+      if (fx.clock < fx.capAsWinUntil) dmgPerSec *= 1 + fx.capAsWinPct;
+      if (capstoneActive(s, "jenna") && dungeonBattle.enemyHp < dungeonWaveHp(dg, dungeonBattle.wave) * 0.3) dmgPerSec *= 1 + 0.10 * capstoneLv(s, "jenna");
+      if (foeFrozen && capstoneActive(s, "nix")) dmgPerSec *= 1 + 0.30 + 0.10 * capstoneLv(s, "nix");
+      /* ⭐ Undying Star: after the save, Soren's attacks deal +5%/lv for
+         8s — priced by his share of the party's hit DPS. */
+      if (fx.clock < fx.capSorenWinUntil && capstoneActive(s, "han")) {
+        var hitSumD = 0, hanDpsD = 0;
+        s.party.forEach(function (id2) { var o2 = s.heroes[id2]; if (o2) { var d2 = heroDps(heroById(id2), o2, s) * synergySelfMult(heroById(id2), s.party); hitSumD += d2; if (id2 === "han") hanDpsD = d2; } });
+        var shareD = hitSumD > 0 ? hanDpsD / hitSumD : 0;
+        dmgPerSec *= 1 + 0.05 * capstoneLv(s, "han") * shareD;
+      }
       var dmg = dmgPerSec * dt;
       dungeonBattle.enemyHp -= dmg;
+      /* 🩸 Lifesteal in the dungeon: Lyra's Blood Waltz returns 2% +
+         0.5%/lv of the damage dealt; Torin's Blood Pact returns 10% +
+         5%/lv of his bleed (time-averaged, as in dungeonDotDps); Straw's
+         Crow's Feast returns 25% + 5%/lv of his averaged burst. */
+      var lifeHeal = 0;
+      if (capstoneActive(s, "lyra")) lifeHeal += dmgPerSec * dt * (0.02 + 0.005 * capstoneLv(s, "lyra"));
+      if (capstoneActive(s, "velkist")) lifeHeal += capstoneAtk(s, "velkist") * 0.10 * capstoneLv(s, "velkist") * (0.10 + 0.05 * capstoneLv(s, "velkist")) * dt;
+      if (capstoneActive(s, "straw")) lifeHeal += capstoneAtk(s, "straw") * capstoneLv(s, "straw") / 20 * (0.25 + 0.05 * capstoneLv(s, "straw")) * dt;
       /* The wave fights back only while it can move: a held foe deals
          nothing, and a free one is blunted by the party's enemy-attack
-         modifiers, Durnan's slow, and Nix's Hoarfrost — the tower's own
-         mAtk line, priced off the wave's attack instead of a floor's.
+         modifiers, the slows, Hoarfrost, the weaken, and Ysolde's Aegis
+         Mirror — the tower's own mAtk line, priced off the wave's attack
+         instead of a floor's. Shields absorb what gets through first.
          The healer trickle mends the party each second, and party HP
          carries across waves; a wipe ends the run. */
-      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave) * mods.enemyAtkMult * durnanSlow * hoarfrostMult;
+      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult;
       var heal = dungeonHealPerSec(s) * dt;
-      dungeonBattle.partyHp = Math.min(dungeonBattle.partyMax, dungeonBattle.partyHp - waveDmg * dt + heal);
-      if (dungeonBattle.partyHp <= 0) {
-        dungeonBattle.partyHp = 0;
-        if (dungeonTimer) window.clearInterval(dungeonTimer);
-        dungeonTimer = null;
-        lastDungeonLost = dg.name;
-        dungeonBattle = null;
-        renderMain();
-        setNotice("💫 The depths win this time… the party regroups at the dungeon mouth, empty-handed. The run doesn't count — only clears do.");
-        return;
+      var waveDmgTaken = waveDmg * dt;
+      var waveAbsorbed = Math.min(fx.capShield, waveDmgTaken);
+      fx.capShield -= waveAbsorbed;
+      waveDmgTaken -= waveAbsorbed;
+      dungeonBattle.partyHp = Math.min(dungeonBattle.partyMax, dungeonBattle.partyHp - waveDmgTaken + heal + lifeHeal);
+      var partyWentDown = dungeonBattle.partyHp <= 0;
+      if (partyWentDown) {
+        /* ⭐ Undying Star, once per run: Soren refuses to fall — the party
+           survives at 1 HP and his attacks burn brighter for 8s (above). */
+        if (capstoneActive(s, "han") && !fx.capSorenUsed) {
+          fx.capSorenUsed = true;
+          fx.capSorenWinUntil = fx.clock + 8;
+          dungeonBattle.partyHp = 1;
+        } else {
+          dungeonBattle.partyHp = 0;
+          if (dungeonTimer) window.clearInterval(dungeonTimer);
+          dungeonTimer = null;
+          lastDungeonLost = dg.name;
+          dungeonBattle = null;
+          renderMain();
+          setNotice("💫 The depths win this time… the party regroups at the dungeon mouth, empty-handed. Level up, forge better gear, and try again — " + dungeonRunsLeft(save, dg.id) + " run" + (dungeonRunsLeft(save, dg.id) === 1 ? "" : "s") + " left here today.");
+          return;
+        }
       }
-      if (dungeonBattle.enemyHp <= 0) {
+      if (!partyWentDown && dungeonBattle.enemyHp <= 0) {
         /* Grave Tithe (Ossian, Floor 90): dungeon kills feed him too. */
         feedGraveTitheDungeon();
         if (dungeonBattle.wave >= dungeonBattle.waves) { finishDungeonRun(); return; }
@@ -8854,8 +9311,8 @@
       dungeonBattle = null;
       /* 🍀 The run's luck is rolled once, here at the clear: it scales
          every material line and the gold together, and a Jackpot adds
-         its gem bonus on top. The run is charged here too (only clears
-         count in this copy). */
+         its gem bonus on top. (The run itself was already charged when
+         the party delved in — see startDungeonRun.) */
       var luck = rollLuckTier();
       var drops = dungeonDrops(dgId, luck);
       var luckGold = Math.round(dg.gold * LUCK_INFO[luck].mult);
@@ -8866,7 +9323,6 @@
       next.gold = (next.gold || 0) + luckGold;
       next.gems = (next.gems || 0) + luckGems;
       if (!next.dungeonRuns) next.dungeonRuns = { ember: 0, frost: 0, star: 0 };
-      next.dungeonRuns[dgId] = (next.dungeonRuns[dgId] || 0) + 1;
       lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
       lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
       persist(next);
@@ -9573,19 +10029,26 @@
          via pendingFloats, which only flushes when the party deals
          damage — a snared party deals none). */
       var mbSkillId = bossSkillId(f);
-      if (mbSkillId === "slime") {
+      /* 🕊 Sacred Cleansing immunity (Celeste's capstone): while it holds,
+         boss debuff triggers wait it out — their cycle timers simply don't
+         advance, so the immunity is real instead of merely late. */
+      var bossImmune = battleElapsed < capState.immuneUntil;
+      if (!bossImmune && mbSkillId === "slime") {
         stickyTimer += dt;
         if (stickyTimer >= 12) {
           stickyTimer = 0;
           stickyUntil = performance.now() + 3000;
           if (tab === "battle") addFloat("💚 STICKY GRASP — damage −20%!", true, 8 + Math.random() * 18);
         }
-      } else if (mbSkillId === "bellsaint") {
+      } else if (!bossImmune && mbSkillId === "bellsaint") {
         tollTimer += dt;
         if (tollTimer >= 15) {
           tollTimer = 0;
           var tollDmg = partyMaxHp(s) * 0.05;
-          partyHp = Math.max(0, partyHp - tollDmg);
+          /* 🛡 A capstone shield absorbs a toll like any other damage. */
+          var tollAbsorbed = Math.min(capState.shield, tollDmg);
+          capState.shield -= tollAbsorbed;
+          partyHp = Math.max(0, partyHp - (tollDmg - tollAbsorbed));
           tollFlashUntil = performance.now() + 1200;
           tone(196, 0, 0.7, "sine", 0.6);
           tone(147, 0.06, 0.9, "sine", 0.45);
@@ -9597,14 +10060,14 @@
             if (bfield) { bfield.style.boxShadow = "inset 0 0 60px rgba(217,164,65,0.55)"; window.setTimeout(function () { bfield.style.boxShadow = ""; }, 420); }
           }
         }
-      } else if (mbSkillId === "gravevine") {
+      } else if (!bossImmune && mbSkillId === "gravevine") {
         thornTimer += dt;
         if (thornTimer >= 12) {
           thornTimer = 0;
           partySnareUntil = performance.now() + 2000;
           if (tab === "battle") addFloat("🌿 THORN SNARE — party snared!", true, 8 + Math.random() * 18);
         }
-      } else if (mbSkillId === "thawingsaint") {
+      } else if (!bossImmune && mbSkillId === "thawingsaint") {
         rememberTimer += dt;
         if (rememberTimer >= 10) {
           rememberTimer = 0;
@@ -9673,6 +10136,7 @@
         if (amaraWaveTimer >= 15) {
           amaraWaveTimer = 0;
           timedDmg += heroAtk(heroById("amara"), amaraO, s) * skillLevel(amaraO);
+          lastWaveAt = performance.now(); // the wave crashes over the boss (battle visual)
           pendingFloats.push({ text: "🌊 TIDAL EDICT!", big: true, x: 62 });
         }
         amaraAegisTimer += dt;
@@ -9698,11 +10162,314 @@
           pendingFloats.push({ text: "☄️ COMETFALL!", big: true, x: 62 });
         }
       }
+      /* ---- Max-potential capstone skills (Nov 19, 2026) ----
+         All timers run on battle-seconds (battleElapsed) and reset with
+         the fight, like the synergy six's skills above. Damage is priced
+         off the hero's OWN attack or a % of party max HP — never the
+         enemy's attack. Windows take the strongest active value when
+         they overlap (a weaker window never overwrites a stronger one
+         still running). */
+      var cap = capState;
+      var bClock = battleElapsed;
+      var capNow = performance.now();
+      function capFire(id) {
+        var lv = capstoneLv(s, id);
+        return capstoneActive(s, id) && bClock >= (cap.next[id] || 0) ? lv : 0;
+      }
+      function capHeal(pct) { partyHp = Math.min(partyMaxHp(s), partyHp + partyMaxHp(s) * pct); }
+      function capShieldUp(pct) { cap.shield = Math.max(cap.shield, partyMaxHp(s) * pct); }
+      function capCleanseAll() { stickyUntil = 0; partySnareUntil = 0; }
+      function capCleanseOne() { if (capNow < stickyUntil) stickyUntil = 0; else if (capNow < partySnareUntil) partySnareUntil = 0; }
+      function capVuln(pct, dur) { if (bClock >= cap.vulnUntil || pct >= cap.vulnPct) { cap.vulnPct = pct; cap.vulnUntil = bClock + dur; } }
+      function capSlow(pct, dur) { if (bClock >= cap.slowUntil || pct >= cap.slowPct) { cap.slowPct = pct; cap.slowUntil = bClock + dur; } }
+      function capWeaken(pct, dur) { if (bClock >= cap.weakenUntil || pct >= cap.weakenPct) { cap.weakenPct = pct; cap.weakenUntil = bClock + dur; } }
+      function capDmgWin(pct, dur) { if (bClock >= cap.dmgWinUntil || pct >= cap.dmgWinPct) { cap.dmgWinPct = pct; cap.dmgWinUntil = bClock + dur; } }
+      function capFloat(text, big) { pendingFloats.push({ text: text, big: big !== false, x: 62 }); }
+      function capNextIn(id, sec) { cap.next[id] = bClock + sec; }
+      var capLv = capFire("luna");
+      if (capLv) { // 🌙 Seraphina's Voice: cleanse ALL, heal 4% + 1%/lv, shield 4% + 1%/lv — every 30s.
+        capCleanseAll(); capHeal(0.04 + 0.01 * capLv); capShieldUp(0.04 + 0.01 * capLv);
+        capNextIn("luna", 30); capFloat("🌙 SERAPHINA'S VOICE!");
+      }
+      capLv = capFire("nerissa");
+      if (capLv) { // 🕊 Sacred Cleansing: cleanse ALL + immunity 2s + 0.5s/lv — every 20s.
+        capCleanseAll(); cap.immuneUntil = bClock + 2 + 0.5 * capLv;
+        capNextIn("nerissa", 20); capFloat("🕊 SACRED CLEANSING!");
+      }
+      capLv = capFire("orin");
+      if (capLv) { // 🎵 Paradise's Anthem: party damage +5%/lv for 10s + cleanse one debuff — every 30s.
+        capDmgWin(0.05 * capLv, 10); capCleanseOne();
+        capNextIn("orin", 30); capFloat("🎵 PARADISE'S ANTHEM!");
+      }
+      capLv = capFire("odo");
+      if (capLv) { // 🩹 Mender's Touch: heal 2% + 0.5%/lv + remove one debuff — every 20s.
+        capHeal(0.02 + 0.005 * capLv); capCleanseOne();
+        capNextIn("odo", 20); capFloat("🩹 MENDER'S TOUCH!");
+      }
+      capLv = capFire("brynn");
+      if (capLv) { // 🛡 Iron Aegis: shield 8% + 2%/lv of party max HP — every 20s.
+        capShieldUp(0.08 + 0.02 * capLv);
+        capNextIn("brynn", 20); capFloat("🛡 IRON AEGIS!");
+      }
+      capLv = capFire("durnan");
+      if (capLv) { // ⛰️ Bulwark of the Mountain: shield 8% + 2%/lv of party max HP — every 25s.
+        capShieldUp(0.08 + 0.02 * capLv);
+        capNextIn("durnan", 25); capFloat("⛰️ BULWARK OF THE MOUNTAIN!");
+      }
+      capLv = capFire("aaron");
+      if (capLv) { // 🛡 Shield Wall: shield 5% + 1%/lv of party max HP — every 20s.
+        capShieldUp(0.05 + 0.01 * capLv);
+        capNextIn("aaron", 20); capFloat("🛡 SHIELD WALL!");
+      }
+      capLv = capFire("amara");
+      if (capLv) { // 🌊 Tidecaller's Wrath: 150% ATK × lv + slow 15% + 2%/lv for 5s — every 25s. The wave crashes (see lastWaveAt).
+        timedDmg += capstoneAtk(s, "amara") * 1.5 * capLv;
+        capSlow(0.15 + 0.02 * capLv, 5);
+        lastWaveAt = performance.now();
+        capNextIn("amara", 25); capFloat("🌊 TIDECALLER'S WRATH!");
+      }
+      capLv = capFire("orien");
+      if (capLv) { // 💥 Supernova: 250% ATK × lv — every 40s, the single biggest burst in the game.
+        timedDmg += capstoneAtk(s, "orien") * 2.5 * capLv;
+        capNextIn("orien", 40); capFloat("💥 SUPERNOVA!");
+      }
+      capLv = capFire("morrigan");
+      if (capLv) { // 🐦‍⬛ Crowstorm: 10% ATK × lv/s for 5s + miss chance during the storm — every 20s.
+        capDots["morrigan"] = { dps: capstoneAtk(s, "morrigan") * 0.10 * capLv, until: capNow + 5000, lastFloat: 0, glyph: "🐦‍⬛" };
+        cap.morriganUntil = bClock + 5; cap.morriganNextRoll = bClock + 1;
+        capNextIn("morrigan", 20); capFloat("🐦‍⬛ CROWSTORM!");
+      }
+      capLv = capFire("sella");
+      if (capLv) { // ⚡ Storm Surge: 120% ATK × lv, 25% chance to stun 2s — every 15s.
+        timedDmg += capstoneAtk(s, "sella") * 1.2 * capLv;
+        if (Math.random() < 0.25) cap.stunUntil = Math.max(cap.stunUntil, bClock + 2);
+        capNextIn("sella", 15); capFloat("⚡ STORM SURGE!");
+      }
+      capLv = capFire("faye");
+      if (capLv) { // 🌩 Thunderclap: 100% ATK × lv + silence 2s + 0.2s/lv — every 20s. Silence pauses boss timed abilities: their cycle timers are pushed back by the silence.
+        var silenceDur = 2 + 0.2 * capLv;
+        timedDmg += capstoneAtk(s, "faye") * capLv;
+        cap.silenceUntil = bClock + silenceDur;
+        stickyTimer = Math.max(0, stickyTimer - silenceDur); tollTimer = Math.max(0, tollTimer - silenceDur); thornTimer = Math.max(0, thornTimer - silenceDur); rememberTimer = Math.max(0, rememberTimer - silenceDur);
+        capNextIn("faye", 20); capFloat("🌩 THUNDERCLAP — SILENCED!");
+      }
+      capLv = capFire("dun");
+      if (capLv) { // 🔨 Anvil's Ring: 120% ATK × lv + stun 1s + 0.2s/lv — every 15s.
+        timedDmg += capstoneAtk(s, "dun") * 1.2 * capLv;
+        cap.stunUntil = Math.max(cap.stunUntil, bClock + 1 + 0.2 * capLv);
+        capNextIn("dun", 15); capFloat("🔨 ANVIL'S RING!");
+      }
+      capLv = capFire("anselm");
+      if (capLv) { // 🖐 Iron Palm: 100% ATK × lv + the enemy's next attack delayed 2s — every 15s. (In this loop the enemy's damage is continuous, so the delay is a 2s pause on its incoming damage.)
+        timedDmg += capstoneAtk(s, "anselm") * capLv;
+        cap.delayUntil = Math.max(cap.delayUntil, bClock + 2);
+        capNextIn("anselm", 15); capFloat("🖐 IRON PALM!");
+      }
+      capLv = capFire("joss");
+      if (capLv) { // 🪞 Trick Mirror: the enemy strikes ITSELF for 150% of JOSS's attack × lv — every 20s. Own ATK, never the enemy's.
+        timedDmg += capstoneAtk(s, "joss") * 1.5 * capLv;
+        capNextIn("joss", 20); capFloat("🪞 TRICK MIRROR!");
+      }
+      capLv = capFire("greta");
+      if (capLv) { // ⛏ Seam Strike: 150% ATK × lv + the enemy takes +5%/lv for 5s — every 15s.
+        timedDmg += capstoneAtk(s, "greta") * 1.5 * capLv;
+        capVuln(0.05 * capLv, 5);
+        capNextIn("greta", 15); capFloat("⛏ SEAM STRIKE!");
+      }
+      capLv = capFire("ash");
+      if (capLv) { // 🐺 Pack Hunt: 150% ATK × lv — every 20s.
+        timedDmg += capstoneAtk(s, "ash") * 1.5 * capLv;
+        capNextIn("ash", 20); capFloat("🐺 PACK HUNT!");
+      }
+      capLv = capFire("vesper");
+      if (capLv) { // 🎭 Marionette's Masterpiece: root 2s + 0.3s/lv + 100% ATK × lv — every 25s.
+        timedDmg += capstoneAtk(s, "vesper") * capLv;
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + 2 + 0.3 * capLv);
+        capNextIn("vesper", 25); capFloat("🎭 MARIONETTE'S MASTERPIECE!");
+      }
+      capLv = capFire("aurelia");
+      if (capLv) { // 🕸 Widow's Embrace: root 2s + 0.3s/lv + the wrapped enemy takes +8%/lv — every 25s.
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + 2 + 0.3 * capLv);
+        capVuln(0.08 * capLv, 2 + 0.3 * capLv);
+        capNextIn("aurelia", 25); capFloat("🕸 WIDOW'S EMBRACE!");
+      }
+      capLv = capFire("mari");
+      if (capLv) { // 🎭 Curtain Call: the enemy bows — cannot attack for 3s — and the party heals 2% + 0.5%/lv — every 25s.
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + 3);
+        capHeal(0.02 + 0.005 * capLv);
+        capNextIn("mari", 25); capFloat("🎭 CURTAIN CALL!");
+      }
+      capLv = capFire("iris");
+      if (capLv) { // 🌸 Bloom Burst: heal 3% + 0.5%/lv + root 1s + 0.3s/lv — every 20s.
+        capHeal(0.03 + 0.005 * capLv);
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + 1 + 0.3 * capLv);
+        capNextIn("iris", 20); capFloat("🌸 BLOOM BURST!");
+      }
+      capLv = capFire("ondine");
+      if (capLv) { // 🌊 High Tide: heal 3% + 0.5%/lv + 100% ATK × lv — every 20s.
+        capHeal(0.03 + 0.005 * capLv);
+        timedDmg += capstoneAtk(s, "ondine") * capLv;
+        capNextIn("ondine", 20); capFloat("🌊 HIGH TIDE!");
+      }
+      capLv = capFire("nia");
+      if (capLv) { // 🍲 Grand Feast: heal 4% + 1%/lv + party damage +3%/lv for 5s — every 25s.
+        capHeal(0.04 + 0.01 * capLv);
+        capDmgWin(0.03 * capLv, 5);
+        capNextIn("nia", 25); capFloat("🍲 GRAND FEAST!");
+      }
+      capLv = capFire("pippa");
+      if (capLv) { // 🪶 Skylark: 150% ATK × lv + party damage +2%/lv for 5s — every 20s.
+        timedDmg += capstoneAtk(s, "pippa") * 1.5 * capLv;
+        capDmgWin(0.02 * capLv, 5);
+        capNextIn("pippa", 20); capFloat("🪶 SKYLARK!");
+      }
+      capLv = capFire("petra");
+      if (capLv) { // ⚗ Philosopher's Flask: 150% ATK × lv + burn 8% ATK × lv/s for 5s — every 18s.
+        timedDmg += capstoneAtk(s, "petra") * 1.5 * capLv;
+        capDots["petra"] = { dps: capstoneAtk(s, "petra") * 0.08 * capLv, until: capNow + 5000, lastFloat: 0, glyph: "⚗" };
+        capNextIn("petra", 18); capFloat("⚗ PHILOSOPHER'S FLASK!");
+      }
+      capLv = capFire("straw");
+      if (capLv) { // 🌾 Crow's Feast: 100% ATK × lv, and the party heals 25% + 5%/lv of the damage dealt — every 20s.
+        var strawBurst = capstoneAtk(s, "straw") * capLv;
+        timedDmg += strawBurst;
+        partyHp = Math.min(partyMaxHp(s), partyHp + strawBurst * (0.25 + 0.05 * capLv));
+        capNextIn("straw", 20); capFloat("🌾 CROW'S FEAST!");
+      }
+      capLv = capFire("eamon");
+      if (capLv) { // 🏮 Beacon: heal 3% + 0.5%/lv + the enemy's next attack misses — every 25s.
+        capHeal(0.03 + 0.005 * capLv);
+        cap.evadeUntil = Math.max(cap.evadeUntil, bClock + 1.4);
+        capNextIn("eamon", 25); capFloat("🏮 BEACON!");
+      }
+      capLv = capFire("hilda");
+      if (capLv) { // 🍺 Bottoms Up: heal 4% + 1%/lv — every 20s.
+        capHeal(0.04 + 0.01 * capLv);
+        capNextIn("hilda", 20); capFloat("🍺 BOTTOMS UP!");
+      }
+      capLv = capFire("brann");
+      if (capLv) { // 🔔 Blessing of the Hearth: heal 3% + 0.5%/lv — every 25s.
+        capHeal(0.03 + 0.005 * capLv);
+        capNextIn("brann", 25); capFloat("🔔 BLESSING OF THE HEARTH!");
+      }
+      capLv = capFire("hugo");
+      if (capLv) { // 🐝 Bee Swarm: 10% ATK × lv/s for 5s — every 15s.
+        capDots["hugo"] = { dps: capstoneAtk(s, "hugo") * 0.10 * capLv, until: capNow + 5000, lastFloat: 0, glyph: "🐝" };
+        capNextIn("hugo", 15); capFloat("🐝 BEE SWARM!");
+      }
+      capLv = capFire("zinnia");
+      if (capLv) { // 🦊 Foxfire: burn 8% ATK × lv/s for 5s — every 15s.
+        capDots["zinnia"] = { dps: capstoneAtk(s, "zinnia") * 0.08 * capLv, until: capNow + 5000, lastFloat: 0, glyph: "🦊" };
+        capNextIn("zinnia", 15); capFloat("🦊 FOXFIRE!");
+      }
+      capLv = capFire("lena");
+      if (capLv) { // 🏮 Beacon of Seraphina: the enemy takes +8%/lv for 5s — every 20s.
+        capVuln(0.08 * capLv, 5);
+        capNextIn("lena", 20); capFloat("🏮 BEACON OF SERAPHINA!");
+      }
+      capLv = capFire("yara");
+      if (capLv) { // 🔮 Foresight: the party completely avoids the enemy's next attack — cooldown 18s − 1s/lv.
+        cap.evadeUntil = Math.max(cap.evadeUntil, bClock + 1.4);
+        capNextIn("yara", 18 - capLv); capFloat("🔮 FORESIGHT — the blow is avoided!");
+      }
+      capLv = capFire("rook");
+      if (capLv) { // ⏳ Sands of Time: time stops 2s + 0.3s/lv — the enemy cannot act, party attacks +10%/lv — every 25s.
+        cap.timestopUntil = bClock + 2 + 0.3 * capLv;
+        cap.timestopPct = 0.10 * capLv;
+        capNextIn("rook", 25); capFloat("⏳ SANDS OF TIME!");
+      }
+      capLv = capFire("ruth");
+      if (capLv) { // 💨 Express Delivery: the party attacks 10% + 2%/lv faster for 5s — every 20s.
+        if (bClock >= cap.asWinUntil || 0.10 + 0.02 * capLv >= cap.asWinPct) { cap.asWinPct = 0.10 + 0.02 * capLv; cap.asWinUntil = bClock + 5; }
+        capNextIn("ruth", 20); capFloat("💨 EXPRESS DELIVERY!");
+      }
+      capLv = capFire("eldric");
+      if (capLv) { // ᚱ Rune of Echoes: the next party attack deals +50% + 25%/lv — every 15s.
+        cap.echoPending = true;
+        capNextIn("eldric", 15); capFloat("ᚱ RUNE OF ECHOES!");
+      }
+      capLv = capFire("diddle");
+      if (capLv) { // ♟ Checkmate: the party's next attack is a guaranteed crit dealing +50% + 10%/lv (on top of ×1.8) — every 20s.
+        cap.diddlePending = true;
+        capNextIn("diddle", 20); capFloat("♟ CHECKMATE!");
+      }
+      capLv = capFire("draven");
+      if (capLv) { // 🐉 Dread Flame: the enemy is frightened — attacks 20% + 2%/lv less often for 5s — every 25s.
+        capSlow(0.20 + 0.02 * capLv, 5);
+        capNextIn("draven", 25); capFloat("🐉 DREAD FLAME!");
+      }
+      capLv = capFire("ivo");
+      if (capLv) { // 🌧 Storm of Sorrow: the enemy attacks 10% + 2%/lv less often for 5s — every 20s.
+        capSlow(0.10 + 0.02 * capLv, 5);
+        capNextIn("ivo", 20); capFloat("🌧 STORM OF SORROW!");
+      }
+      capLv = capFire("agatha");
+      if (capLv) { // 🥀 Funeral Song: the enemy deals 5% + 2%/lv less damage for 5s — every 25s.
+        capWeaken(0.05 + 0.02 * capLv, 5);
+        capNextIn("agatha", 25); capFloat("🥀 FUNERAL SONG!");
+      }
+      capLv = capFire("marlo");
+      if (capLv) { // 🎣 Legendary Catch: +500 gold × lv and a 10% chance of +5 gems — every 30s.
+        s.gold += 500 * capLv;
+        if (Math.random() < 0.10) s.gems += 5;
+        dirty = true; renderHeader();
+        capNextIn("marlo", 30); capFloat("🎣 LEGENDARY CATCH!");
+      }
+      capLv = capFire("milo");
+      if (capLv) { // 🗺 Hidden Cache: +1,000 gold × lv and 2 gems — every 30s.
+        s.gold += 1000 * capLv; s.gems += 2;
+        dirty = true; renderHeader();
+        capNextIn("milo", 30); capFloat("🗺 HIDDEN CACHE!");
+      }
+      // 🐑 Flock's Rally: when party HP drops below 50%, heal 5% + 1%/lv (20s cooldown) — a threshold trigger, not a timer.
+      if (capstoneActive(s, "bram") && partyHp < partyMaxHp(s) * 0.5 && bClock >= cap.bramNext) {
+        capHeal(0.05 + 0.01 * capstoneLv(s, "bram"));
+        cap.bramNext = bClock + 20;
+        capFloat("🐑 FLOCK'S RALLY!");
+      }
+      // 🐦‍⬛ Crowstorm's blind: during the storm, each second the enemy's attacks have a 10% + 2%/lv chance to miss outright.
+      if (bClock < cap.morriganUntil && bClock >= cap.morriganNextRoll) {
+        cap.morriganNextRoll += 1;
+        if (Math.random() < 0.10 + 0.02 * capstoneLv(s, "morrigan")) {
+          cap.morriganMissUntil = bClock + 1;
+          capFloat("🐦‍⬛ THE CROWS BLIND HIM!", false);
+        }
+      }
+      // Live capstone windows, read by the damage and monster-attack lines below.
+      var capVulnPct = bClock < cap.vulnUntil ? cap.vulnPct : 0;
+      var capDmgWinPct = bClock < cap.dmgWinUntil ? cap.dmgWinPct : 0;
+      var capTimestopActive = bClock < cap.timestopUntil;
+      var capTimestopPct = capTimestopActive ? cap.timestopPct : 0;
+      var capStunned = bClock < cap.stunUntil;
+      var capRooted = bClock < cap.rootUntil;
+      var capDelayed = bClock < cap.delayUntil;
+      var capEvaded = bClock < cap.evadeUntil;
+      var capHeld = capStunned || capRooted || capTimestopActive || capDelayed;
+      // "Attacks less often" slows stack multiplicatively with Durnan's
+      // Mountain's Weight: the active capstone slow window, plus Nyx's
+      // Numbing Venom while her poison holds (5% + 2%/lv less often).
+      var capSlowMult = durnanSlow * (bClock < cap.slowUntil ? 1 - cap.slowPct : 1);
+      if (capstoneActive(s, "nyx") && venomDps(s) > 0) capSlowMult *= 1 - (0.05 + 0.02 * capstoneLv(s, "nyx"));
+      // Weaken: Agatha's timed Funeral Song, or Aurelia Frost's Glacier
+      // while her chill holds (3% + 1%/lv less enemy damage) — strongest wins.
+      var capWeakenPct = Math.max(
+        bClock < cap.weakenUntil ? cap.weakenPct : 0,
+        capstoneActive(s, "eolka") && frostDps(s) > 0 ? 0.03 + 0.01 * capstoneLv(s, "eolka") : 0
+      );
+      var capWeakenMult = 1 - capWeakenPct;
+      // The enemy cannot attack while held, silenced into stillness, or
+      // dodged — and a held, swallowed, or dodged enemy grows no thorns
+      // and earns no counters, exactly like the cocoon/freeze/root rules.
+      var enemyCanAttack = !enemyStunned() && !enemyFrozen() && !enemyRooted() && !enemyEclipsed() && !enemySwallowed() && !capHeld && !capEvaded;
       var mods = partyMods(s);
       /* Last Stand (Torin): snapshot the bonus from the party's
          pooled HP at the start of this tick, so every Torin swing
          this tick hits with the same fury. */
       var lsBonusTick = torinLastStandBonus(s);
+      /* Live attack speed: Juno's Fair Winds (partyMods) plus Ruth's
+         Express Delivery window — the same speed partyDps prices in, so
+         the fight's attack cadence matches the displayed DPS. */
+      var liveAtkSpd = mods.atkSpdMult * (battleElapsed < cap.asWinUntil ? 1 + cap.asWinPct : 1);
       var dmgThisTick = 0;
       s.party.forEach(function (id) {
         var o = s.heroes[id];
@@ -9713,7 +10480,7 @@
         if (partySnared() && mbSkillId === "gravevine") return;
         var def = heroById(id);
         atkTimers[id] = (atkTimers[id] || 0) + dt;
-        var period = 1 / def.atkSpeed;
+        var period = 1 / (def.atkSpeed * liveAtkSpd);
         while ((atkTimers[id] || 0) >= period) {
           atkTimers[id] -= period;
           var crit = Math.random() < 0.12 + mods.critBonus;
@@ -9723,11 +10490,40 @@
             starChartCount += 1;
             if (starChartCount % 10 === 0) { crit = true; fatedCrit = true; }
           }
-          var dmg = heroAtk(def, o) * (def.id === "han" ? selfSkillMult(def, o) + (duelistUnlocked(o) ? duelistRampBonus() : 0) : selfSkillMult(def, o)) * synergySelfMult(def, s.party) * (mariIn ? 1 + secondActRampBonus() : 1) * (crit ? 1.8 : 1) * (0.92 + Math.random() * 0.16);
+          /* ♟ Checkmate: Diddle's called shot — the party's next attack is
+             a guaranteed crit. It is consumed by this attack, whoever's it is. */
+          var diddleShot = false;
+          if (cap.diddlePending) { cap.diddlePending = false; crit = true; diddleShot = true; }
+          var dmg = heroAtk(def, o) * (def.id === "han" ? selfSkillMult(def, o) + (duelistUnlocked(o) ? duelistRampBonus() : 0) : selfSkillMult(def, o)) * synergySelfMult(def, s.party) * (mariIn ? 1 + secondActRampBonus() : 1) * (crit ? 1.8 * mods.critDmgMult : 1) * (0.92 + Math.random() * 0.16);
           if (def.id === "velkist" && lsBonusTick > 0) dmg *= (1 + lsBonusTick);
+          if (diddleShot) dmg *= 1 + 0.5 + 0.10 * capstoneLv(s, "diddle"); // Checkmate's +50% + 10%/lv, on top of the crit
+          /* ᚱ Rune of Echoes: Eldric's runes repeat the party's strongest
+             blow — the next party attack after the rune deals +50% + 25%/lv. */
+          if (cap.echoPending) { cap.echoPending = false; dmg *= 1 + 0.5 + 0.25 * capstoneLv(s, "eldric"); }
+          /* Capstone per-attack effects (all gated on max rank): */
+          if (id === "jenna" && capstoneActive(s, "jenna") && enemyHp < bossMaxHp(s, f) * 0.3) dmg *= 1 + 0.10 * skillLevel(o); // 🎯 Deadeye: +10%/lv below 30% enemy HP
+          if (id === "nix" && capstoneActive(s, "nix") && enemyFrozen()) dmg *= 1 + 0.30 + 0.10 * skillLevel(o); // 💠 Shatter: +30% + 10%/lv vs a frozen enemy
+          if (id === "mira" && capstoneActive(s, "mira") && Math.random() < 0.10 + 0.02 * skillLevel(o)) dmg *= 2; // 🍀 Lucky Shot: 10% + 2%/lv chance to strike twice
+          if (id === "han" && capstoneActive(s, "han") && battleElapsed < cap.sorenWinUntil) dmg *= 1 + 0.05 * skillLevel(o); // ⭐ Undying Star: +5%/lv for 8s after the save
+          if (id === "tomas" && capstoneActive(s, "tomas") && !cap.tomasUsed) { // ⚔ First Sword: the first strike of each battle deals 200% ATK × lv, on top of the strike itself
+            cap.tomasUsed = true;
+            timedDmg += capstoneAtk(s, "tomas") * 2 * skillLevel(o);
+            pendingFloats.push({ text: "⚔ FIRST SWORD!", big: true, x: 62 });
+          }
+          if (id === "kael" && capstoneActive(s, "kael")) { // 🗡 Twin's Oath: marks stack per attack (twice as fast beside Nyx); at 5, the mark detonates for 200% ATK + 25%/lv
+            cap.marks += s.party.indexOf("nyx") >= 0 ? 2 : 1;
+            if (cap.marks >= 5) {
+              cap.marks -= 5;
+              timedDmg += capstoneAtk(s, "kael") * (2 + 0.25 * skillLevel(o));
+              pendingFloats.push({ text: "🗡 TWIN'S OATH!", big: true, x: 62 });
+            }
+          }
           dmgThisTick += dmg;
           if (fatedCrit) {
             pendingFloats.push({ text: "✦ FATED CRIT!", big: false, x: 55 + Math.random() * 30 });
+          }
+          if (diddleShot) {
+            pendingFloats.push({ text: "♟ CHECKMATE!", big: false, x: 55 + Math.random() * 30 });
           }
           if (id === "draven") {
             burn.dps = heroAtk(def, o) * synergySelfMult(def, s.party) * 0.25;
@@ -9749,6 +10545,17 @@
               frozenUntil = performance.now() + 3000;
               pendingFloats.push({ text: "❄ GLACIAL FREEZE!", big: true, x: 62 + Math.random() * 22 });
             }
+          }
+          if (id === "rurik" && capstoneActive(s, "rurik")) {
+            /* 🔥 Cinder Trail: his attacks leave cinders — the enemy burns
+               for 8% of his attack per skill level/s, refreshed per strike
+               like the other persistent DoTs. */
+            capDots["rurik"] = { dps: heroAtk(def, o, s) * 0.08 * skillLevel(o), until: performance.now() + 3000, lastFloat: capDots["rurik"] ? capDots["rurik"].lastFloat : 0, glyph: "🔥" };
+          }
+          if (id === "yurneth" && capstoneActive(s, "yurneth") && crit) {
+            /* 🩸 Night's Requiem: a critical hit leaves a bleed — 10% of
+               his attack per skill level/s for 3s, refreshed per crit. */
+            capDots["yurneth"] = { dps: heroAtk(def, o, s) * 0.10 * skillLevel(o), until: performance.now() + 3000, lastFloat: capDots["yurneth"] ? capDots["yurneth"].lastFloat : 0, glyph: "🩸" };
           }
           var nowMs = performance.now();
           lungeAt[id] = nowMs;
@@ -9775,7 +10582,7 @@
          it takes damage equal to 10% of its own attack per skill level.
          The enemy only attacks while it can move, so a stunned, frozen,
          rooted, eclipsed, or swallowed enemy grows no thorns that tick. */
-      if (ilyaIn && !enemyStunned() && !enemyFrozen() && !enemyRooted() && !enemyEclipsed() && !enemySwallowed()) {
+      if (ilyaIn && enemyCanAttack) {
         var reflectDps = enemyAtkStat * durnanSlow * hoarfrostMult * 0.10 * skillLevel(ilyaO);
         dmgThisTick += reflectDps * dt;
         if (nowMs2 - thornFx.lastFloat > 1100) {
@@ -9783,6 +10590,21 @@
           pendingFloats.push({ text: "🌿 " + fmt(reflectDps) + "/s", big: false, x: 62 + Math.random() * 22 });
         }
       }
+      /* 🌿 Briar Thorns / 🗡 Counter-Thrust: whenever the enemy attacks,
+         Ilya's thorns and Dain's spear hit back for 25% of the HERO's own
+         attack × skill level — the safe mirror of Thornmail, priced off
+         the hero, never the enemy. One counter per lunge beat (~1.4s,
+         slowed by Durnan like the beat itself). */
+      ["ilya", "dain"].forEach(function (cid) {
+        if (capstoneActive(s, cid) && enemyCanAttack) {
+          var counterDps = capstoneAtk(s, cid) * 0.25 * capstoneLv(s, cid) / (1.4 / capSlowMult);
+          dmgThisTick += counterDps * dt;
+          if (nowMs2 - cap.lastCounterFloat > 1100) {
+            cap.lastCounterFloat = nowMs2;
+            pendingFloats.push({ text: (cid === "ilya" ? "🌿 " : "🗡 ") + fmt(counterDps) + "/s", big: false, x: 62 + Math.random() * 22 });
+          }
+        }
+      });
       /* 📯 Warlord's Roar: while Durnan's roar rings (5s of every 15s),
          the whole party deals +25% damage — the mountain shouting. */
       if (roarActive() && dmgThisTick > 0) {
@@ -9825,6 +10647,11 @@
       var bleTick = bleedDps(s);
       if (bleTick > 0 && !(partySnared() && mbSkillId === "gravevine")) {
         dmgThisTick += bleTick * dt;
+        /* 🩸 Blood Pact: Torin's bleed also heals the party — 10% of the
+           bleed damage + 5% per skill level, returned as healing. */
+        if (capstoneActive(s, "velkist")) {
+          partyHp = Math.min(partyMaxHp(s), partyHp + bleTick * dt * (0.10 + 0.05 * capstoneLv(s, "velkist")));
+        }
         if (nowMs2 - bleedFx.lastFloat > 1100) {
           bleedFx.lastFloat = nowMs2;
           pendingFloats.push({ text: "🩸 " + fmt(bleTick) + "/s", big: false, x: 62 + Math.random() * 22 });
@@ -9854,11 +10681,40 @@
       } else {
         frostTickAcc = 0;
       }
+      /* Capstone DoT ticks: Morrigan's crowstorm, Petra's flask burn,
+         Zinnia's foxfire, Hugo's bee swarm, Rurik's cinders, Yurneth's
+         on-crit bleed — each ticks for its own window, refreshed (never
+         stacked) the way the burn/snare/poison/bleed/chill ticks above do.
+         Morrigan's storm also blinds: while it rages, its miss rolls live
+         in cap.morriganMissUntil (see the mAtk line below). */
+      Object.keys(capDots).forEach(function (dotId) {
+        var dot = capDots[dotId];
+        if (nowMs2 < dot.until && dot.dps > 0) {
+          dmgThisTick += dot.dps * dt;
+          if (nowMs2 - dot.lastFloat > 1100) {
+            dot.lastFloat = nowMs2;
+            pendingFloats.push({ text: dot.glyph + " " + fmt(dot.dps) + "/s", big: false, x: 62 + Math.random() * 22 });
+          }
+        }
+      });
+      /* Capstone damage windows: vulnerability (Lena, Greta, Aurelia
+         Vey), damage windows (Nia, Pippa, Orin's Anthem), and Rook's
+         time stop — all multiplicative on the damage actually dealt,
+         strikes and DoTs alike, like the Roar and Eclipse above. */
+      if (capVulnPct > 0 && dmgThisTick > 0) dmgThisTick *= 1 + capVulnPct;
+      if (capDmgWinPct > 0 && dmgThisTick > 0) dmgThisTick *= 1 + capDmgWinPct;
+      if (capTimestopActive && dmgThisTick > 0) dmgThisTick *= 1 + capTimestopPct;
       if (dmgThisTick > 0) {
         /* Boss auras: the Cantor Dirge (Floors 55/70 — Silas −15%,
            Mara −25%) and the Keeper's Long Vigil (Floor 95, −30%)
            shave party attack before it lands. */
         dmgThisTick *= dirgeMult(f) * stickyMult(f);
+        /* 🩸 Blood Waltz: the party heals for 2% + 0.5%/lv of the damage
+           it deals — priced off the damage actually landed, after the
+           Dirge and Sticky cuts above. */
+        if (capstoneActive(s, "lyra")) {
+          partyHp = Math.min(partyMaxHp(s), partyHp + dmgThisTick * (0.02 + 0.005 * capstoneLv(s, "lyra")));
+        }
         enemyHp -= dmgThisTick;
         /* Still Standing (the Keeper, Floor 95): he failed her once
            and will not fall now — he regains 0.5% of his max HP every
@@ -9888,29 +10744,45 @@
       /* Silk Cocoon stun / Frostbite freeze / Entangle root / Eclipse
          darkness / a swallowed blow: a held enemy cannot attack at all.
          Durnan's Mountain's Weight slows its attacks by 15%, and Nix's
-         Hoarfrost has already taken its cut off every swing. */
-      var mAtk = (enemyStunned() || enemyFrozen() || enemyRooted() || enemyEclipsed() || enemySwallowed()) ? 0 : enemyAtkStat * mods.enemyAtkMult * durnanSlow * hoarfrostMult;
+         Hoarfrost has already taken its cut off every swing.
+         Capstones blunt it further: Rook's time stop, Vesper's / Mari's /
+         Iris's / Aurelia Vey's roots, Dun's / Sella's stuns, Anselm's
+         delay, and Yara's / Eamon's evasion all hold the blow; the
+         capstone slows (Draven, Ivo, Amara, Nyx) ride capSlowMult; Agatha
+         and Aurelia Frost's Glacier weaken it; Ysolde's Aegis Mirror cuts
+         ALL incoming damage; Morrigan's crowstorm can blind it outright. */
+      var mAtk = (enemyStunned() || enemyFrozen() || enemyRooted() || enemyEclipsed() || enemySwallowed() || capHeld || capEvaded || battleElapsed < cap.morriganMissUntil) ? 0 : enemyAtkStat * mods.enemyAtkMult * capSlowMult * hoarfrostMult * capWeakenMult * mods.dmgTakenMult;
       var hasPriest = s.party.some(function (id) { return isHealerDef(heroById(id)) && s.heroes[id]; });
       var heal = hasPriest ? partyMaxHp(s) * 0.012 * dt * 4 * mods.healMult * deepChillHealMult(f) : 0;
-      partyHp = Math.min(partyMaxHp(s), partyHp - mAtk * dt + heal);
       /* Ember Trail (Cinder Hound): the party burns for 5% of the
          hound's attack every second, all fight long — a DoT on
          the party, ticking like the heroes' own DoTs. */
       var emberD = emberPartyDps(s, f);
+      var emberDmg = 0;
       if (emberD > 0) {
-        partyHp -= emberD * dt;
+        emberDmg = emberD * dt;
         if (nowMs2 - emberFx.lastFloat > 1100) {
           emberFx.lastFloat = nowMs2;
           if (tab === "battle") addFloat("🔥 Ember Trail −" + fmt(emberD) + "/s", false, 8 + Math.random() * 18);
         }
       }
+      /* 🛡 Party shields (Brynn, Durnan, Rhys, Luna's Voice) absorb
+         incoming damage — monster attacks and the Ember Trail alike —
+         before the party's HP feels any of it. The pool never refills
+         from healing; only a fresh shield cast refreshes it. */
+      var incomingDmg = mAtk * dt + emberDmg;
+      var absorbedDmg = Math.min(cap.shield, incomingDmg);
+      cap.shield -= absorbedDmg;
+      incomingDmg -= absorbedDmg;
+      partyHp = Math.min(partyMaxHp(s), partyHp - incomingDmg + heal);
       /* Monster strike beat (visual): it lunges at the party every ~1.4s —
          never while it hangs stunned in Aurelia's cocoon, stands frozen
          in Aurelia Frost's ice or Nix's Glacial Edge, hangs rooted in
          Ilya's thorns, or stands blind in Orien's eclipse. Durnan's
-         Mountain's Weight slows the beat itself: 15% fewer lunges. */
-      if (!enemyStunned() && !enemyFrozen() && !enemyRooted() && !enemyEclipsed()) monsterAtkTimer += dt;
-      var lungeInterval = durnanIn ? 1.4 / 0.85 : 1.4;
+         Mountain's Weight slows the beat itself: 15% fewer lunges — and
+         the capstone slows ride the same beat (capSlowMult). */
+      if (!enemyStunned() && !enemyFrozen() && !enemyRooted() && !enemyEclipsed() && !capHeld) monsterAtkTimer += dt;
+      var lungeInterval = 1.4 / capSlowMult;
       if (monsterAtkTimer >= lungeInterval) {
         monsterAtkTimer = 0;
         monsterLungeAt = performance.now();
@@ -9944,6 +10816,18 @@
           partyHp = 1;
           addFloat("⛰️ UNBREAKABLE — Durnan holds the line!", true, 30);
           setNotice("⛰️ UNBREAKABLE! Durnan Ironfist plants his feet and the mountain does not fall — the party survives at 1 HP and fights on!");
+        } else if (capstoneActive(s, "han") && !cap.sorenUsed) {
+          /* ⭐ UNDYING STAR — Soren's capstone: the first time he would
+             fall in a battle, he refuses. Party HP is pooled, so his
+             "fall" is the party's would-be wipe: like Durnan's
+             Unbreakable he holds the line at 1 HP — and then his attacks
+             deal +5% per skill level for 8s. Once per battle; it spends
+             no revive (Luna's vigil and Wren's tonic stay unspent). */
+          cap.sorenUsed = true;
+          cap.sorenWinUntil = battleElapsed + 8;
+          partyHp = 1;
+          addFloat("⭐ UNDYING STAR — Soren refuses to fall!", true, 30);
+          setNotice("⭐ UNDYING STAR! Soren Ashford refuses to fall — the party survives at 1 HP, and his attacks burn +5% per skill level brighter for 8s!");
         } else if (s.heroes["luna"] && s.party.indexOf("luna") >= 0 && nowMs3 >= vigilReadyAt) {
           vigilReadyAt = nowMs3 + 60000;
           partyHp = partyMaxHp(s) * 0.4;
@@ -9997,7 +10881,7 @@
           enemyHp = bossMaxHp(next, f);
           phoenixUsed = false;
           resetBattleTimers();
-          partyHp = Math.min(partyMaxHp(next), partyHp + partyMaxHp(next) * 0.35);
+          partyHp = partyMaxHp(next); /* a clear restores the whole party to full HP before the next fight (matching the main game) */
           persist(next);
           renderMain();
           playClearSfx();
@@ -10026,7 +10910,7 @@
           enemyHp = bossMaxHp(next, f + 1);
           phoenixUsed = false;
           resetBattleTimers();
-          partyHp = Math.min(partyMaxHp(next), partyHp + partyMaxHp(next) * 0.35);
+          partyHp = partyMaxHp(next); /* a clear restores the whole party to full HP before the next fight (matching the main game) */
           persist(next);
           renderMain();
           playClearSfx();
