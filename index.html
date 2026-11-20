@@ -3811,41 +3811,47 @@
       var pool = total >= 12 ? MEMORY_HINTS_HIGH : total >= 5 ? MEMORY_HINTS_MID : MEMORY_HINTS_LOW;
       return pool[(m.deaths * 3 + m.reClears + f) % pool.length];
     }
-    /* Per-clear rewards scale with the floor on unbroken growth curves
-       (reverted Nov 20, 2026, to the pre-Nov-19-retune rates): gold
-       ×1.23 per floor and gems ×1.20 per floor, so per-clear rewards
-       keep climbing steeply past Floor 30 — a Floor 49 normal clear
-       pays more than a Floor 40 Lord (281,180 🪙 vs 218,176 🪙), and
-       per-clear gold jumps ≈8× from Floor 30 to 40. The gem BASES
-       (first clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for normal /
-       gate / lord floors, repeats floored at 1 💎) are unchanged, as
-       are the floor-type gold multipliers (lord ×5, gate ×2) and the
-       85% repeat-gold factor. Offline / AFK earnings ride the REPEAT
-       per-clear payouts again: idleGoldPerSec / idleGemsPerSec pay
-       repeatGold / repeatGems spread over the party's clear time on
-       the floor, so idle and active earnings are the same money at the
-       same speed. */
+    /* Per-clear rewards scale with the floor on a three-segment growth
+       curve (Nov 20, 2026): gold ×1.23 per floor and gems ×1.20 per
+       floor to Floor 30, then a gentle ×1.04 per floor for 31–60, with
+       the faster compounding (×1.08 per floor) only past Floor 60 — so
+       a Floor 40 Lord repeat clear pays 40,746 🪙 / 146 💎 (vs 27,527 🪙
+       / 99 💎 on Floor 30, about 1.5×, not the 6–8× of the unbroken
+       curves), and a Floor 40 AFK night lands around 272K 💎. The gem
+       BASES (first clear 0.5 / 2 / 6 and repeat 0.1 / 0.2 / 0.5 for
+       normal / gate / lord floors, repeats floored at 1 💎) are
+       unchanged, as are the floor-type gold multipliers (lord ×5,
+       gate ×2) and the 85% repeat-gold factor. Offline / AFK earnings
+       ride the REPEAT per-clear payouts again: idleGoldPerSec /
+       idleGemsPerSec pay repeatGold / repeatGems spread over the
+       party's clear time on the floor, so idle and active earnings are
+       the same money at the same speed. */
     var GEM_GROWTH = 1.2;
     /** Cumulative per-clear gem growth factor for a floor, relative to
-        Floor 1: the unbroken ×1.20-per-floor curve (reverted Nov 20,
-        2026 — the Nov 19 flattening, the 15% income cut, and the
-        200/350 scale-down are gone). The 1 💎 minimum per clear is
-        kept. */
+        Floor 1: three-segment curve (Nov 20, 2026) — ×1.20 per floor
+        to Floor 30, a gentle ×1.04 per floor for 31–60, and the faster
+        compounding (×1.08 per floor) only past Floor 60. The 1 💎
+        minimum per clear is kept. */
     function gemGrowthFactor(f) {
-      return Math.pow(GEM_GROWTH, f - 1);
+      if (f <= 30) return Math.pow(GEM_GROWTH, f - 1);
+      if (f <= 60) return Math.pow(GEM_GROWTH, 29) * Math.pow(1.04, f - 30);
+      return Math.pow(GEM_GROWTH, 29) * Math.pow(1.04, 30) * Math.pow(1.08, f - 60);
     }
-    /* Per-clear gold growth (reverted Nov 20, 2026): the unbroken
-       ×1.23-per-floor curve — the Nov 19 flattening past Floor 30 is
-       gone. A Floor Lord first clear therefore pays 32,385 🪙 on
-       Floor 30 and 256,678 🪙 on Floor 40, and a Floor Lord repeat
-       clear pays 27,527 🪙 on Floor 30 and 218,176 🪙 on Floor 40.
-       The gold base (16) and the floor-type multipliers (lord ×5,
-       gate ×2) are unchanged. */
+    /* Per-clear gold growth (three-segment curve, Nov 20, 2026): ×1.23
+       per floor to Floor 30, then a gentle ×1.04 per floor for 31–60,
+       with the faster compounding (×1.08 per floor) only past Floor 60.
+       A Floor Lord repeat clear therefore pays 27,527 🪙 on Floor 30,
+       40,746 🪙 on Floor 40 and 89,281 🪙 on Floor 60. The gold base
+       (16) and the floor-type multipliers (lord ×5, gate ×2) are
+       unchanged. */
     var GOLD_GROWTH = 1.23;
     /** Cumulative per-clear gold growth factor for a floor, relative to
-        Floor 1: the unbroken ×1.23-per-floor curve. */
+        Floor 1: three-segment curve — ×1.23 per floor to Floor 30,
+        ×1.04 per floor for 31–60, ×1.08 per floor past 60. */
     function goldGrowthFactor(f) {
-      return Math.pow(GOLD_GROWTH, f - 1);
+      if (f <= 30) return Math.pow(GOLD_GROWTH, f - 1);
+      if (f <= 60) return Math.pow(GOLD_GROWTH, 29) * Math.pow(1.04, f - 30);
+      return Math.pow(GOLD_GROWTH, 29) * Math.pow(1.04, 30) * Math.pow(1.08, f - 60);
     }
     function clearGold(f) { return Math.round(16 * goldGrowthFactor(f) * (isLordFloor(f) ? 5 : isGateFloor(f) ? 2 : 1)); }
     function clearGems(f) { return Math.max(1, Math.round((isLordFloor(f) ? 6 : isGateFloor(f) ? 2 : 0.5) * gemGrowthFactor(f))); }
@@ -3854,8 +3860,8 @@
       // The result is floored at 1 💎 so a grind clear never pays nothing:
       // a normal grind clear pays 1 💎 on Floor 1 and 3 on Floor 20; a
       // Floor Lord grind clear pays 1 💎 on Floor 1, 16 on Floor 20, 99 on
-      // Floor 30, 612 on Floor 40 and 3,792 on Floor 50 under the
-      // unbroken ×1.20 growth (see gemGrowthFactor).
+      // Floor 30, 146 on Floor 40 and 217 on Floor 50 under the
+      // three-segment growth (see gemGrowthFactor).
       return Math.max(1, Math.round((isLordFloor(f) ? 0.5 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f)));
     }
     function goldForClear(f, isRepeat) { return isRepeat ? repeatGold(f) : clearGold(f); }
