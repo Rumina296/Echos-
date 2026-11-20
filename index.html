@@ -1344,7 +1344,7 @@
         dupeExchange: { week: "", heroBuys: {}, month: "", hero6Buys: {}, matBuys: {} },
         materials: { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: [], equipped: {},
-        dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 }, dungeonExtra: { ember: 0, frost: 0, star: 0 },
+        dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 }, dungeonExtra: { ember: 0, frost: 0, star: 0 }, dungeonClears: {},
         redeemedCodes: [],
         redeemedGiftIds: [],
         floorMemory: {},
@@ -1443,8 +1443,17 @@
           merged.shopMaterials = { date: "", bought: {}, starlightStocked: false };
         } else {
           var cleanBought = {};
+          /* Migration (main-game saves): bought counts may sit under the
+             main game's material ids (moonstone / dragon / starlight) —
+             fall back to those where this copy's own key is absent, so a
+             main save's daily bought counts are not dropped on load. */
+          var SHARED_TO_MAIN_MAT = { moon: "moonstone", scale: "dragon", essence: "starlight" };
           SHOP_MATERIAL_TIERS.forEach(function (t) {
             var v = merged.shopMaterials.bought[t.id];
+            if ((typeof v !== "number" || v <= 0) && SHARED_TO_MAIN_MAT[t.id]) {
+              var mv = merged.shopMaterials.bought[SHARED_TO_MAIN_MAT[t.id]];
+              if (typeof mv === "number" && mv > 0) v = mv;
+            }
             if (typeof v === "number" && v > 0) cleanBought[t.id] = Math.min(t.cap, Math.floor(v));
           });
           merged.shopMaterials = {
@@ -1510,8 +1519,16 @@
             cleanHero6Buys[d6k] = Math.min(SHARD_COPY_MONTHLY_CAP, Math.floor(d6v));
           }
           var cleanMatBuys = {};
+          /* Migration (main-game saves): same main-key fallback as the
+             shop bought counts above, so Dupe Exchange material buys
+             under moonstone / dragon / starlight survive the load. */
+          var SHARED_TO_MAIN_MAT2 = { moon: "moonstone", scale: "dragon", essence: "starlight" };
           SHARD_MATERIAL_TIERS.forEach(function (t) {
             var v = merged.dupeExchange.matBuys[t.id];
+            if ((typeof v !== "number" || v <= 0) && SHARED_TO_MAIN_MAT2[t.id]) {
+              var mv2 = merged.dupeExchange.matBuys[SHARED_TO_MAIN_MAT2[t.id]];
+              if (typeof mv2 === "number" && mv2 > 0) v = mv2;
+            }
             if (typeof v === "number" && v > 0) cleanMatBuys[t.id] = Math.min(t.cap, Math.floor(v));
           });
           merged.dupeExchange = {
@@ -1596,6 +1613,20 @@
           });
         }
         merged.dungeonExtra = dx;
+        // Migration: older saves have no per-dungeon Normal-clear record —
+        // no Normal clears on file yet, so every Hard stays locked until its
+        // dungeon is cleared on Normal once. Sanitize: only real dungeon ids
+        // with whole positive counts survive. Because the gate reads this
+        // record, a save that already holds a Normal clear for a dungeon has
+        // that dungeon's Hard unlocked immediately on load.
+        var dc = {};
+        if (p.dungeonClears && typeof p.dungeonClears === "object") {
+          ["ember", "frost", "star"].forEach(function (dk) {
+            var v = p.dungeonClears[dk];
+            if (typeof v === "number" && v > 0) dc[dk] = Math.floor(v);
+          });
+        }
+        merged.dungeonClears = dc;
         // --- Gift codes (added later; older saves get an empty list) ---
         var rc = [];
         if (Array.isArray(p.redeemedCodes)) {
@@ -2568,6 +2599,16 @@
     function gearAtkBonus(stars) { return stars * 14; }
     function gearHpBonus(stars) { return stars * 90; }
     function gearCritBonus(stars) { return stars * 0.015; }
+    /* Gear grows with its wearer: a weapon's ATK bonus and an armor's HP
+       bonus multiply by (1 + wearer level / 100) — ×1.6 at Lv 60, ×2.2 at
+       Lv 120 — so a piece keeps pace as its hero climbs instead of fading
+       into a rounding error next to level-scaled stats. The recipe-set and
+       attunement multipliers (gearPieceMult) still apply on top of the
+       scaled value, exactly as before. Accessory crit is already a
+       percentage, so it stays flat per star and does NOT scale with level.
+       The per-star base rates above are unchanged, so this applies to every
+       piece already owned exactly as it does to newly forged gear. */
+    function gearLevelMult(level) { return 1 + level / 100; }
     var GEAR_SELL_GOLD = { 1: 100, 2: 250, 3: 600, 4: 1500, 5: 4000 };
     function gearSellGold(stars) { return GEAR_SELL_GOLD[stars] || 100; }
     var GEAR_NAMES = {
@@ -2586,10 +2627,23 @@
       { id: "essence", name: "Starlight Essence", icon: "✨" }
     ];
     function materialById(id) { for (var i = 0; i < MATERIALS.length; i++) if (MATERIALS[i].id === id) return MATERIALS[i]; return MATERIALS[0]; }
+    /* ---------- Dungeon enemy power retune (Nov 20, 2026, matching the main game) ----------
+       Each dungeon's Normal foes are scaled by its `powerMult` — applied
+       to BOTH wave HP and wave attack inside dungeonWaveHp /
+       dungeonWaveAtk, underneath the run difficulty's own multiplier, so
+       Hard / Nightmare / Torment (×1.5 / ×3 / ×4) ride on the new Normal
+       baseline unchanged. The multipliers were SOLVED, not eyeballed:
+       executing the real dungeonRecommendedBp (net-damage model) against
+       candidate multipliers, the values below land each dungeon's Normal
+       Recommended BP exactly on the targets Rachel picked — Ember
+       Caverns 1,000, Frostwood Depths 5,500, Starlight Abyss 9,500.
+       Nothing else about the dungeons moved: unlock floors, wave counts,
+       drops, gold, luck, jackpot gems, daily runs, extra-run prices, and
+       difficulty gates are all exactly as they were. */
     var DUNGEONS = [
-      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, powerFloor: 6, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)", gold: 240 },
-      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, powerFloor: 18, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales", gold: 560 },
-      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, powerFloor: 35, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence", gold: 1200 }
+      { id: "ember", name: "Ember Caverns", icon: "🔥", unlock: 5, diff: "Easy", waves: 3, powerFloor: 6, powerMult: 29.28, desc: "Warm tunnels glittering with loose iron. The first delve for any smith.", dropsText: "Iron Shards (plenty) · Moonstones (a few)", drops: [{ mat: "iron", min: 3, max: 5 }, { mat: "moon", min: 1, max: 2 }], gold: 240 },
+      { id: "frost", name: "Frostwood Depths", icon: "❄️", unlock: 15, diff: "Medium", waves: 4, powerFloor: 18, powerMult: 18.725, desc: "A frozen forest sunk beneath the tower, where moonlight pools in the roots.", dropsText: "Moonstones · Dragon Scales", drops: [{ mat: "moon", min: 2, max: 4 }, { mat: "scale", min: 1, max: 2 }], gold: 560 },
+      { id: "star", name: "Starlight Abyss", icon: "🌌", unlock: 30, diff: "Hard", waves: 5, powerFloor: 35, powerMult: 1.1541, desc: "The tower's deepest wound, lit only by fallen stars. Dragons nest in the dark here.", dropsText: "Dragon Scales · Starlight Essence", drops: [{ mat: "scale", min: 2, max: 3 }, { mat: "essence", min: 1, max: 1 }], gold: 1200 }
     ];
     /* ---------- Dungeon luck ----------
        Every cleared run rolls its luck once, when the last wave falls:
@@ -2645,6 +2699,78 @@
     function dungeonExtraLeft(s, dgId) { return DUNGEON_EXTRA_RUNS_PER_DAY - dungeonExtraPurchased(s, dgId); }
     function dungeonRunsAllowed(s, dgId) { return DUNGEON_RUNS_PER_DAY + dungeonExtraPurchased(s, dgId); }
     function dungeonRunsLeft(s, dgId) { return dungeonRunsAllowed(s, dgId) - (((s.dungeonRuns || {})[dgId]) || 0); }
+    /* ---------- Dungeon difficulties (per-run choice, matching the main game) ----------
+       Every dungeon offers four difficulties, picked per run on its card.
+       Two multipliers ride on each tier, and they are DECOUPLED: `mult` is
+       the ENEMY multiplier — it scales wave HP and attack (Normal ×1,
+       Hard ×1.5, Nightmare ×3, Torment ×4) — while `rewardMult` scales the
+       run's material, gold, and gem payouts and steps by ×1.5 per tier
+       instead of matching the foes: Normal ×1, Hard ×1.5, Nightmare ×2.25,
+       Torment ×3.375 (shown to the player as ×3.4 — see
+       dungeonRewardMultText). Three of the four tiers are GATED by
+       progression (Normal is always open): Hard unlocks per dungeon —
+       only after the player's first clear of THAT dungeon on Normal
+       (recorded in the save's dungeonClears; clearing Ember on Normal
+       unlocks Ember Hard, not Frostwood Hard) — Nightmare unlocks once
+       the player's highest stage reaches Floor 60
+       (NIGHTMARE_UNLOCK_FLOOR), and Torment once it reaches Floor 70
+       (TORMENT_UNLOCK_FLOOR). Below a gate, that tier's pick shows
+       disabled with its requirement, and startDungeonRun refuses it. The
+       luck roll is untouched — it is rolled exactly as before and applies
+       ON TOP of the reward-multiplied base (the drop ranges and gold are
+       multiplied by rewardMult first, then the luck tier scales the
+       result). Jackpot gems stay tied to the ENEMY tier, NOT the reward
+       multiplier: JACKPOT_GEMS × mult — 5 Normal, 8 Hard, 15 Nightmare,
+       20 Torment. Runs are NOT tracked per difficulty: the 3 free daily
+       runs and the gem-bought extra runs are shared across all four
+       difficulties of a dungeon, and extra runs cost the same gems at
+       every difficulty. The Recommended BP on a card, its drops line,
+       and its wave-damage preview all follow the ENEMY multiplier, so
+       the player can see whether their team is ready for the harder
+       delve and what its foes hit for. */
+    var NIGHTMARE_UNLOCK_FLOOR = 60;
+    var TORMENT_UNLOCK_FLOOR = 70;
+    var DUNGEON_DIFFICULTIES = [
+      { id: "normal", label: "Normal", emoji: "🍀", mult: 1, rewardMult: 1 },
+      { id: "hard", label: "Hard", emoji: "🔥", mult: 1.5, rewardMult: 1.5 },
+      { id: "nightmare", label: "Nightmare", emoji: "💀", mult: 3, rewardMult: 2.25, unlockFloor: NIGHTMARE_UNLOCK_FLOOR },
+      { id: "torment", label: "Torment", emoji: "👹", mult: 4, rewardMult: 3.375, unlockFloor: TORMENT_UNLOCK_FLOOR }
+    ];
+    function dungeonDifficultyDef(id) {
+      for (var i = 0; i < DUNGEON_DIFFICULTIES.length; i++) if (DUNGEON_DIFFICULTIES[i].id === id) return DUNGEON_DIFFICULTIES[i];
+      return DUNGEON_DIFFICULTIES[0];
+    }
+    /* Player-facing text for a reward multiplier: the exact step values
+       (1, 1.5, 2.25) print as-is; Torment's 3.375 is shown rounded to
+       ×3.4, the figure the player picked it by. */
+    function dungeonRewardMultText(rewardMult) {
+      return rewardMult === 3.375 ? "3.4" : String(rewardMult);
+    }
+    /* Whether a difficulty pick is available for one dungeon on this
+       save. Normal is always open. Hard is per dungeon: it needs that
+       dungeon's first Normal clear on record (dungeonClears). Nightmare
+       and Torment ride the def's unlockFloor against the player's
+       highest stage (Floor 60 / Floor 70). */
+    function dungeonDifficultyUnlocked(id, s, dungeonId) {
+      if (id === "hard") return ((s.dungeonClears || {})[dungeonId] || 0) > 0;
+      var gate = dungeonDifficultyDef(id).unlockFloor;
+      return gate === undefined || s.floor >= gate;
+    }
+    /* The short requirement shown on a locked difficulty pick: Hard's is
+       the first Normal clear of that dungeon; the floor-gated tiers name
+       their floor. */
+    function dungeonDifficultyRequirement(id) {
+      if (id === "hard") return "Clear Normal first";
+      var gate = dungeonDifficultyDef(id).unlockFloor;
+      return gate === undefined ? "" : "Floor " + gate;
+    }
+    /* The full requirement sentence for a locked difficulty, used by the
+       pick's aria-label and startDungeonRun's refusal notice. */
+    function dungeonDifficultyLockReason(id, dungeonName) {
+      if (id === "hard") return "clear " + dungeonName + " on Normal once to unlock its Hard";
+      var gate = dungeonDifficultyDef(id).unlockFloor;
+      return gate === undefined ? "" : "reach tower Floor " + gate + " to unlock it";
+    }
     /* Forge recipes: cost is fixed; the STAR result comes from the
        hammer-timing game, floored by the recipe (see forgeResultStars).
        Hammer speed is per-recipe and constant for all 3 strikes —
@@ -2690,6 +2816,16 @@
       if (g.slot === "weapon") return "+" + gearAtkBonus(g.stars) + " ATK";
       if (g.slot === "armor") return "+" + gearHpBonus(g.stars) + " HP";
       return "+" + Math.round(gearCritBonus(g.stars) * 1000) / 10 + "% crit chance";
+    }
+    /* gearBonusText as a wearer of the given level actually receives it:
+       weapon ATK and armor HP show the level-scaled value (the set and
+       attunement multipliers still stack on top in battle and are annotated
+       separately, as before); crit reads the same as the base text because
+       it never scales with level. */
+    function gearBonusTextFor(g, level) {
+      if (g.slot === "weapon") return "+" + fmt(Math.round(gearAtkBonus(g.stars) * gearLevelMult(level))) + " ATK";
+      if (g.slot === "armor") return "+" + fmt(Math.round(gearHpBonus(g.stars) * gearLevelMult(level))) + " HP";
+      return gearBonusText(g);
     }
     function gearUidNew() { return "g" + Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36); }
     /* Battle-class / daily-job split: attunement only ever names a BATTLE
@@ -2791,11 +2927,15 @@
       if (!Array.isArray(save.gearInv)) save.gearInv = [];
       if (!save.equipped || typeof save.equipped !== "object") save.equipped = {};
     }
-    function dungeonDrops(dgId, tier) {
+    function dungeonDrops(dgId, tier, rewardMult) {
       var t = tier || "normal";
-      if (dgId === "ember") return { iron: luckDropCount(3, 5, t), moon: luckDropCount(1, 2, t) };
-      if (dgId === "frost") return { moon: luckDropCount(2, 4, t), scale: luckDropCount(1, 2, t) };
-      return { scale: luckDropCount(2, 3, t), essence: luckDropCount(1, 1, t) };
+      var rm = typeof rewardMult === "number" && rewardMult > 0 ? rewardMult : 1;
+      var dg = dungeonById(dgId);
+      var out = {};
+      (dg.drops || []).forEach(function (dr) {
+        out[dr.mat] = luckDropCount(Math.round(dr.min * rm), Math.round(dr.max * rm), t);
+      });
+      return out;
     }
     function dropsText(drops) {
       var parts = [];
@@ -3010,12 +3150,12 @@
     function heroAtk(def, o, ctx) {
       var base = def.baseAtk * (1 + 0.09 * (o.level - 1)) * (1 + 0.25 * o.asc);
       var g = equippedGear(def.id, "weapon", ctx);
-      return base + (g ? gearAtkBonus(g.stars) * gearPieceMult(def.id, g, ctx) : 0);
+      return base + (g ? gearAtkBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0);
     }
     function heroHp(def, o, ctx) {
       var base = def.baseHp * (1 + 0.11 * (o.level - 1)) * (1 + 0.25 * o.asc);
       var g = equippedGear(def.id, "armor", ctx);
-      return base + (g ? gearHpBonus(g.stars) * gearPieceMult(def.id, g, ctx) : 0);
+      return base + (g ? gearHpBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0);
     }
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * (def.stars + o.asc); }
@@ -3112,7 +3252,11 @@
       { id: "starless-sky", name: "Starless Sky", kind: "Seers", members: ["yara", "orien"], bonus: "Enemy attack −5% · Party max HP +5%", flavor: "Two seers who see what isn't there anymore — and between them, the enemy finds nothing to aim at." },
       { id: "master-apprentice", name: "Master & Apprentice", kind: "Companions", members: ["velkist", "han"], bonus: "Party damage +5% · Enemy attack −5%", flavor: "Torin taught Soren the sword — in a sense. Soren taught Torin that falling isn't the end. Master and apprentice, companions, whichever way you look at it." },
       { id: "kings-oath", name: "King's Oath", kind: "Oath", members: ["aldric", "han"], bonus: "Party damage +6% · Crit chance +3%", flavor: "The Oathbound King and the 1-star who wouldn't die — a king who lost everything and a swordsman who refuses to fall, sworn to the same climb." },
-      { id: "two-crowns", name: "Two Crowns", kind: "Kings", members: ["aldric", "durnan"], bonus: "Party damage +5% · Party max HP +5%", flavor: "A king without a throne and a king who is a mountain — two crowns, one front line." }
+      { id: "two-crowns", name: "Two Crowns", kind: "Kings", members: ["aldric", "durnan"], bonus: "Party damage +5% · Party max HP +5%", flavor: "A king without a throne and a king who is a mountain — two crowns, one front line." },
+      { id: "remembered-hour", name: "The Remembered Hour", kind: "Memory", members: ["rook", "ysolde"], bonus: "Healing +10% · Enemy attack −5%", flavor: "His clocks still tick for a paradise that stopped. Her mirror still shows it as it was. Together, they remember what the tower wants forgotten." },
+      { id: "old-script", name: "The Old Script", kind: "Memory", members: ["ysolde", "eldric"], bonus: "Party max HP +5% · Crit +5%", flavor: "Her mirror shows the paradise as it was. His runes speak the language it was written in. Between the two, the old world is still legible." },
+      { id: "runes-ravens", name: "Runes & Ravens", kind: "Old Magic", members: ["eldric", "morrigan"], bonus: "Party damage +8%", flavor: "His runes remember the paradise's language. Her crows remember every letter ever sent. Between them, nothing the tower stole stays lost." },
+      { id: "wind-shadow", name: "Wind & Shadow", kind: "Wanderers", members: ["juno", "yurneth"], bonus: "Crit +5% · Gold from clears +10%", flavor: "She sailed skies that no longer exist. He keeps the scar the tower couldn't heal. Neither of them stays anywhere long — and neither of them forgets." }
     ];
     function synergyActive(syn, party) {
       if (syn.lunaBond) return party.indexOf("luna") >= 0 && party.length >= 2;
@@ -3237,6 +3381,10 @@
           case "master-apprentice": dps += 0.05; def += 0.05; break;
           case "kings-oath": dps += 0.06; crit += 0.03; break;
           case "two-crowns": dps += 0.05; hp += 0.05; break;
+          case "remembered-hour": heal += 0.10; def += 0.05; break;
+          case "old-script": hp += 0.05; crit += 0.05; break;
+          case "runes-ravens": dps += 0.08; break;
+          case "wind-shadow": crit += 0.05; gold += 0.10; break;
         }
       });
       return {
@@ -3771,6 +3919,93 @@
          Thorn-Snared party deals nothing at all. */
       if (partySnared() && bossSkillId(s.fightFloor) === "gravevine") return 0;
       return (dps * widowsFeastMult(s) + dotDps + partyLevyDps(s, s.fightFloor)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor) * regicideMult(s, s.fightFloor);
+    }
+    /* One hero's damage-over-time per second, exactly as the tower battle
+       loop deals it — returned with a short label naming the effect
+       ("poison", "bleed", …) so hero cards and the Heroes tab can show it
+       as its own line beside the hit DPS: hit DPS + DoT/s, and the total.
+       Returns null for a hero with no DoT (or whose only DoT is a
+       capstone that isn't active). The formulas mirror the battle loop's
+       DoT helpers exactly (heroAtk incl. gear, no selfSkillMult, no party
+       dpsMult), and crit stays out. Capstone DoTs read capstoneActive, so
+       a benched hero's card shows their always-on DoTs and gains the
+       capstone line when they take the field at max synthesis. */
+    function heroDotDps(s, id) {
+      var o = s.heroes[id];
+      if (!o) return null;
+      var def = heroById(id);
+      var atk = heroAtk(def, o, s);
+      var lv = skillLevel(o);
+      var dps = 0;
+      var label = "";
+      switch (id) {
+        case "nyx": dps = atk * 0.12 * lv; label = "poison"; break; // Venom Strike poison — persistent, refreshed on every strike
+        case "velkist": dps = atk * 0.10 * lv; label = "bleed"; break; // Blood Frenzy bleed — persistent
+        case "eolka": dps = atk * 0.10 * lv; label = "chill"; break; // Frostbite chill — persistent (the freeze itself deals no damage)
+        case "draven": dps = atk * synergySelfMult(def, s.party) * 0.25 * Math.min(1, 3 * def.atkSpeed); label = "burn"; break; // Inferno Breath burn, time-averaged over its 3s window
+        case "aurelia": dps = atk * 0.25 * Math.min(1, 3 * def.atkSpeed); label = "snare"; break; // Golden Snare silk, time-averaged over its 3s window
+        case "amara": {
+          dps = atk * lv * def.atkSpeed / 5; // Tidal Edict: one wave per 5 attacks for 100% ATK × lv
+          if (capstoneActive(s, "amara")) dps += atk * 1.5 * lv / 25; // Tidecaller's Wrath: one massive wave every 25s for 150% ATK × lv
+          label = "tidal waves";
+          break;
+        }
+        case "orien": {
+          dps = atk * 1.5 * lv * def.atkSpeed / 5; // Cometfall: one comet per 5 attacks for 150% ATK × lv
+          if (capstoneActive(s, "orien")) dps += atk * 2.5 * lv / 40; // Supernova: one star every 40s for 250% ATK × lv
+          label = "comets";
+          break;
+        }
+        case "aldric": dps = atk * 2 * lv * def.atkSpeed / 3; label = "verdicts"; break; // Sovereign's Verdict, time-averaged (the Levy is a share of the party's damage, not this hero's own DoT)
+        case "morrigan": if (capstoneActive(s, "morrigan")) { dps = atk * 0.10 * lv * (5 / 20); label = "crowstorm"; } break; // Crowstorm DoT: 10% ATK × lv/s for 5s of every 20s
+        case "rurik": if (capstoneActive(s, "rurik")) { dps = atk * 0.08 * lv; label = "cinder burn"; } break; // Cinder Trail: 8% ATK × lv/s, refreshed per strike
+        case "hugo": if (capstoneActive(s, "hugo")) { dps = atk * 0.10 * lv * (5 / 15); label = "bee swarm"; } break; // Bee Swarm: 10% ATK × lv/s for 5s of every 15s
+        case "zinnia": if (capstoneActive(s, "zinnia")) { dps = atk * 0.08 * lv * (5 / 15); label = "foxfire"; } break; // Foxfire: 8% ATK × lv/s for 5s of every 15s
+        case "petra": if (capstoneActive(s, "petra")) { dps = atk * 1.5 * lv / 18 + atk * 0.08 * lv * (5 / 18); label = "flask burn"; } break; // Philosopher's Flask: 150% ATK × lv burst every 18s + 8% ATK × lv/s burn for 5s
+        case "ondine": if (capstoneActive(s, "ondine")) { dps = atk * lv / 20; label = "high tide"; } break; // High Tide: 100% ATK × lv wave every 20s (the heal is defensive)
+        case "sella": if (capstoneActive(s, "sella")) { dps = atk * 1.2 * lv / 15; label = "storm surge"; } break; // Storm Surge: 120% ATK × lv lightning every 15s
+        case "faye": if (capstoneActive(s, "faye")) { dps = atk * lv / 20; label = "thunderclap"; } break; // Thunderclap: 100% ATK × lv every 20s
+        case "dun": if (capstoneActive(s, "dun")) { dps = atk * 1.2 * lv / 15; label = "anvil ring"; } break; // Anvil's Ring: 120% ATK × lv every 15s
+        case "anselm": if (capstoneActive(s, "anselm")) { dps = atk * lv / 15; label = "iron palm"; } break; // Iron Palm: 100% ATK × lv every 15s
+        case "joss": if (capstoneActive(s, "joss")) { dps = atk * 1.5 * lv / 20; label = "mirror strike"; } break; // Trick Mirror: the enemy strikes ITSELF for 150% ATK × lv every 20s
+        case "greta": if (capstoneActive(s, "greta")) { dps = atk * 1.5 * lv / 15; label = "seam strike"; } break; // Seam Strike: 150% ATK × lv every 15s
+        case "ash": if (capstoneActive(s, "ash")) { dps = atk * 1.5 * lv / 20; label = "pack hunt"; } break; // Pack Hunt: 150% ATK × lv every 20s
+        case "vesper": if (capstoneActive(s, "vesper")) { dps = atk * lv / 25; label = "masterpiece"; } break; // Marionette's Masterpiece: 100% ATK × lv every 25s
+        case "straw": if (capstoneActive(s, "straw")) { dps = atk * lv / 20; label = "crow's feast"; } break; // Crow's Feast: 100% ATK × lv every 20s
+        case "pippa": if (capstoneActive(s, "pippa")) { dps = atk * 1.5 * lv / 20; label = "skylark"; } break; // Skylark: 150% ATK × lv every 20s
+        case "kael": {
+          if (capstoneActive(s, "kael")) { dps = atk * (2 + 0.25 * lv) * def.atkSpeed * (s.party.indexOf("nyx") >= 0 ? 2 : 1) / 5; label = "twin marks"; } // Twin's Oath: marks detonate at 5 marks for 200% ATK + 25%/lv
+          break;
+        }
+        case "ilya": if (capstoneActive(s, "ilya")) { dps = atk * 0.25 * lv / (s.party.indexOf("durnan") >= 0 ? 1.4 / 0.85 : 1.4); label = "briar thorns"; } break; // Briar Thorns: 25% of ILYA's attack × lv per enemy attack
+        case "dain": if (capstoneActive(s, "dain")) { dps = atk * 0.25 * lv / (s.party.indexOf("durnan") >= 0 ? 1.4 / 0.85 : 1.4); label = "counter-thrust"; } break; // Counter-Thrust: same family as Briar Thorns
+        case "yurneth": {
+          if (capstoneActive(s, "yurneth")) {
+            var critChance = 0.12 + partyMods(s).critBonus;
+            dps = atk * 0.10 * lv * Math.min(1, def.atkSpeed * critChance * 3);
+            label = "requiem bleed";
+          }
+          break;
+        }
+        case "eldric": {
+          if (capstoneActive(s, "eldric")) {
+            var atkRate = 0;
+            s.party.forEach(function (id2) { if (s.heroes[id2]) atkRate += heroById(id2).atkSpeed; });
+            if (atkRate > 0) { dps = (effectivePartyDps(s) / atkRate) * (0.5 + 0.25 * lv) / 15; label = "rune echoes"; }
+          }
+          break;
+        }
+        default: break;
+      }
+      return dps > 0 ? { dps: dps, label: label } : null;
+    }
+    /* The DoT line for a hero card's DPS readout: "+ X label/s · Y total"
+       in teal, or "" for a hero with no DoT — the same line the main game
+       shows beside the hit DPS on every hero card. */
+    function heroDotLineHTML(s, id) {
+      var d = heroDotDps(s, id);
+      if (!d) return "";
+      return ' <span style="font-weight:900;color:#5eead4">+ ' + fmt(d.dps) + " " + d.label + "/s · " + fmt(heroDps(heroById(id), s.heroes[id], s) + d.dps) + " total</span>";
     }
     /* The DoT slice of the Tower headline number, exactly as battleDps
        folds it in: the five raw DoTs with the Cantor Dirge shave
@@ -5033,7 +5268,28 @@
     var combineMode = false;
     var combineSel = [];
     var combineName = null;
+    /* Combine declutter (Nov 20, 2026, matching the main game): in
+       combine mode the flat gear list hides behind a "Show all pieces"
+       toggle (closed by default), and Quick combine's plan confirmation
+       lives here until it is confirmed or dismissed. */
+    var combineShowAll = false;
+    var combineQuickPlan = null;
+    /* Gear list sort (matching the main game): "stars" highest first,
+       "matches" groups pieces sharing a slot and star rank, "newest"
+       newest first. Entering combine mode switches to "matches". */
+    var gearSort = "stars";
+    /* The most recent shop gear purchase (random tier or named shelf):
+       the Shop tab shows a "Just bought" banner for it, and the piece
+       wears a 🆕 JUST BOUGHT badge in the gear inventory. */
+    var justBoughtGearUid = null;
+    /* Inline card details on the Team roster: hero ids whose
+       "▸ Details — skills & stats" panel is expanded under the card. */
+    var cardDetails = {};
     var dungeonBattle = null;
+    /* The difficulty picked on each dungeon card for its next run, keyed by
+       dungeon id — a plain variable (this copy has no React state); the
+       pick survives re-renders until the page reloads, like the forge slot. */
+    var dungeonDiffSel = {};
     var dungeonTimer = null;
     var lastDungeonReward = null;
     var lastDungeonLuck = null;
@@ -5775,10 +6031,15 @@
       var h = '<div class="anime-card mt4 card-pad" aria-label="Gear inventory">';
       h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell: 1★ 🪙100 · 2★ 🪙250 · 3★ 🪙600 · 4★ 🪙1,500 · 5★ 🪙4,000 · 👑 7★ can never be sold</p></div>';
       h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
-      /* ---- Combine mode toggle ---- */
+      /* ---- Combine mode toggle + gear sort ---- */
       h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
       h += '<button type="button" class="' + (combineMode ? "btn-pill anime-btn-primary" : "btn-pill") + '" data-combine-toggle aria-pressed="' + combineMode + '" aria-label="' + (combineMode ? "Exit combine mode" : "Enter combine mode — fuse 3 matching gear pieces into 1 of the next star rank") + '" style="' + (combineMode ? "" : "border:2px solid #ff7eb6;background:rgba(255,126,182,0.1);color:#ff9ecf") + '">' + (combineMode ? "✕ Done combining" : "🔀 Combine gear") + "</button>";
-      h += '<p class="xs dim" style="margin:0;font-weight:600">Fuse 3 pieces of the same slot &amp; star rank into 1 of the next rank up — the 3 pieces are the whole cost, no gold.</p></div>';
+      if (!combineMode) h += '<p class="xs dim" style="margin:0;font-weight:600">Fuse 3 pieces of the same slot &amp; star rank into 1 of the next rank up — the 3 pieces are the whole cost, no gold.</p>';
+      h += '<span style="display:flex;flex-wrap:wrap;align-items:center;gap:0.375rem" role="group" aria-label="Sort the gear list"><span class="xs" style="font-weight:900;letter-spacing:0.1em;color:var(--dim)">↕ SORT</span>';
+      [["stars", "★ Stars", "Sort gear by star rank, highest first"], ["matches", "🔀 Matches", "Sort gear so pieces sharing a slot and star rank sit together, for combining"], ["newest", "🆕 Newest", "Sort gear newest first — the piece you gained most recently comes first"]].forEach(function (m) {
+        h += '<button type="button" class="btn-mini' + (gearSort === m[0] ? " anime-btn-primary" : "") + '" data-gear-sort="' + m[0] + '" aria-pressed="' + (gearSort === m[0]) + '" aria-label="' + m[2] + '">' + m[1] + "</button>";
+      });
+      h += "</span></div>";
       /* ---- Combine tray ---- */
       if (combineMode) {
         var picked = combineSel.map(function (uid) { return gearByUid(uid); }).filter(function (g) { return !!g; });
@@ -5810,17 +6071,49 @@
           h += '<button type="button" class="btn-wide anime-btn-primary" data-combine-go style="margin-top:0.75rem" ' + (picked.length === 3 ? "" : "disabled") + ' aria-label="' + (picked.length === 3 ? "Combine the 3 picked pieces into a " + resultStars + "-star " + first.slot : "Combine — pick " + (3 - picked.length) + " more matching piece" + (3 - picked.length === 1 ? "" : "s") + " first") + '">🔀 Combine into ' + resultStars + "★ " + GEAR_SLOT_LABEL[first.slot] + "</button>";
           h += "</div>";
         }
+        /* Quick combine: fuse every ready triple at once from plain bag
+           pieces — the confirmation lists the full plan per slot + rank
+           group first, so nothing is eaten unseen. */
+        var quickPreview = quickCombinePlan(s);
+        h += '<button type="button" class="btn-wide anime-btn-gold" data-quick-combine style="margin-top:0.5rem"' + (quickPreview.runs.length === 0 ? " disabled" : "") + ' aria-label="' + (quickPreview.runs.length > 0 ? "Quick combine — fuse every ready triple at once from plain bag pieces only" : "Quick combine — no ready triple of plain bag pieces right now") + '">' + (quickPreview.runs.length > 0 ? "⚡ Quick combine — " + quickPreview.runs.length + " triple" + (quickPreview.runs.length === 1 ? "" : "s") + " ready" : "⚡ Quick combine — no ready triples") + "</button>";
+        if (combineQuickPlan) {
+          h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;background:rgba(255,217,77,0.07);border-radius:16px;padding:0.75rem" role="alertdialog" aria-label="Confirm quick combine — review the full plan before anything is fused">';
+          h += '<p class="small" style="font-weight:900;margin:0">⚡ Quick combine — here\'s the whole plan</p>';
+          h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Bag pieces only, plain pieces first. Each result keeps the set of its triple\'s first piece, and rolls a fresh attunement.</p>';
+          h += '<ul style="margin-top:0.5rem;display:grid;gap:0.25rem;list-style:none;padding:0">';
+          combineQuickPlan.lines.forEach(function (l) {
+            h += '<li class="small" style="font-weight:700">' + GEAR_SLOT_ICON[l.slot] + " " + l.stars + "★ " + GEAR_SLOT_LABEL[l.slot] + "s: " + l.inCount + " in → " + l.outCount + " × " + (l.stars + 1) + "★</li>";
+          });
+          h += "</ul>";
+          if (combineQuickPlan.skippedTriples > 0) h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:#fda4af">⚠ ' + combineQuickPlan.skippedTriples + " triple" + (combineQuickPlan.skippedTriples === 1 ? "" : "s") + ' left out — ' + (combineQuickPlan.skippedTriples === 1 ? "it" : "they") + ' would need a fated or attuned piece, and Quick combine never eats those.</p>';
+          h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem"><button type="button" class="btn-wide anime-btn-primary" data-quick-combine-confirm aria-label="Fuse all ' + combineQuickPlan.runs.length + ' planned triples now — ' + combineQuickPlan.lines.map(function (l) { return l.outCount + " × " + (l.stars + 1) + "★ " + GEAR_SLOT_LABEL[l.slot] + "s"; }).join(", ") + '">⚡ Fuse all ' + combineQuickPlan.runs.length + " triple" + (combineQuickPlan.runs.length === 1 ? "" : "s") + '</button><button type="button" class="btn-wide btn-ghost" data-quick-combine-cancel>Cancel</button></div>';
+          h += "</div>";
+        }
         h += "</div>";
       }
       if (!s.gearInv.length) {
         h += '<p class="note-box">No gear yet. Run a dungeon for materials, then work the Forge below in the Dungeon tab — your hammer timing decides the stars!</p>';
       } else {
+        var listPieces = sortGearPieces(s.gearInv, gearSort);
+        if (combineMode) {
+          /* Declutter: equipped pieces are hidden from the combine-mode
+             list entirely (they can't be fodder — picking one only
+             unequips it), and the flat list itself sits behind a "Show
+             all pieces" toggle, closed by default, so the tray and Quick
+             combine fit on one screen. */
+          listPieces = listPieces.filter(function (g) { return !gearHolder(g.uid); });
+          h += '<div style="margin-top:0.75rem"><button type="button" class="btn-pill" data-combine-show-all aria-expanded="' + combineShowAll + '" aria-label="' + (combineShowAll ? "Hide the full gear list" : "Show the full gear list — " + listPieces.length + " unequipped pieces") + '">' + (combineShowAll ? "▴ Hide pieces" : "▾ Show all pieces (" + listPieces.length + ")") + "</button></div>";
+          if (!combineShowAll) {
+            h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Pick from Quick combine above, or show all pieces to pick by hand.</p>';
+            listPieces = [];
+          }
+        }
         h += '<ul class="gear-list">';
-        s.gearInv.slice().reverse().forEach(function (g) {
+        listPieces.forEach(function (g) {
           var holder = gearHolder(g.uid);
           var pickIdx = combineMode ? combineSel.indexOf(g.uid) : -1;
           var attState = holder ? gearAttuneState(holder, g) : null;
-          h += '<li class="gear-item"' + (pickIdx >= 0 ? ' style="border-color:#ff7eb6;box-shadow:0 0 14px rgba(255,126,182,0.35)"' : "") + '><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + "</span>" + (g.stars >= 7 ? ' <span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span>' : "") + '</p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + gearBonusText(g) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : " · No set") + gearAttuneSuffix(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) + (attState === "fated" ? " · 🌟 Fated bonus active" : attState === "attuned" ? " · ✨ Attuned bonus active" : "") : " · In bag") + '</p></span><span class="gi-actions">';
+          h += '<li class="gear-item"' + (pickIdx >= 0 ? ' style="border-color:#ff7eb6;box-shadow:0 0 14px rgba(255,126,182,0.35)"' : (g.uid === justBoughtGearUid ? ' style="border-color:#2dd4bf;box-shadow:0 0 14px rgba(45,212,191,0.35)"' : "")) + '><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + "</span>" + (g.stars >= 7 ? ' <span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span>' : "") + (g.uid === justBoughtGearUid ? ' <span style="border-radius:999px;background:#2dd4bf;color:#06283d;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">🆕 JUST BOUGHT</span>' : "") + '</p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + (holder ? gearBonusTextFor(g, (s.heroes[holder] || {}).level || 1) : gearBonusText(g)) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : " · No set") + gearAttuneSuffix(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) + (attState === "fated" ? " · 🌟 Fated bonus active" : attState === "attuned" ? " · ✨ Attuned bonus active" : "") : " · In bag") + '</p></span><span class="gi-actions">';
           if (combineMode) {
             if (pickIdx >= 0) {
               h += '<button type="button" class="btn-mini anime-btn-primary" data-combine-pick="' + g.uid + '" aria-label="Remove ' + esc(gearName(g)) + ' from the combine tray — it is pick ' + (pickIdx + 1) + ' of 3">✓ Pick ' + (pickIdx + 1) + " — tap to remove</button>";
@@ -5869,8 +6162,10 @@
 
       if (dungeonBattle) {
         var dg0 = dungeonById(dungeonBattle.dungeonId);
+        var runDiff = dungeonDifficultyDef(dungeonBattle.diff || "normal");
         h += '<div class="anime-card mt4 card-pad dungeon-battle" aria-label="Dungeon battle in progress">';
-        h += '<div class="panel-head"><h3>' + dg0.icon + " " + esc(dg0.name) + ' — Wave <span id="dg-wave">' + dungeonBattle.wave + "/" + dungeonBattle.waves + '</span></h3><p class="xs bold dim" style="margin:0">Auto-battle · your party fights on its own</p></div>';
+        h += '<div class="panel-head"><h3>' + dg0.icon + " " + esc(dg0.name) + ' — Wave <span id="dg-wave">' + dungeonBattle.wave + "/" + dungeonBattle.waves + "</span>" + (runDiff.id !== "normal" ? ' · <span style="color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label).toUpperCase() + " ×" + runDiff.mult + "</span>" : "") + '</h3><p class="xs bold dim" style="margin:0">Auto-battle · your party fights on its own</p></div>';
+        if (runDiff.id !== "normal") h += '<p class="xs" style="margin-top:0.375rem;font-weight:900;color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label) + " difficulty — rewards ×" + dungeonRewardMultText(runDiff.rewardMult) + ", with the luck roll applied on top</p>";
         h += '<div class="battlefield"><div id="dg-shots-layer" class="shots-layer"></div><div class="bf-row"><ul class="party-row" aria-label="Your party">';
         s.party.forEach(function (id, idx) {
           var def = heroById(id); var o = s.heroes[id]; if (!o) return;
@@ -5881,7 +6176,7 @@
         h += '</ul><div class="monster-box"><div class="anim-bob"><div class="monster-orb" aria-hidden="true">👾</div></div><p class="monster-tag">Dungeon Monster</p></div></div></div>';
         h += '<div class="bar-outer bar-enemy" role="progressbar" aria-label="Dungeon monster health"><div class="bar-inner" id="dg-enemy-bar"></div></div><p class="bar-label" id="dg-enemy-text"></p>';
         h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dungeonBattle.partyHp) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).</p>";
-        h += '<p class="xs" id="dg-wave-line" style="margin-top:0.375rem;font-weight:700;color:var(--dim)">' + dungeonWaveLine(dg0, dungeonBattle.wave, dungeonFoeHeld(dungeonBattle.fx)) + "</p>";
+        h += '<p class="xs" id="dg-wave-line" style="margin-top:0.375rem;font-weight:700;color:var(--dim)">' + dungeonWaveLine(dg0, dungeonBattle.wave, dungeonFoeHeld(dungeonBattle.fx), dungeonDifficultyDef(dungeonBattle.diff || "normal").mult) + "</p>";
         h += '<div id="dg-status-badges" style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.375rem">' + dungeonStatusBadges(dungeonBattle.fx) + "</div>";
         h += '<p class="party-status" id="dg-status">' + dungeonStatusLine() + "</p>";
         h += "</div>";
@@ -5911,15 +6206,51 @@
         var canAffordExtra = s.gems >= extraPrice;
         h += '<div class="dungeon-card' + (unlocked ? "" : " locked") + '"><p class="dg-icon" aria-hidden="true">' + dg.icon + '</p><p class="dg-name">' + esc(dg.name) + '</p>';
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
-        /* Recommended BP, priced from this dungeon's own wave scaling
-           (see dungeonRecommendedBp), beside the party's live BP on the
-           same scale. */
-        var recBp = dungeonRecommendedBp(dg);
-        var myBp = partyBp(s);
+        /* Per-run difficulty pick: Normal is the dungeon as it has always
+           been; Hard / Nightmare / Torment scale enemy HP & attack by the
+           tier's enemy multiplier (×1.5 / ×3 / ×4) while the payouts step
+           by ×1.5 per tier (×1.5 / ×2.25 / ×3.4) — the two are decoupled.
+           The Recommended BP, drops line, and wave-damage preview below
+           follow the enemy multiplier. The tiers past Normal are gated:
+           Hard unlocks per dungeon after its first Normal clear,
+           Nightmare at highest stage Floor 60, and Torment at Floor 70 —
+           a locked pick renders disabled with its requirement. The daily
+           runs are shared across difficulties. */
+        var selDiff = dungeonDifficultyDef(dungeonDiffSel[dg.id] || "normal");
+        h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.375rem" role="group" aria-label="' + esc(dg.name) + ': choose the difficulty for your next run">';
+        DUNGEON_DIFFICULTIES.forEach(function (dd) {
+          var ddLocked = !dungeonDifficultyUnlocked(dd.id, s, dg.id);
+          var ddSel = selDiff.id === dd.id;
+          var ddStyle = ddLocked
+            ? "flex:1;border-radius:999px;border:2px solid var(--border);background:var(--surface2);opacity:0.55;cursor:not-allowed;padding:0.375rem 0.5rem;font-size:11px;font-weight:900;color:var(--text)"
+            : ddSel
+              ? (dd.id === "torment" ? "flex:1;border-radius:999px;border:2px solid transparent;background:linear-gradient(90deg,#dc2626,#7c3aed);color:#fff;padding:0.375rem 0.5rem;font-size:11px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #450a0a"
+                : dd.id === "nightmare" ? "flex:1;border-radius:999px;border:2px solid transparent;background:linear-gradient(90deg,#fb7185,#a78bfa);color:#2b0a2e;padding:0.375rem 0.5rem;font-size:11px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 #7e2a5e"
+                : dd.id === "hard" ? "flex:1;border-radius:999px;border:2px solid transparent;background:#ffd94d;color:#3a2403;padding:0.375rem 0.5rem;font-size:11px;font-weight:900;cursor:pointer"
+                : "flex:1;border-radius:999px;border:2px solid transparent;background:#7dd3fc;color:#082f49;padding:0.375rem 0.5rem;font-size:11px;font-weight:900;cursor:pointer")
+              : "flex:1;border-radius:999px;border:2px solid var(--border);background:var(--surface2);padding:0.375rem 0.5rem;font-size:11px;font-weight:900;color:var(--text);cursor:pointer";
+          h += '<button type="button" data-dungeon-diff="' + dg.id + ":" + dd.id + '"' + (ddLocked ? " disabled" : "") + ' aria-pressed="' + ddSel + '" aria-label="' + (ddLocked ? esc(dg.name) + " on " + esc(dd.label) + " — locked: " + esc(dungeonDifficultyLockReason(dd.id, dg.name)) + (dd.id === "hard" ? "" : " (you're at Floor " + s.floor + ")") : esc(dg.name) + " on " + esc(dd.label) + (dd.mult > 1 ? " — enemy HP and attack ×" + dd.mult + ", rewards ×" + dungeonRewardMultText(dd.rewardMult) : " — the standard delve")) + '" style="' + ddStyle + '">' + (ddLocked ? "🔒 " + esc(dd.label) + " · " + esc(dungeonDifficultyRequirement(dd.id)) : esc(dd.emoji) + " " + esc(dd.label) + (dd.mult > 1 ? " ×" + dd.mult : "")) + "</button>";
+        });
+        h += "</div>";
+        h += '<p class="xs bold dim" style="margin-top:0.375rem">' + (selDiff.id === "normal"
+          ? "The standard delve — its foes set the baseline every harder tier scales from, and the spoils are as listed."
+          : esc(selDiff.label) + ": enemy HP &amp; attack ×" + selDiff.mult + " · material, gold &amp; gem rewards ×" + dungeonRewardMultText(selDiff.rewardMult) + ", luck roll on top. Still one of the same daily runs.") + "</p>";
+        /* Recommended BP for the selected difficulty, priced from this
+           dungeon's own wave scaling (see dungeonRecommendedBp), beside
+           the current party's EFFECTIVE BP on the same net-damage basis
+           (see partyEffectiveBp — hits + DoTs on the hit scale, HP
+           credited for the party's own healing trickle and holds), with
+           a comparison bar and the party's percentage of the
+           recommendation. Both numbers recompute from the live save, so
+           a party swap moves the comparison at once. */
+        var recBp = dungeonRecommendedBp(dg, selDiff.mult);
+        var myBp = partyEffectiveBp(s, dg);
         var bpReady = myBp >= recBp;
-        h += '<p class="xs" style="margin-top:0.25rem;font-weight:900" aria-label="' + esc(dg.name) + ": recommended Battle Power " + fmt(recBp) + "; your party's Battle Power is " + fmt(myBp) + (bpReady ? " — at or above the recommendation" : " — below the recommendation") + '">⚔️ Recommended BP: ' + fmt(recBp) + ' · <span style="color:' + (bpReady ? "#5eead4" : "#fda4af") + '">Your party: ' + fmt(myBp) + " BP" + (bpReady ? " ✓" : "") + "</span></p>";
-        h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + esc(dg.dropsText) + " · 🪙 " + dg.gold.toLocaleString("en-US") + " gold</p>";
-        h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + JACKPOT_GEMS + "💎</span></p>";
+        var bpPct = recBp > 0 ? Math.round((myBp / recBp) * 100) : 0;
+        h += '<div style="margin-top:0.25rem"><p class="xs" style="font-weight:900" aria-label="' + esc(dg.name) + " on " + esc(selDiff.label) + ": recommended Battle Power " + fmt(recBp) + "; your current party's effective Battle Power is " + fmt(myBp) + ", " + bpPct + "% of the recommendation" + (bpReady ? " — at or above the recommendation" : " — below the recommendation") + '">⚔️ Recommended BP: ' + fmt(recBp) + ' · <span style="color:' + (bpReady ? "#5eead4" : "#fda4af") + '">Your party: ' + fmt(myBp) + " BP" + (bpReady ? " ✓" : "") + "</span></p>";
+        h += '<div style="margin-top:0.375rem;display:flex;align-items:center;gap:0.5rem"><div style="height:0.625rem;flex:1;overflow:hidden;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.5);padding:2px" role="progressbar" aria-label="' + esc(dg.name) + ": your party's effective Battle Power as a percentage of the recommended Battle Power for " + esc(selDiff.label) + '" aria-valuenow="' + Math.min(100, bpPct) + '" aria-valuemin="0" aria-valuemax="100" aria-valuetext="' + bpPct + '%"><div style="height:100%;border-radius:999px;width:' + Math.min(100, bpPct) + '%;background:' + (bpReady ? "linear-gradient(90deg,#2dd4bf,#7dd3fc)" : "linear-gradient(90deg,#fb7185,#ff7eb6)") + '"></div></div><span style="white-space:nowrap;font-size:11px;font-weight:900;color:' + (bpReady ? "#5eead4" : "#fda4af") + '">' + bpPct + "% of recommended</span></div></div>";
+        h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + dg.drops.map(function (dr) { var m = materialById(dr.mat); return m.icon + " " + esc(m.name) + " " + Math.round(dr.min * selDiff.mult) + "–" + Math.round(dr.max * selDiff.mult); }).join(" · ") + " · 🪙 " + Math.round(dg.gold * selDiff.mult).toLocaleString("en-US") + " gold" + (selDiff.mult > 1 ? " (×" + selDiff.mult + " on " + esc(selDiff.label) + ", before luck)" : "") + "</p>";
+        h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + Math.round(JACKPOT_GEMS * selDiff.mult) + "💎</span></p>";
         /* Wave-by-wave incoming damage vs the party's healer trickle,
            priced with the exact formulas the run loop applies — so a
            wave that out-damages the healing (the point party HP starts
@@ -5930,7 +6261,7 @@
         h += '<p class="xs bold dim" style="margin:0">⚔ WAVE DAMAGE vs 💚 YOUR HEALING ' + (trickle > 0 ? fmt(trickle) + "/s" : "— NONE (NO HEALER)") + "</p>";
         h += '<div style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.25rem">';
         for (var w = 1; w <= dg.waves; w++) {
-          var inc = dungeonWaveAtk(dg, w) * dmods.enemyAtkMult;
+          var inc = dungeonWaveAtk(dg, w, selDiff.mult) * dmods.enemyAtkMult;
           var covered = inc <= trickle;
           h += '<span style="border-radius:999px;border:1px solid ' + (covered ? "#2dd4bf88" : "#fb718588") + ";background:" + (covered ? "#2dd4bf14" : "#fb718514") + ";color:" + (covered ? "#5eead4" : "#fda4af") + ';padding:0.125rem 0.5rem;font-size:11px;font-weight:900">W' + w + " " + fmt(inc) + "/s" + (covered ? " ✓" : " · net −" + fmt(inc - trickle) + "/s") + "</span>";
         }
@@ -5939,14 +6270,14 @@
           h += '<p class="xs" style="margin-top:0.5rem;font-weight:900;color:#fda4af">🔒 Unlocks at Tower Floor ' + dg.unlock + " (you're on " + s.floor + ")</p>";
         } else {
           h += '<p class="xs bold dim" style="margin-top:0.5rem">Runs left today: ' + left + " / " + allowed + "</p>";
-          h += '<button type="button" class="btn-pill anime-btn-primary" data-dungeon-run="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (left <= 0 || dungeonBattle ? "disabled" : "") + ' aria-label="Run ' + esc(dg.name) + '">' + (left <= 0 ? "Done for today — back tomorrow!" : dungeonBattle ? "Delving…" : "▶ Run Dungeon (free)") + "</button>";
+          h += '<button type="button" class="btn-pill anime-btn-primary" data-dungeon-run="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (left <= 0 || dungeonBattle ? "disabled" : "") + ' aria-label="' + (left <= 0 ? esc(dg.name) + ": no runs left today" : "Enter " + esc(dg.name) + " on " + esc(selDiff.label) + " difficulty — " + left + " of " + allowed + " runs left today") + '">' + (dungeonBattle ? "⚔ Party is delving…" : left <= 0 ? "🌙 No runs left today" : "▶ ENTER " + esc(selDiff.label).toUpperCase() + " — " + left + "/" + allowed + " runs left today") + "</button>";
           h += '<button type="button" class="btn-pill anime-btn-gold" data-dungeon-extra="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (extraLeft <= 0 || !canAffordExtra || dungeonBattle ? "disabled" : "") + ' aria-label="' + (extraLeft <= 0 ? esc(dg.name) + ": all " + DUNGEON_EXTRA_RUNS_PER_DAY + " extra runs bought today" : !canAffordExtra ? "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, not enough gems (you hold " + s.gems.toLocaleString("en-US") + ")" : "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, " + extraLeft + " left today") + '">' + (extraLeft <= 0 ? "🎟️ Extra runs maxed today" : "🎟️ Buy extra run — " + extraPrice.toLocaleString("en-US") + "💎 (" + extraLeft + " left)") + "</button>";
           h += '<p class="xs bold dim center" style="margin-top:0.375rem">' + (extraPurchased > 0 ? extraPurchased + " extra run" + (extraPurchased === 1 ? "" : "s") + " bought today · " : "") + "You hold " + s.gems.toLocaleString("en-US") + "💎" + (extraLeft > 0 && !canAffordExtra ? " · need " + (extraPrice - s.gems).toLocaleString("en-US") + " more for an extra run" : "") + "</p>";
         }
         h += "</div>";
       });
       h += "</div>";
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Your current party delves as-is — gear, skills, synergies, damage-over-time and status effects all count. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span>: BP is your party\'s Battle Power — every hero\'s battle DPS plus 5% of their HP, the same power the quest board prices — and the recommendation is priced from that dungeon\'s own waves, enough power to bring every wave down in about 12 seconds apiece and still finish with HP to spare. Your healers and status holds make real runs kinder than that, so treat it as a comfortable target, not a hard gate.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×1.5, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×3, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×4, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems stay tied to the enemy tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment), every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>';
 
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
@@ -6003,7 +6334,7 @@
       if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dungeonBattle.partyHp)) + " / " + fmt(dungeonBattle.partyMax) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).";
       var fx = dungeonBattle.fx;
       var wl = document.getElementById("dg-wave-line");
-      if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx));
+      if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx), dungeonDifficultyDef(dungeonBattle.diff || "normal").mult);
       var badges = document.getElementById("dg-status-badges");
       if (badges) badges.innerHTML = dungeonStatusBadges(fx);
     }
@@ -6026,7 +6357,7 @@
         h += '<div class="anime-card mt4 card-pad quest-done-card" role="region" aria-label="Quest complete: ' + esc(q.name) + '">';
         h += '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.5rem"><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " Quest complete — " + esc(q.name) + '!</p><span class="quest-returned">✨ RETURNED</span></div>';
         h += '<p class="small dim" style="margin-top:0.25rem;font-weight:600">' + r.heroIds.map(function (id) { return esc(heroById(id).name); }).join(", ") + " came back " + (r.success ? "triumphant" : "battered — just a pity haul") + " · sent at " + Math.round(r.chance * 100) + "% odds.</p>";
-        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " : "Normal success: ") + esc(questRunRewardText(q, r)) + " · ✨ Starlight Essence ×2–3" : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold · ✨ Starlight Essence ×1 (consolation)") + "</p>";
+        h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#ffd94d">' + (r.success ? (r.jackpot ? "🎰 JACKPOT (1.5×): " + esc(questRunJackpotText(q, r)) : "Normal success: " + esc(questRunRewardText(q, r))) + " · ✨ Starlight Essence ×2–3" : "🩹 Pity haul: " + esc(questRunRewardText(q, r)) + " · no gold · ✨ Starlight Essence ×1 (consolation)") + "</p>";
         h += '<button type="button" class="btn-wide anime-btn-gold" data-quest-collect="' + r.id + '" style="margin-top:0.75rem" aria-label="Collect rewards from ' + esc(q.name) + '">🎁 COLLECT REWARDS</button>';
         h += "</div>";
       });
@@ -6510,6 +6841,42 @@
     }
 
     /* ============================== RENDER: HEROES TAB ============================== */
+    /* Inline card details (Nov 20, 2026, matching the main game): the
+       "▸ Details — skills & stats" toggle under each Team roster card
+       expands this compact panel in place — key stats plus the hero's
+       skills, with rank-locked skills hidden behind the same hint line
+       the detail panel uses. */
+    function cardDetailsHTML(def, o) {
+      var s = save;
+      var h = '<div class="card-details" role="region" aria-label="' + esc(def.name) + ' card details" style="margin-top:0.375rem;border-radius:16px;border:2px solid var(--border);background:rgba(27,18,53,0.5);padding:0.75rem;text-align:left">';
+      if (o) {
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-cell"><p class="v">Lv ' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
+        h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
+        h += "</div>";
+      } else {
+        h += '<div class="stat-grid">';
+        h += '<div class="stat-cell"><p class="v">' + fmt(def.baseHp) + '</p><p class="l">BASE HP</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + fmt(def.baseAtk) + '</p><p class="l">BASE ATK</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + def.atkSpeed + '/s</p><p class="l">ATK SPEED</p></div>';
+        h += "</div>";
+      }
+      var skill = SKILLS[def.id];
+      if (skill) {
+        h += '<div class="skill-box" style="margin-top:0.5rem"><p class="sk-name">✦ ' + esc(skill.name) + (o ? ' <span class="bold dim" style="font-weight:700"> · Skill Lv ' + skillLevel(o) + "</span>" : "") + "</p>";
+        h += '<p class="sk-desc">' + esc(skill.desc) + "</p>";
+        var hiddenMore = 0;
+        (skill.more || []).forEach(function (m) {
+          if (m.unlock && (!o || effRank(def, o) < m.unlock)) { hiddenMore++; return; }
+          h += '<div class="sk-more"><p class="sk-name">✦ ' + esc(m.name) + '</p><p class="sk-desc">' + esc(m.desc) + "</p></div>";
+        });
+        if (hiddenMore > 0) h += '<div class="sk-more"><p class="sk-desc">' + capstoneHint(def) + "</p></div>";
+        h += "</div>";
+      }
+      h += "</div>";
+      return h;
+    }
     function heroesHTML() {
       var s = save;
       var dps = effectivePartyDps(s);
@@ -6622,7 +6989,7 @@
         h += '<span class="hcls" style="color:' + hd.color + '">' + esc(hd.cls) + " · " + esc(hd.job) + "</span>";
         if (o) {
           h += '<span class="eff-line" style="' + starTextStyle(effRank(hd, o)) + '">Effective ★' + effRank(hd, o) + (o.asc > 0 ? ' <span class="eff-base">' + hd.stars + "★ base + " + o.asc + " Syn</span>" : "") + "</span>";
-          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps</span>";
+          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps" + heroDotLineHTML(s, hd.id) + "</span>";
           var gearBits = [];
           GEAR_SLOTS.forEach(function (sl) { var gg = equippedGear(hd.id, sl); if (gg) gearBits.push(GEAR_SLOT_ICON[sl] + " " + gg.stars + "★"); });
           if (gearBits.length) h += '<span class="hero-gear-line" aria-label="Equipped gear">' + gearBits.join(" · ") + "</span>";
@@ -6631,6 +6998,9 @@
         }
         h += "</span></button>";
         h += '<button type="button" class="hero-details-btn" data-hero="' + hd.id + '" aria-label="View details for ' + esc(hd.name) + '">ⓘ Details</button>';
+        var detailsOpen = !!cardDetails[hd.id];
+        h += '<button type="button" class="hero-details-btn" data-card-details="' + hd.id + '" aria-expanded="' + detailsOpen + '" aria-label="' + esc(hd.name) + " — " + (detailsOpen ? "hide" : "show") + ' details: skills and key stats">' + (detailsOpen ? "▾ Hide details" : "▸ Details — skills & stats") + "</button>";
+        if (detailsOpen) h += cardDetailsHTML(hd, o);
         h += "</div>";
       });
       h += "</div>";
@@ -6666,7 +7036,7 @@
         h += '<div class="upg-row' + (open ? " selected" : "") + '">';
         h += '<button type="button" class="upg-view" data-upg-toggle="' + def.id + '" aria-expanded="' + open + '" aria-label="' + (open ? "Hide" : "Show") + ' upgrade options for ' + esc(def.name) + '"><span class="upg-face"><img src="' + AVATARS[def.id] + '" alt="" width="560" height="1120" loading="lazy" /></span>' +
           '<span class="upg-info"><span class="upg-name">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span>' + (o.asc > 0 ? ' <span style="' + starTextStyle(effRank(def, o)) + ';font-size:12px">Effective ★' + effRank(def, o) + "</span>" : "") + '</span>' +
-          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + " (" + effRank(def, o) + "★ cap)" + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
+          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + " (" + effRank(def, o) + "★ cap)" + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + heroDotLineHTML(s, def.id) + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
           (onQuest ? '<span class="upg-quest">📜 ON QUEST</span>' : "") +
           '<span class="upg-chev" aria-hidden="true">' + (open ? "▾" : "▸") + "</span></button>";
         h += '<span class="upg-actions">';
@@ -6732,7 +7102,7 @@
         var effD = effRank(def, o);
         h += '<div class="stat-grid">';
         h += '<div class="stat-cell"><p class="v">' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL · ' + effD + '★ CAP</p></div>';
-        h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
         h += "</div>";
         /* Equipment slots */
@@ -6743,7 +7113,7 @@
             var gAtt = gearAttuneState(def.id, gg);
             h += '<button type="button" class="gear-slot filled" data-gear-slot="' + sl + '" aria-label="Unequip ' + esc(gearName(gg)) + ' from ' + esc(def.name) + '"><p class="gs-label">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl].toUpperCase() + '</p><p class="gs-name">' + esc(gearName(gg)) + ' <span style="' + starTextStyle(gg.stars) + '">' + starsStr(gg.stars) + "</span></p>" +
               (gg.stars >= 7 ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">👑 ONE OF A KIND</p>' : "") +
-              '<p class="gs-bonus">' + gearBonusText(gg) + "</p>" +
+              '<p class="gs-bonus">' + gearBonusTextFor(gg, o.level) + "</p>" +
               (gg.recipe ? '<p class="gs-hint">' + esc(recipeSetName(gg.recipe)) + "</p>" : "") +
               (gg.fatedHero ? (gAtt === "fated" ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">🌟 FATED BONUS ACTIVE — bonuses ×2</p>' : '<p class="gs-hint">🌟 Fated: ' + esc(heroById(gg.fatedHero).name) + "</p>") : gg.attunedClass ? (gAtt === "attuned" ? '<p class="gs-hint" style="color:#5eead4;font-weight:900">✨ ATTUNED BONUS ACTIVE — +50%</p>' : '<p class="gs-hint">Attuned: ' + esc(gg.attunedClass) + "</p>") : "") +
               '<p class="gs-hint">Tap to unequip ↩</p></button>';
@@ -6966,7 +7336,51 @@
         el.addEventListener("click", function () { unequipGear(el.getAttribute("data-unequip-hero"), el.getAttribute("data-unequip-slot")); });
       });
       main.querySelectorAll("[data-combine-toggle]").forEach(function (el) {
-        el.addEventListener("click", function () { combineMode = !combineMode; combineSel = []; combineName = null; renderMain(); });
+        el.addEventListener("click", function () {
+          combineMode = !combineMode;
+          combineSel = [];
+          combineName = null;
+          combineShowAll = false;
+          combineQuickPlan = null;
+          if (combineMode) gearSort = "matches";
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-gear-sort]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          gearSort = el.getAttribute("data-gear-sort") || "stars";
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-combine-show-all]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          combineShowAll = !combineShowAll;
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-quick-combine]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          combineQuickPlan = quickCombinePlan(save);
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-quick-combine-confirm]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          doQuickCombine();
+        });
+      });
+      main.querySelectorAll("[data-quick-combine-cancel]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          combineQuickPlan = null;
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-card-details]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var id = el.getAttribute("data-card-details");
+          if (cardDetails[id]) delete cardDetails[id]; else cardDetails[id] = true;
+          renderMain();
+        });
       });
       main.querySelectorAll("[data-combine-pick]").forEach(function (el) {
         el.addEventListener("click", function () { toggleCombinePick(el.getAttribute("data-combine-pick")); });
@@ -6981,6 +7395,13 @@
       if (combineNameEl) combineNameEl.addEventListener("input", function () { combineName = combineNameEl.value; });
       main.querySelectorAll("[data-dungeon-run]").forEach(function (el) {
         el.addEventListener("click", function () { startDungeonRun(el.getAttribute("data-dungeon-run")); });
+      });
+      main.querySelectorAll("[data-dungeon-diff]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var parts = el.getAttribute("data-dungeon-diff").split(":");
+          dungeonDiffSel[parts[0]] = parts[1];
+          renderMain();
+        });
       });
       main.querySelectorAll("[data-dungeon-extra]").forEach(function (el) {
         el.addEventListener("click", function () { buyExtraDungeonRun(el.getAttribute("data-dungeon-extra")); });
@@ -7040,6 +7461,14 @@
       });
       main.querySelectorAll("[data-shop-named]").forEach(function (el) {
         el.addEventListener("click", function () { buyNamedGear(Number(el.getAttribute("data-shop-named"))); });
+      });
+      main.querySelectorAll("[data-just-bought-view]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          tab = "heroes";
+          heroesTab = "items";
+          gearSort = "newest";
+          renderMain();
+        });
       });
       /* --- shop hub navigation + Dupe Exchange bindings --- */
       main.querySelectorAll("[data-shop-tile]").forEach(function (el) {
@@ -7981,6 +8410,14 @@
       });
       h += "</div>";
       h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">No daily cap — the price is the gate. Every piece lands in your gear inventory, ready to equip, combine, or sell.</p>';
+      var justBought = justBoughtGearUid ? gearByUid(justBoughtGearUid) : null;
+      if (justBought) {
+        h += '<div style="margin-top:0.75rem;border:2px solid #2dd4bf;background:rgba(45,212,191,0.08);border-radius:16px;padding:0.75rem;text-align:left" role="status" aria-label="Just bought: ' + esc(gearName(justBought)) + " " + justBought.stars + ' stars">';
+        h += '<p class="small" style="font-weight:900;margin:0">🆕 Just bought: ' + esc(gearName(justBought)) + ' <span style="' + starTextStyle(justBought.stars) + '">' + starsStr(justBought.stars) + "</span></p>";
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">It\'s in your gear inventory, marked 🆕 JUST BOUGHT.</p>';
+        h += '<button type="button" class="btn-pill" data-just-bought-view style="margin-top:0.5rem" aria-label="View the piece you just bought in your gear inventory">View in Inventory →</button>';
+        h += "</div>";
+      }
       h += "</div>";
 
       /* ---------- Shop Named Gear (daily shelf) ---------- */
@@ -8238,6 +8675,7 @@
       persist(result.save);
       writeSave();
       var p = result.piece;
+      justBoughtGearUid = p.uid;
       renderMain();
     }
 
@@ -8252,6 +8690,7 @@
       persist(result.save);
       writeSave();
       var p = result.piece;
+      justBoughtGearUid = p.uid;
       renderMain();
     }
 
@@ -8929,6 +9368,94 @@
        fodder either — 7★ still comes only from a flawless Starlight
        forge. Equipped pieces must be unequipped first. A result of 5★+
        may be named, like a forged piece. */
+    /* A piece carrying a bonus that combining destroys: a fated hero link
+       (×2 on that hero) or a class attunement (+50% on matching heroes).
+       The combine flow warns before eating one of these — and Quick
+       combine never plans one at all. */
+    function gearPieceIsSpecial(p) {
+      return !!p.fatedHero || !!p.attunedClass;
+    }
+    /* One shared gear ordering (matching the main game): "stars" highest
+       first, "matches" pieces sharing a slot and star rank together,
+       "newest" newest first. */
+    function sortGearPieces(list, mode) {
+      var out = list.slice();
+      if (mode === "newest") return out.reverse();
+      if (mode === "matches") return out.sort(function (a, b) { return a.slot.localeCompare(b.slot) || b.stars - a.stars; });
+      return out.sort(function (a, b) { return b.stars - a.stars || a.slot.localeCompare(b.slot); });
+    }
+    /* The Quick combine plan: every full triple across ALL slot + rank
+       groups at once, built from unequipped PLAIN pieces only. Unlike a
+       manual combine, a triple that would need a fated or attuned piece
+       is never planned — it is counted in skippedTriples so the
+       confirmation can say so — because quick combine runs without the
+       special-piece warning. Each result's recipe donor is the first
+       piece of its triple (the tray's default). Lines are per group, in
+       forge slot order, fodder ranks first: how many pieces go in and
+       how many next-rank pieces come out. */
+    function quickCombinePlan(s) {
+      var byKey = {};
+      var order = [];
+      (s.gearInv || []).forEach(function (g) {
+        if (g.stars < 1 || g.stars > 5) return;
+        var key = g.slot + ":" + g.stars;
+        if (!byKey[key]) { byKey[key] = { slot: g.slot, stars: g.stars, free: [] }; order.push(byKey[key]); }
+        if (!gearHolder(g.uid)) byKey[key].free.push(g);
+      });
+      var slotOrder = function (slot) { return GEAR_SLOTS.indexOf(slot); };
+      order.sort(function (a, b) { return slotOrder(a.slot) - slotOrder(b.slot) || a.stars - b.stars; });
+      var runs = [];
+      var lines = [];
+      var skippedTriples = 0;
+      order.forEach(function (g) {
+        var plain = g.free.filter(function (p) { return !gearPieceIsSpecial(p); });
+        var triples = Math.floor(plain.length / 3);
+        skippedTriples += Math.floor(g.free.length / 3) - triples;
+        if (triples === 0) return;
+        for (var i = 0; i < triples; i++) {
+          var triple = plain.slice(i * 3, i * 3 + 3);
+          var first = triple[0];
+          if (first) runs.push({ ids: triple.map(function (p) { return p.uid; }), recipeId: first.uid });
+        }
+        lines.push({ slot: g.slot, stars: g.stars, inCount: triples * 3, outCount: triples });
+      });
+      return { runs: runs, lines: lines, skippedTriples: skippedTriples };
+    }
+    /* Run a confirmed Quick combine plan: fuse every planned triple at
+       once, plain bag pieces only. Each result takes its recipe from its
+       triple's first piece and rolls a fresh attunement, exactly like a
+       manual combine — but the mode stays open afterwards, so the player
+       can keep combining. */
+    function doQuickCombine() {
+      var plan = combineQuickPlan;
+      if (!plan || !plan.runs.length) return;
+      var spent = {};
+      var results = [];
+      plan.runs.forEach(function (run) {
+        var pieces = run.ids.map(function (uid) { return gearByUid(uid); });
+        var first = pieces[0];
+        if (!first || pieces.some(function (p) { return !p; })) return;
+        if (pieces.some(function (p) { return p.slot !== first.slot || p.stars !== first.stars; })) return;
+        if (first.stars < 1 || first.stars > 5) return;
+        if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
+        var att = rollGearAttunement();
+        var piece = { uid: gearUidNew(), slot: first.slot, stars: first.stars + 1 };
+        if (first.recipe) piece.recipe = first.recipe;
+        if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
+        run.ids.forEach(function (uid) { spent[uid] = true; });
+        results.push(piece);
+      });
+      if (!results.length) return;
+      var next = JSON.parse(JSON.stringify(save));
+      next.gearInv = next.gearInv.filter(function (g) { return !spent[g.uid]; });
+      results.forEach(function (p) { next.gearInv.push(p); });
+      persist(next);
+      writeSave();
+      combineSel = [];
+      combineName = null;
+      combineQuickPlan = null;
+      renderMain();
+    }
     function toggleCombinePick(uid) {
       var idx = combineSel.indexOf(uid);
       if (idx >= 0) { combineSel.splice(idx, 1); renderMain(); return; }
@@ -9022,21 +9549,27 @@
        The wave's incoming damage and the party's healer trickle,
        priced with the exact formulas the dungeon run loop applies —
        the Dungeon tab's wave preview and the live run card read the
-       same numbers, so the two can never drift apart. Wave attack is
-       the monster's attack at the dungeon's unlock floor, growing
-       +25% per wave, exactly like the main game's dungeonWaveAtk
-       (the main game prices attack off powerFloor; here the attack
-       stays on the unlock floor — only the wave HP was aligned to
-       powerFloor). */
-    function dungeonWaveAtk(dg, wave) {
-      return monsterAtk(dg.unlock) * (1 + 0.25 * (wave - 1));
+       same numbers, so the two can never drift apart. `mult` is the
+       run's difficulty multiplier (1 on Normal; 1.5 on Hard, 3 on
+       Nightmare, 4 on Torment), applied to both the wave's HP and its
+       attack. The dungeon's own `powerMult` (the Nov 20, 2026 enemy
+       power retune — see the note above DUNGEONS) rides inside both
+       formulas as well, so every reader of wave stats — the run loop,
+       the card previews, and dungeonRecommendedBp — sees the retuned
+       foes. Wave attack is priced off the dungeon's powerFloor (the
+       tower-floor equivalent the wave stats are scaled from), growing
+       +25% per wave, exactly like the main game's dungeonWaveAtk. */
+    function dungeonWaveAtk(dg, wave, mult) {
+      var m = typeof mult === "number" ? mult : 1;
+      return monsterAtk(dg.powerFloor) * (1 + 0.25 * (wave - 1)) * m * dg.powerMult;
     }
     /* Wave HP, priced the main game's way — off the dungeon's
        powerFloor (the tower-floor equivalent the wave stats are
        scaled from), not the unlock floor, and growing +40% per
        wave, exactly like the main game's dungeonWaveHp. */
-    function dungeonWaveHp(dg, wave) {
-      return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.4 * (wave - 1)));
+    function dungeonWaveHp(dg, wave, mult) {
+      var m = typeof mult === "number" ? mult : 1;
+      return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.4 * (wave - 1)) * m * dg.powerMult);
     }
     function dungeonHealPerSec(s) {
       var hasHealer = s.party.some(function (id) { return isHealerDef(heroById(id)) && s.heroes[id]; });
@@ -9051,35 +9584,178 @@
       s.party.forEach(function (id) { sum += heroPower(s, id); });
       return sum;
     }
-    /* ---------- Recommended BP ----------
+    /* The dungeon cards compare the party's EFFECTIVE BP against each
+       dungeon's Recommended BP — see partyEffectiveBp below, right after
+       dungeonRecommendedBp. (Plain Battle Power — heroPower, a hero's
+       battle DPS plus 5% of their HP — still prices the quest board via
+       questTeamPower; it is not what the dungeon comparison shows.) */
+
+    /* ---------- Recommended BP (net-damage model, matching the main game) ----------
        Each dungeon's recommended BP is priced from that dungeon's own
        scaling — never a hand-picked number. A reference clear is priced
        off the exact wave formulas the run loop uses (dungeonWaveHp /
-       dungeonWaveAtk, themselves scaled from the dungeon's powerFloor):
-       the reference party brings each wave down in about
-       DUNGEON_BP_SECONDS_PER_WAVE seconds, so its required DPS is the
-       total wave HP spread over that time; at that pace it soaks
-       Σ(waveAtk × waveHp) ÷ DPS damage across the whole run, and
-       "comfortable" means it may spend at most (1 − DUNGEON_BP_HP_RESERVE)
-       of its HP pool doing so, so the required pool is the soak divided
-       by that spendable share. The recommendation is that reference
-       party's BP on the game's own scale (DPS + 5% of HP, as in
-       heroPower). The healer trickle and the status holds are
-       deliberately NOT priced in — they only make a real run kinder than
-       the reference, so the number is a comfortable target, not a gate. */
+       dungeonWaveAtk, themselves scaled from the dungeon's powerFloor),
+       under a NET-DAMAGE model of the party that actually clears these
+       dungeons — one that brings a healer and crowd control, because
+       that is how real runs survive. (The previous model priced survival
+       as if the party had no healing and no holds at all: it demanded a
+       ≈779,000 HP pool for Starlight Abyss and read ≈47,000 BP for a
+       dungeon a ≈9,000 BP party clears, because Luna's healing and the
+       party's holds — the things that actually keep a delve alive —
+       counted for nothing.)
+
+       - Pace and damage: the reference party brings each wave down in
+         about DUNGEON_BP_SECONDS_PER_WAVE seconds, so its required
+         TOTAL damage rate is the total wave HP spread over that time.
+         BP counts only hit DPS (heroPower), while about
+         DUNGEON_BP_DOT_SHARE of a real party's damage arrives as the
+         damage-over-time BP never counts (the same split hero cards now
+         show), so the hit-DPS requirement is the total discounted by
+         that share.
+       - Survival: at that pace the run's gross incoming damage is
+         Σ(waveAtk × waveHp) ÷ total DPS. The reference party's holds
+         keep the foe from attacking for DUNGEON_BP_HOLD_SHARE of the
+         run, so only the rest lands. Its healer's trickle — the run
+         loop's own rate (dungeonHealPerSec: 1.2% of party max HP × 4
+         per second at healMult 1, DUNGEON_BP_HEAL_PER_SEC of the pool)
+         — mends over the whole run. "Comfortable" means the NET
+         damage, what lands minus what is mended, spends at most
+         (1 − DUNGEON_BP_HP_RESERVE) of the pool; since the mend is
+         itself proportional to the pool, the required pool is the
+         after-holds damage divided by (the spendable share + the
+         trickle's whole-run mend per point of pool).
+
+       The recommendation is that reference party's BP on the game's
+       own scale (hit DPS + 5% of HP, as in heroPower). Still NOT
+       priced in — shields, lifesteal, damage-reduction synergies, and
+       the three hit-based party skills that work in dungeons
+       (Warlord's Roar, Pearlescent Aegis, Second Act) — those only
+       make a real run kinder than the reference, so the number stays
+       a comfortable target, not a gate. A party with NO healer and NO
+       holds will want noticeably more than the number. The optional
+       `mult` is the selected run difficulty's multiplier: it scales
+       every wave's HP and attack inside the same formulas, so the
+       recommendation scales with the difficulty exactly as the run
+       itself does (×1.5 Hard, ×3 Nightmare, ×4 Torment — the required
+       DPS, the gross damage, and the required HP pool all grow by the
+       multiplier, so the BP does too). The dungeon's own `powerMult`
+       rides inside the same wave formulas, so the Normal readings are
+       the retuned ladder: Ember 1,000 / Frostwood 5,500 / Starlight
+       9,500 (see the retune note above DUNGEONS). */
     var DUNGEON_BP_SECONDS_PER_WAVE = 12;
     var DUNGEON_BP_HP_RESERVE = 0.3;
-    function dungeonRecommendedBp(dg) {
+    var DUNGEON_BP_HOLD_SHARE = 0.8;
+    var DUNGEON_BP_HEAL_PER_SEC = 0.012 * 4; /* dungeonHealPerSec's trickle at healMult 1 */
+    var DUNGEON_BP_DOT_SHARE = 0.2;
+    function dungeonRecommendedBp(dg, mult) {
+      var m = typeof mult === "number" ? mult : 1;
       var totalHp = 0;
-      var soak = 0; /* Σ waveAtk × waveHp — divided by DPS below, the run's total incoming damage */
+      var soak = 0; /* Σ waveAtk × waveHp — divided by DPS below, the run's gross incoming damage */
       for (var w = 1; w <= dg.waves; w++) {
-        var hp = dungeonWaveHp(dg, w);
+        var hp = dungeonWaveHp(dg, w, m);
         totalHp += hp;
-        soak += dungeonWaveAtk(dg, w) * hp;
+        soak += dungeonWaveAtk(dg, w, m) * hp;
       }
-      var reqDps = totalHp / (dg.waves * DUNGEON_BP_SECONDS_PER_WAVE);
-      var reqHp = soak / reqDps / (1 - DUNGEON_BP_HP_RESERVE);
-      return Math.round(reqDps + reqHp * 0.05);
+      var totalDps = totalHp / (dg.waves * DUNGEON_BP_SECONDS_PER_WAVE);
+      var hitDps = totalDps * (1 - DUNGEON_BP_DOT_SHARE); /* BP counts hit DPS only; the party's DoTs carry the rest */
+      var landedDamage = (soak / totalDps) * (1 - DUNGEON_BP_HOLD_SHARE); /* what the holds let through */
+      var runSeconds = dg.waves * DUNGEON_BP_SECONDS_PER_WAVE;
+      var reqHp = landedDamage / ((1 - DUNGEON_BP_HP_RESERVE) + DUNGEON_BP_HEAL_PER_SEC * runSeconds);
+      return Math.round(hitDps + reqHp * 0.05);
+    }
+    /* The share of a dungeon run the current party's regular holds keep
+       the foe from attacking at all — the party-side mirror of
+       DUNGEON_BP_HOLD_SHARE, measured from the party's own skills at
+       their real cadences, exactly as the dungeon run loop applies them
+       (foeHeld there is the OR of these same timers):
+         • Hit-based holds fire on their hero's every 5th attack, so a
+           hold of duration D from a hero attacking A times per second
+           covers D × A ÷ 5 of the run: Aurelia's Silk Cocoon (2s, +0.5s
+           per skill level above 1), Ilya's Entangle (2s), Orien's
+           Eclipse (4s).
+         • Nix's Glacial Edge freezes for 3s per 5 of her hits — the same
+           D × A ÷ 5 shape.
+         • The per-second chance holds are time-averaged with the
+           saturating 1 − e^(−rate × duration) form: Aurelia Frost's
+           Frostbite freeze (10% per second, for 2s + 0.5s per level
+           above 1) and Amara's Sunken Guard swallow (10% per skill
+           level per second, for 1s).
+       Holds stack multiplicatively — each covers its share of the time
+       the others leave free — the same stacking the recommendation's
+       80% figure was reasoned from. Capstone holds stay out, like every
+       other capstone window in this model: they are max-rank gravy the
+       reference never priced. */
+    function partyHoldShare(s) {
+      var free = 1; /* the share of the run still uncovered — each hold multiplies what is left */
+      var stack = function (uptime) { free *= 1 - Math.min(1, Math.max(0, uptime)); };
+      var owned = function (id) {
+        var o = s.heroes[id];
+        return o && s.party.indexOf(id) >= 0 ? o : null;
+      };
+      var aurelia = owned("aurelia");
+      if (aurelia) stack(((2 + 0.5 * (skillLevel(aurelia) - 1)) * heroById("aurelia").atkSpeed) / 5); /* Silk Cocoon */
+      if (owned("ilya")) stack((2 * heroById("ilya").atkSpeed) / 5); /* Entangle */
+      if (owned("orien")) stack((4 * heroById("orien").atkSpeed) / 5); /* Eclipse */
+      var eolka = owned("eolka");
+      if (eolka) stack(1 - Math.exp(-0.1 * frostFreezeDuration(skillLevel(eolka)))); /* Frostbite freeze */
+      if (owned("nix")) stack((3 * heroById("nix").atkSpeed) / 5); /* Glacial Edge freeze */
+      var amara = owned("amara");
+      if (amara) stack(1 - Math.exp(-0.1 * skillLevel(amara))); /* Sunken Guard swallow */
+      return 1 - free;
+    }
+    /* ---------- The party's effective BP (the comparison number) ----------
+       Each dungeon card shows the CURRENT party's BP beside the selected
+       difficulty's Recommended BP, with a comparison bar and a percentage.
+       That number is NOT plain Battle Power (heroPower: hit DPS + 5% of
+       HP, the quest board's measure): plain BP counts neither
+       damage-over-time, nor the party-damage auras in partyMods, nor
+       healing, nor holds — so a party built around a healer and crowd
+       control, exactly the party the net-damage recommendation above is
+       priced for, read far weaker on paper than it plays.
+       partyEffectiveBp re-prices the party on the recommendation's OWN
+       basis, term by term, so the comparison is apples-to-apples:
+
+       - Damage: the party's TOTAL damage rate — effectivePartyDps (hit
+         DPS with gear, synergies, and the party's damage auras, the rate
+         the dungeon loop actually deals) plus dungeonDotDps (the same
+         time-averaged DoTs the loop ticks — this copy's dungeon DoT
+         slice, Thornmail's floor-priced reflect excluded exactly as the
+         loop excludes it) — expressed on the recommendation's hit scale
+         by the same (1 − DUNGEON_BP_DOT_SHARE) factor the recommendation
+         applies to its own total.
+       - Survival: the party's real pool (partyMaxHp, HP auras included)
+         is converted to the reference pool that would survive the same
+         gross damage under the model's own accounting: a pool P with
+         hold coverage c and a healer trickle of h (a fraction of the
+         pool per second) survives gross G over a run of T seconds when
+         G × (1 − c) − h × P × T spends at most (1 − HP_RESERVE) of P, so
+         the equivalent reference pool scales P by
+         [((1 − RESERVE) + h·T) ÷ (1 − c)] ÷ [((1 − RESERVE) +
+         HEAL_PER_SEC·T) ÷ (1 − HOLD_SHARE)], with T the dungeon's own
+         reference run (waves × SECONDS_PER_WAVE — the same T
+         dungeonRecommendedBp prices, so the number is per dungeon but
+         identical across its difficulties, whose reference pace is the
+         same). The party's OWN h and c are measured, not assumed: h is
+         dungeonHealPerSec ÷ pool (zero without a healer-class hero, the
+         loop's exact trickle otherwise), and c is partyHoldShare above.
+         Both are CAPPED at the reference rates (HEAL_PER_SEC,
+         HOLD_SHARE): healing and holds beyond the reference party's
+         only make a real run kinder than the number, never inflate it.
+
+       Recomputed from the live save on every render, so swapping the
+       party, its gear, or its levels moves every card's number at once —
+       it is always the team that would actually delve. */
+    function partyEffectiveBp(s, dg) {
+      var totalDps = effectivePartyDps(s) + dungeonDotDps(s);
+      var dmgBp = totalDps * (1 - DUNGEON_BP_DOT_SHARE);
+      var pool = partyMaxHp(s);
+      var runSeconds = dg.waves * DUNGEON_BP_SECONDS_PER_WAVE;
+      var healFrac = pool > 0 ? dungeonHealPerSec(s) / pool : 0;
+      var healCredited = Math.min(healFrac, DUNGEON_BP_HEAL_PER_SEC);
+      var holdCredited = Math.min(partyHoldShare(s), DUNGEON_BP_HOLD_SHARE);
+      var partySurvival = ((1 - DUNGEON_BP_HP_RESERVE) + healCredited * runSeconds) / (1 - holdCredited);
+      var refSurvival = ((1 - DUNGEON_BP_HP_RESERVE) + DUNGEON_BP_HEAL_PER_SEC * runSeconds) / (1 - DUNGEON_BP_HOLD_SHARE);
+      return Math.round(dmgBp + pool * (partySurvival / refSurvival) * 0.05);
     }
     /* The DoT slice for dungeons — the same raw DoTs the tower folds
        in (poison, bleed, chill, burn, snare, tidal, comet), WITHOUT
@@ -9136,9 +9812,11 @@
     }
     /* The live wave line for the run card, shared by the initial render
        and the per-tick update: this wave's incoming damage vs the
-       party's healer trickle, and whether the wave is held fast. */
-    function dungeonWaveLine(dg, wave, foeHeld) {
-      var waveDps = dungeonWaveAtk(dg, wave) * partyMods(save).enemyAtkMult;
+       party's healer trickle, and whether the wave is held fast. `mult`
+       is the run's difficulty multiplier, so the line prices the wave
+       the party is actually fighting. */
+    function dungeonWaveLine(dg, wave, foeHeld, mult) {
+      var waveDps = dungeonWaveAtk(dg, wave, mult) * partyMods(save).enemyAtkMult;
       var trickle = dungeonHealPerSec(save);
       return "Wave " + wave + " hits for " + fmt(waveDps) + "/s · 💚 your healing " + fmt(trickle) + "/s — " + (foeHeld ? "held fast right now — it can't hit back" : waveDps > trickle ? "this wave out-damages your healing, so party HP drains" : "your healing covers this wave");
     }
@@ -9169,6 +9847,15 @@
       normalizeDungeon();
       var dg = dungeonById(dgId);
       if (save.floor < dg.unlock) { setNotice("🔒 " + dg.name + " unlocks at Tower Floor " + dg.unlock + "."); return; }
+      /* The difficulty gate is checked BEFORE the run is counted: a locked
+         pick is refused outright and never spends one of today's runs. */
+      var diff = dungeonDiffSel[dgId] || "normal";
+      if (!dungeonDifficultyUnlocked(diff, save, dgId)) {
+        setNotice(diff === "hard"
+          ? "🔒 " + dungeonDifficultyDef(diff).label + " is sealed for " + dg.name + " — " + dungeonDifficultyLockReason(diff, dg.name) + " (no Normal clear here yet)."
+          : "🔒 " + dungeonDifficultyDef(diff).label + " is sealed — " + dungeonDifficultyLockReason(diff, dg.name) + " (you're at Floor " + save.floor + ").");
+        return;
+      }
       var usedRuns = (save.dungeonRuns[dgId] || 0);
       var allowedRuns = dungeonRunsAllowed(save, dgId);
       if (usedRuns >= allowedRuns) {
@@ -9186,7 +9873,8 @@
       chargedSave.dungeonRuns[dgId] = usedRuns + 1;
       persist(chargedSave);
       writeSave();
-      dungeonBattle = { dungeonId: dgId, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1), enemyHp: dungeonWaveHp(dg, 1), partyHp: partyMaxHp(save), partyMax: partyMaxHp(save), status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
+      var diffDef = dungeonDifficultyDef(diff);
+      dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), partyHp: partyMaxHp(save), partyMax: partyMaxHp(save), status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
       lastDungeonReward = null;
       lastDungeonLuck = null;
       lastDungeonLost = null;
@@ -9231,6 +9919,11 @@
       var dg = dungeonById(dungeonBattle.dungeonId);
       var s = save;
       var mods = partyMods(s);
+      /* The run's difficulty multipliers (both 1 on Normal): the enemy
+         multiplier scales every wave's HP and attack below; the reward
+         multiplier (×1.5 per tier, decoupled from the foes) scales the
+         material and gold payouts at the clear (see finishDungeonRun). */
+      var diffMult = dungeonDifficultyDef(dungeonBattle.diff || "normal").mult;
       /* ---- Party status effects, mirrored from the tower battle loop ----
          Every status the party's skills lay on the enemy in the tower
          works here too, on the same numbers: most timers run on fx.clock,
@@ -9446,7 +10139,7 @@
       if (fx.clock < fx.capDmgWinUntil) dmgPerSec *= 1 + fx.capDmgWinPct;
       if (fx.clock < fx.capTimestopUntil) dmgPerSec *= 1 + fx.capTimestopPct;
       if (fx.clock < fx.capAsWinUntil) dmgPerSec *= 1 + fx.capAsWinPct;
-      if (capstoneActive(s, "jenna") && dungeonBattle.enemyHp < dungeonWaveHp(dg, dungeonBattle.wave) * 0.3) dmgPerSec *= 1 + 0.10 * capstoneLv(s, "jenna");
+      if (capstoneActive(s, "jenna") && dungeonBattle.enemyHp < dungeonWaveHp(dg, dungeonBattle.wave, diffMult) * 0.3) dmgPerSec *= 1 + 0.10 * capstoneLv(s, "jenna");
       if (foeFrozen && capstoneActive(s, "nix")) dmgPerSec *= 1 + 0.30 + 0.10 * capstoneLv(s, "nix");
       /* ⭐ Undying Star: after the save, Soren's attacks deal +5%/lv for
          8s — priced by his share of the party's hit DPS. */
@@ -9510,7 +10203,7 @@
          instead of a floor's. Shields absorb what gets through first.
          The healer trickle mends the party each second, and party HP
          carries across waves; a wipe ends the run. */
-      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult;
+      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave, diffMult) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult;
       var heal = dungeonHealPerSec(s) * dt;
       var waveDmgTaken = waveDmg * dt;
       var waveAbsorbed = Math.min(fx.capShield, waveDmgTaken);
@@ -9540,7 +10233,7 @@
         feedGraveTitheDungeon();
         if (dungeonBattle.wave >= dungeonBattle.waves) { finishDungeonRun(); return; }
         dungeonBattle.wave += 1;
-        dungeonBattle.enemyMax = dungeonWaveHp(dg, dungeonBattle.wave);
+        dungeonBattle.enemyMax = dungeonWaveHp(dg, dungeonBattle.wave, diffMult);
         dungeonBattle.enemyHp = dungeonBattle.enemyMax;
         dungeonBattle.fx = freshDungeonStatus(); /* a new wave is a new foe — every status timer starts over */
         playHitSfx();
@@ -9574,21 +10267,36 @@
       dungeonTimer = null;
       var dgId = dungeonBattle.dungeonId;
       var dg = dungeonById(dgId);
+      var runDiff = dungeonDifficultyDef(dungeonBattle.diff || "normal");
       dungeonBattle = null;
       /* 🍀 The run's luck is rolled once, here at the clear: it scales
          every material line and the gold together, and a Jackpot adds
          its gem bonus on top. (The run itself was already charged when
-         the party delved in — see startDungeonRun.) */
+         the party delved in — see startDungeonRun.) The REWARD
+         multiplier is folded into the BASE first — the drop ranges and
+         the gold are multiplied by it (×1 on Normal, so a Normal run
+         pays exactly what it always has) — and the luck tier then
+         applies on top of that multiplied base. The jackpot gem bonus
+         is the exception: it stays tied to the ENEMY multiplier
+         (5 / 8 / 15 / 20), not the reward step. */
       var luck = rollLuckTier();
-      var drops = dungeonDrops(dgId, luck);
-      var luckGold = Math.round(dg.gold * LUCK_INFO[luck].mult);
-      var luckGems = luck === "jackpot" ? JACKPOT_GEMS : 0;
+      var drops = dungeonDrops(dgId, luck, runDiff.rewardMult);
+      var luckGold = Math.round(dg.gold * runDiff.rewardMult * LUCK_INFO[luck].mult);
+      var luckGems = luck === "jackpot" ? Math.round(JACKPOT_GEMS * runDiff.mult) : 0;
       var next = JSON.parse(JSON.stringify(save));
       if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
       for (var k in drops) next.materials[k] = (next.materials[k] || 0) + drops[k];
       next.gold = (next.gold || 0) + luckGold;
       next.gems = (next.gems || 0) + luckGems;
       if (!next.dungeonRuns) next.dungeonRuns = { ember: 0, frost: 0, star: 0 };
+      /* A clear on Normal is recorded per dungeon: the first one unlocks
+         THIS dungeon's Hard (and only this dungeon's). Clears on the
+         higher tiers don't substitute — Hard's gate is the Normal clear
+         itself. */
+      if (runDiff.id === "normal") {
+        if (!next.dungeonClears) next.dungeonClears = {};
+        next.dungeonClears[dgId] = (next.dungeonClears[dgId] || 0) + 1;
+      }
       lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
       lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
       persist(next);
