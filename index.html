@@ -2674,8 +2674,12 @@
        The per-star base rates above are unchanged, so this applies to every
        piece already owned exactly as it does to newly forged gear. */
     function gearLevelMult(level) { return 1 + level / 100; }
-    var GEAR_SELL_GOLD = { 1: 6667, 2: 16667, 3: 40000, 4: 100000, 5: 266667 };
-    function gearSellGold(stars) { return GEAR_SELL_GOLD[stars] || 100; }
+    /* Sell prices are star-proportional (Rachel, Nov 21): the old ladder
+       (100 / 250 / 600 / 1,500 / 4,000) scaled by 66.667 so 4★ lands on
+       100,000 gold, with 6★ continuing the same steps (10,000 × 66.667).
+       7★ pieces can never be sold, so there is no 7★ price. */
+    var GEAR_SELL_GOLD = { 1: 6667, 2: 16667, 3: 40000, 4: 100000, 5: 266667, 6: 666667 };
+    function gearSellGold(stars) { return GEAR_SELL_GOLD[Math.max(1, Math.min(6, stars))] || 0; }
     var GEAR_NAMES = {
       weapon: ["Chipped Blade", "Iron Sword", "Knight's Edge", "Runed Longblade", "Dragonslayer", "Starforged Blade", "Seraphina's Heartblade"],
       armor: ["Padded Vest", "Iron Mail", "Knight's Plate", "Runed Aegis", "Dragonscale Armor", "Starforged Aegis", "Seraphina's Embrace"],
@@ -6755,7 +6759,7 @@
     function gearInventoryHTML(showTitle) {
       var s = save;
       var h = '<div class="anime-card mt4 card-pad" aria-label="Gear inventory">';
-      h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 👑 7★ can never be sold</p></div>';
+      h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell prices: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667 · 👑 7★ can never be sold</p></div>';
       h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
       if (s.heirloom) {
         h += '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;border-radius:16px;border:2px dashed rgba(167,139,250,0.55);background:rgba(167,139,250,0.08);padding:0.75rem" role="region" aria-label="Sealed relic — contents unknown"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:rgba(167,139,250,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#c4b5fd">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">Something from a climb half-remembered sleeps inside, sealed tight. It cannot be equipped, sold, or pried open — the tower will decide when, or whether, it wakes.</span></span><span style="font-size:1.5rem" aria-hidden="true">🗝️</span></div>';
@@ -6876,7 +6880,7 @@
         });
         h += "</ul>";
       }
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Sell prices: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667. Equipped pieces must be unequipped before they can be sold. 👑 7★ pieces are one of a kind — they can never be sold. 🔀 Combining: 3 unequipped pieces of the same slot &amp; rank fuse into 1 of the next rank (up to 6★) — no gold cost.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Sell prices by star level: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667. Equipped pieces must be unequipped before they can be sold. 👑 7★ pieces are one of a kind — they can never be sold. 🔀 Combining: 3 unequipped pieces of the same slot &amp; rank fuse into 1 of the next rank (up to 6★) — no gold cost.</p>';
       h += "</div>";
       return h;
     }
