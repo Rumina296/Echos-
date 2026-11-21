@@ -278,14 +278,20 @@
       .upg-panel > .anime-card { margin-top: 0.5rem; }
       /* team tab: five party slots up top + roster card cells */
       .team-slots { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
-      .team-slot { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; border-radius: 16px; border: 2px solid var(--border); background: var(--surface); padding: 0.5rem 0.25rem 0.4375rem; cursor: pointer; color: var(--ink); font: inherit; min-width: 0; }
+      .team-slot { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; border-radius: 16px; border: 2px solid var(--border); background: var(--surface); padding: 0.5rem 0.25rem 0.4375rem; cursor: pointer; color: var(--ink); font: inherit; min-width: 0; overflow: hidden; }
       .team-slot.sel { border-color: #ffd94d; box-shadow: 0 0 0 2px rgba(255,217,77,0.35), 0 0 12px rgba(255,217,77,0.35); }
       .team-slot .ts-face { display: block; width: 44px; height: 44px; border-radius: 999px; overflow: hidden; border: 2px solid var(--border); flex: none; }
       .team-slot .ts-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
       .team-slot.empty { border-style: dashed; }
       .team-slot .ts-plus { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; border: 2px dashed var(--border); font-size: 1.375rem; font-weight: 900; color: var(--dim); flex: none; }
       .team-slot .ts-name { font-size: 11px; font-weight: 800; line-height: 1.15; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .team-slot .ts-lv { font-size: 10px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+      /* Level + effective-rank stars under a party slot's name: sized to
+         the slot (small type, tight-tracked small stars) and clipped by
+         the slot itself, so the line can never spill into the slot next
+         door — the Nov 21 phone spillover ("Lv21 · ★★★★★" running into
+         the next slot) is cut off at the slot's own edge instead. */
+      .team-slot .ts-lv { display: flex; align-items: baseline; justify-content: center; gap: 0.125rem; max-width: 100%; overflow: hidden; font-size: 8px; font-weight: 700; color: var(--dim); white-space: nowrap; }
+      .team-slot .ts-lv .ts-stars { font-size: 7px; letter-spacing: -0.12em; }
       .hero-cell { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
       .hero-cell .hero-card { flex: 1; }
       .hero-card.in-slot { border-color: #ffd94d; }
@@ -5895,13 +5901,23 @@
        "matches" groups pieces sharing a slot and star rank, "newest"
        newest first. Entering combine mode switches to "matches". */
     var gearSort = "stars";
+    /* Team-grid sort (matching the main game): the pill group above the
+       Team roster grid reorders ONLY that grid — the party slots and the
+       Upgrades list keep the default order. "default" keeps the usual
+       order; the other options sort strongest first. A plain variable
+       (this copy has no React state); the pick survives re-renders
+       until the page reloads, like the gear sort. */
+    var teamSort = "default";
     /* The most recent shop gear purchase (random tier or named shelf):
        the Shop tab shows a "Just bought" banner for it, and the piece
        wears a 🆕 JUST BOUGHT badge in the gear inventory. */
     var justBoughtGearUid = null;
-    /* Inline card details on the Team roster: hero ids whose
-       "▸ Details — skills & stats" panel is expanded under the card. */
-    var cardDetails = {};
+    /* Team roster details modal: the hero id whose "▸ Details — skills &
+       stats" box is open in the floating modal over the grid (null =
+       closed). The modal floats above the grid, so opening it never
+       moves a card — the Nov 21 inline expansion that stretched cards
+       and pushed the grid down is gone. */
+    var cardModalHero = null;
     var dungeonBattle = null;
     /* The difficulty picked on each dungeon card for its next run, keyed by
        dungeon id — a plain variable (this copy has no React state); the
@@ -7636,6 +7652,46 @@
       h += "</div>";
       return h;
     }
+    /* Team roster details modal (Nov 21, ported from main): tapping a
+       card's "▸ Details — skills & stats" opens the same content —
+       portrait/name header, Lv/DPS/HP chips, every skill with its
+       description, capstone hint — in a floating box over the grid
+       instead of expanding inline, so no card moves and the page never
+       jumps. Closes with ✕ or by tapping outside the box. Renders into
+       #modal-root, the single overlay slot, and never stacks: if
+       another modal is already open the tap is ignored. The separate
+       card-tap detail panel (detailHTML) is untouched. */
+    function closeCardModal() {
+      var root = document.getElementById("modal-root");
+      if (root) root.innerHTML = "";
+      cardModalHero = null;
+      maybeShowPendingModals();
+    }
+    function showCardModal(id) {
+      var root = document.getElementById("modal-root");
+      if (!root || root.innerHTML) return; // another modal is open — never stack overlays
+      var def = heroById(id);
+      if (!def) return;
+      var o = save.heroes[id];
+      var shownName = o ? def.name : def.id === "luna" ? def.name : "???";
+      var rank = o ? effRank(def, o) : def.stars;
+      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="' + esc(shownName) + ' — skills and stats">';
+      h += '<div class="anime-card modal-card" style="max-width:28rem;border-color:' + def.color + '">';
+      h += '<button type="button" class="close-btn" id="card-modal-close" aria-label="Close ' + esc(shownName) + ' details" style="position:absolute;top:0.625rem;right:0.625rem;padding:0.15rem 0.6rem">✕</button>';
+      h += '<div style="display:flex;align-items:center;gap:0.75rem;padding-right:2rem">';
+      h += '<img src="' + AVATARS[def.id] + '" alt="" width="560" height="1120" loading="lazy" class="' + (o ? "" : "unowned") + '" style="width:4rem;height:4rem;flex:none;border-radius:1rem;border:2px solid ' + def.color + ';object-fit:cover;object-position:center 16%" />';
+      h += '<div style="min-width:0"><h3 class="font-display" style="font-size:1.25rem;font-weight:600;line-height:1.2;margin:0">' + esc(shownName) + "</h3>";
+      if (o || def.id === "luna") h += '<p style="font-size:0.875rem;font-style:italic;color:var(--dim);margin:0">' + esc(def.title) + "</p>";
+      h += '<p style="font-size:0.875rem;margin:0;color:' + def.color + '">' + esc(def.cls) + " · " + esc(def.job) + ' · <span style="' + starTextStyle(rank) + '">' + (o ? "Effective ★" + rank : starsStr(rank)) + "</span></p>";
+      h += "</div></div>";
+      h += cardDetailsHTML(def, o);
+      h += "</div></div>";
+      root.innerHTML = h;
+      cardModalHero = id;
+      document.getElementById("card-modal-close").addEventListener("click", closeCardModal);
+      var ov = root.querySelector(".overlay");
+      if (ov) ov.addEventListener("click", function (e) { if (e.target === ov) closeCardModal(); });
+    }
     function heroesHTML() {
       var s = save;
       var dps = effectivePartyDps(s);
@@ -7704,7 +7760,7 @@
           h += '<button type="button" class="team-slot' + (selectedSlot === si ? " sel" : "") + '" data-team-slot="' + si + '" aria-label="Slot ' + (si + 1) + ": " + esc(smd.name) + ", level " + smo.level + (selectedSlot === si ? " — selected; tap again to remove them from the party" : " — tap to select this slot") + '">' +
             '<span class="ts-face"><img src="' + AVATARS[smid] + '" alt="" width="560" height="1120" loading="lazy" /></span>' +
             '<span class="ts-name">' + esc(smd.name.split(" ")[0]) + '</span>' +
-            '<span class="ts-lv">Lv' + smo.level + " · " + '<span style="' + starTextStyle(smd.stars) + '">' + starsStr(smd.stars) + "</span></span></button>";
+            '<span class="ts-lv">Lv' + smo.level + " · " + '<span class="ts-stars" style="' + starTextStyle(effRank(smd, smo)) + '">' + starsStr(effRank(smd, smo)) + "</span></span></button>";
         } else {
           h += '<button type="button" class="team-slot empty' + (selectedSlot === si ? " sel" : "") + '" data-team-slot="' + si + '" aria-label="Empty slot ' + (si + 1) + (selectedSlot === si ? " — selected; tap a hero below to fill it" : " — tap to select this slot") + '">' +
             '<span class="ts-plus" aria-hidden="true">＋</span>' +
@@ -7721,12 +7777,35 @@
           : "Tap a slot to select it, then tap a hero below to fill it. Tap a selected member's slot again to remove them.") + "</p>";
       if (teamLockReason()) h += '<p class="xs" role="status" style="margin-top:0.375rem;font-weight:900;color:#fda4af">🔒 Team locked mid-fight — team changes open again when the fight ends (victory, defeat, or retreat).</p>';
       /* hero grid */
+      /* Team-grid ordering: the sort control above the Team roster grid
+         reorders ONLY that grid — the party slots and the Upgrades list
+         keep the shared order above. Every option is strongest first
+         (descending); owned heroes stay ahead of the un-summoned, and
+         ties keep the default order (Array.sort is stable). "bp" is
+         heroPower — the same dispatch power quests use (DPS + 5% of HP,
+         gear included). */
       var sorted = HEROES.slice().sort(function (a, b) {
         var ao = s.heroes[a.id], bo = s.heroes[b.id];
         if (!!ao !== !!bo) return ao ? -1 : 1;
-        if (ao && bo) return heroDps(b, bo) - heroDps(a, ao);
+        if (ao && bo) return heroDps(b, bo, s) - heroDps(a, ao, s);
         return b.stars - a.stars;
       });
+      if (teamSort !== "default") {
+        sorted = sorted.slice().sort(function (a, b) {
+          var ao = s.heroes[a.id], bo = s.heroes[b.id];
+          if (!!ao !== !!bo) return ao ? -1 : 1;
+          if (!ao || !bo) return 0;
+          var ka = teamSort === "stars" ? effRank(a, ao) : teamSort === "hp" ? heroHp(a, ao, s) : teamSort === "dps" ? heroDps(a, ao, s) : heroPower(s, a.id);
+          var kb = teamSort === "stars" ? effRank(b, bo) : teamSort === "hp" ? heroHp(b, bo, s) : teamSort === "dps" ? heroDps(b, bo, s) : heroPower(s, b.id);
+          return kb - ka;
+        });
+      }
+      h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.375rem" role="group" aria-label="Sort heroes"><span class="xs" style="font-weight:900;letter-spacing:0.1em;color:var(--dim)">SORT</span>';
+      [["default", "Default", "Keep the usual hero order"], ["stars", "★ Stars", "Sort heroes by effective star rank, highest first"], ["hp", "HP", "Sort heroes by HP, highest first"], ["dps", "DPS", "Sort heroes by DPS, highest first"], ["bp", "Total BP", "Sort heroes by total battle power, highest first"]].forEach(function (m) {
+        h += '<button type="button" class="btn-mini' + (teamSort === m[0] ? " anime-btn-primary" : "") + '" data-team-sort="' + m[0] + '" aria-pressed="' + (teamSort === m[0]) + '" aria-label="' + m[2] + '">' + m[1] + "</button>";
+      });
+      if (teamSort !== "default") h += '<span class="xs dim" style="font-weight:700">Strongest first</span>';
+      h += "</div>";
       h += '<div class="hero-grid" role="list" aria-label="Hero collection">';
       sorted.forEach(function (hd) {
         var o = s.heroes[hd.id];
@@ -7759,9 +7838,7 @@
         }
         h += "</span></button>";
         h += '<button type="button" class="hero-details-btn" data-hero="' + hd.id + '" aria-label="View details for ' + esc(hd.name) + '">ⓘ Details</button>';
-        var detailsOpen = !!cardDetails[hd.id];
-        h += '<button type="button" class="hero-details-btn" data-card-details="' + hd.id + '" aria-expanded="' + detailsOpen + '" aria-label="' + esc(hd.name) + " — " + (detailsOpen ? "hide" : "show") + ' details: skills and key stats">' + (detailsOpen ? "▾ Hide details" : "▸ Details — skills & stats") + "</button>";
-        if (detailsOpen) h += cardDetailsHTML(hd, o);
+        h += '<button type="button" class="hero-details-btn" data-card-details="' + hd.id + '" aria-expanded="false" aria-label="' + esc(hd.name) + ' — show details: skills and key stats">▸ Details — skills & stats</button>';
         h += "</div>";
       });
       h += "</div>";
@@ -7806,6 +7883,10 @@
           (capped ? "⬆ MAX LEVEL" : "⬆ Lv Up — 🪙 " + fmt(cost)) + "</button>";
         if (!capped) {
           h += '<button type="button" class="btn-pill anime-btn-sky" data-maxlevel="' + def.id + '" ' + (mx.levels <= 0 ? "disabled" : "") + ' aria-label="' + (mx.levels <= 0 ? "Not enough gold — " + esc(def.name) + " needs " + fmt(cost) + " gold for the next level" : "Level up " + esc(def.name) + " as far as your gold allows: " + mx.levels + " levels to Lv " + (o.level + mx.levels) + " for " + fmt(mx.cost) + " gold") + '">' + (mx.levels <= 0 ? "⬆ Max" : "⬆ Max — 🪙 " + fmt(mx.cost)) + "</button>";
+        } else {
+          /* At cap the row still shows a disabled MAX, like main — the
+             button never vanishes from the row. */
+          h += '<button type="button" class="btn-pill anime-btn-sky" disabled aria-label="' + esc(def.name) + ' is at their level cap — synthesize duplicates to raise it">MAX</button>';
         }
         if (o.asc >= maxAsc(def)) {
           h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
@@ -8121,6 +8202,12 @@
           renderMain();
         });
       });
+      main.querySelectorAll("[data-team-sort]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          teamSort = el.getAttribute("data-team-sort") || "default";
+          renderMain();
+        });
+      });
       main.querySelectorAll("[data-combine-show-all]").forEach(function (el) {
         el.addEventListener("click", function () {
           combineShowAll = !combineShowAll;
@@ -8146,9 +8233,7 @@
       });
       main.querySelectorAll("[data-card-details]").forEach(function (el) {
         el.addEventListener("click", function () {
-          var id = el.getAttribute("data-card-details");
-          if (cardDetails[id]) delete cardDetails[id]; else cardDetails[id] = true;
-          renderMain();
+          showCardModal(el.getAttribute("data-card-details"));
         });
       });
       main.querySelectorAll("[data-combine-pick]").forEach(function (el) {
