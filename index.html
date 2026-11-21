@@ -515,6 +515,16 @@
       .skill-box .sk-desc { margin-top: 0.125rem; font-size: 0.75rem; color: var(--dim); }
       .skill-box .sk-more { margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
       .skill-box .sk-more .sk-name { color: var(--text); }
+      /* Healer dungeon-note expander (Nov 21, 2026 revert): a native
+         <details> element — the summary label swaps between "More" and
+         "Less" by CSS, no JS needed. */
+      .skill-box .dungeon-note { margin-top: 0.375rem; }
+      .skill-box .dungeon-note summary { cursor: pointer; font-size: 0.75rem; font-weight: 900; color: #8be0a4; text-decoration: underline dotted; text-underline-offset: 2px; list-style: none; }
+      .skill-box .dungeon-note summary::-webkit-details-marker { display: none; }
+      .skill-box .dungeon-note .dn-open { display: none; }
+      .skill-box .dungeon-note[open] .dn-open { display: inline; }
+      .skill-box .dungeon-note[open] .dn-closed { display: none; }
+      .skill-box .dungeon-note .dn-body { display: block; margin-top: 0.25rem; font-size: 0.75rem; line-height: 1.4; color: var(--dim); }
       .stat-grid { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; font-size: 0.875rem; }
       .stat-cell { border-radius: 16px; border: 1px solid var(--border); background: var(--surface2); padding: 0.5rem 0; }
       .stat-cell .v { font-family: var(--font-display); font-weight: 600; margin: 0; }
@@ -751,7 +761,7 @@
         blurb: "Vesper's finest puppet — a marionette with jointed wooden limbs, a painted porcelain face, and gold-thread hair in a high topknot — until he cut his own strings mid-performance and walked off the stage under his own power. He dances still, violet and gold, and the strings he cuts now belong to the enemy." },
       { id: "amara", name: "Amara Solenne", title: "The Sunken Queen", cls: "Mage", job: "Sunken Queen", stars: 6, color: "#14b8a6", baseHp: 880, baseAtk: 113, atkSpeed: 0.95,
         blurb: "A drowned queen in barnacle-encrusted gold armor, sea-green hair in a crown braid woven with pearls, a golden trident in her hand and the last of the paradise's ocean behind her eyes. The Unmaking drank the sea to reach her crown — and the tide she still commands has not forgiven it." },
-      { id: "durnan", name: "Durnan Ironfist", title: "The Mountain King", cls: "Warrior", job: "Mountain King", stars: 6, color: "#b91c1c", baseHp: 1120, baseAtk: 136, atkSpeed: 0.85,
+      { id: "durnan", name: "Durnan Ironfist", title: "The Mountain King", cls: "Warrior", job: "Mountain King", stars: 6, color: "#b91c1c", baseHp: 1300, baseAtk: 136, atkSpeed: 0.85,
         blurb: "A huge older warrior with a braided red beard ringed in iron, mountain-plate armor, and a warhammer like a fallen peak. The mountain that refused to fall — Torin's old sparring partner, the king the paradise's mountains once answered to, and the wall the party stands behind when everything else has given way." },
       { id: "orien", name: "Orien Starfall", title: "The Starless Sage", cls: "Mage", job: "Starless Sage", stars: 6, color: "#818cf8", baseHp: 880, baseAtk: 113, atkSpeed: 0.95,
         blurb: "A sage with long white hair, star-chart tattoos glowing across his face and arms, and clouded white eyes that see further than sight. He remembers the charts of the stars the Unmaking ate — and he still reads them, every night, in a sky that has forgotten how to shine." },
@@ -934,6 +944,24 @@
       return MALE_HERO_IDS[def.id] ? "✦ Something stirs within him…" : "✦ Something stirs within her…";
     }
 
+    /* Healer dungeon note (Nov 21, 2026 revert): each healer's skill
+       carries this line, word for word from the main game, explaining
+       that healing in dungeons runs on the team's shared pool as a
+       passive trickle (dungeonHealPerSec). The trickle is party-wide,
+       so this one text serves every healer; it renders as a collapsed
+       "more" expander inside the skill description so the main desc
+       stays clean. Description text only — no numbers changed. */
+    var DUNGEON_HEAL_NOTE = "In dungeons, healing runs on the team's pooled HP instead: the party shares one HP pool, and while a healer stands in the party it mends continuously — a passive trickle of 4.8% of the party's pooled max HP per second × the party's heal multiplier (every healing aura in the party feeds that multiplier, this one included).";
+    /* The collapsed-by-default "more" expander that carries a healer's
+       dungeon healing basis inside their skill description: a native
+       <details> element, so it opens and closes with no JS — the
+       summary label swaps between "More" and "Less" by CSS. Rendered
+       under the desc of the skill that owns the `dungeonNote` (a main
+       skill, or one of its `more` entries). */
+    function dungeonHealNoteHTML(note) {
+      return '<details class="dungeon-note"><summary><span class="dn-closed">▸ More — healing in dungeons</span><span class="dn-open">▾ Less — healing in dungeons</span></summary><span class="dn-body">' + esc(note) + "</span></details>";
+    }
+
     var SKILLS = {
       jenna: {
         name: "Keen Eye",
@@ -971,7 +999,8 @@
       },
       nerissa: {
         name: "Sanctuary",
-        desc: "Priest healing +35% per skill level. The fallen order's last blessing, still potent.",
+        desc: "Priest healing +35% per skill level. The fallen order's last blessing, still potent. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 0.35 × skill level) × her own max HP lands on the lowest-HP hero first.",
+        dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Blessing of Light", desc: "Party damage +2% per skill level. A warmer, simpler prayer than Sanctuary — no cathedral, no rite, just light laid gently over the party's weapons until every blow lands brighter and harder. Her second skill, known from the start alongside Sanctuary." },
           { name: "Divine Shield", desc: "Enemy attack −2% per skill level. Her faith made visible: a thin veil of light between the party and every incoming blow, turning the edge of each strike just enough to matter. Her third skill, known from the start alongside Sanctuary and Blessing of Light." },
@@ -983,6 +1012,7 @@
         ]},
       dain: { name: "Immovable", desc: "Enemy attack −3% per skill level. Doorways fear him." ,
         more: [
+          { name: "Stand Fast", desc: "Every 20 seconds, Dain plants his tower shield and TAUNTS for 5s: the enemy must aim all of its attacks at him and him alone (party-wide boss abilities still hit everyone). While he taunts, the whole party takes 20% less damage + 5% per skill level. At skill level 3: 35% less damage while he holds the line. If another tank ever taunts over him, the newest taunt wins — his keeps its own time underneath. In dungeons there is no single foe to aim, so a taunt works differently down there: while any taunt lasts, the party takes 10% less damage + 2% per the taunter's skill level, and nothing is redirected." },
           { name: "Counter-Thrust", unlock: 7, desc: "Whenever the enemy attacks, Dain counter-thrusts for 25% of his attack x skill level. At skill level 6: 150% of Dain's attack per enemy attack." }
         ]},
       sella: { name: "Chain Lightning", desc: "Her own damage +15% per skill level. Aim is improving; enthusiasm is not." ,
@@ -997,7 +1027,7 @@
         more: [
           { name: "Skylark", unlock: 3, desc: "Every 20 seconds, Pippa's sling stone finds its mark: 150% of her attack x skill level damage, and the party gains +2% damage per skill level for 5s. At skill level 3: 450% attack, +6% damage for 5s." }
         ]},
-      brann: { name: "Bell of Courage", desc: "Healing +20% and party damage +2% per skill level. The tower knows they're coming, and regrets it." ,
+      brann: { name: "Bell of Courage", desc: "Healing +20% and party damage +2% per skill level. The tower knows they're coming, and regrets it. In the tower, his healing is based on his own max HP: on his every 3rd attack, a burst of 10% × (1 + 0.20 × skill level) × his own max HP lands on the lowest-HP hero first." , dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Blessing of the Hearth", unlock: 3, desc: "Every 25 seconds, Brann rings his handbell: heals the party for 3% of max HP + 0.5% per skill level. At skill level 3: a 4.5% max HP heal every 25s." }
         ]},
@@ -1095,7 +1125,7 @@
         more: [
           { name: "Warlord's Roar", desc: "On every 5th attack he roars — party damage +25% for 5 seconds. The roar that once moved armies still moves the party: five seconds of the mountain itself shouting, and every blade in the room swings like it heard the order." },
           { name: "Unbreakable", desc: "The first time the party would fall in a battle, Durnan holds the line: the party survives at 1 HP instead of wiping, and Luna's vigil and Wren's tonic stay unspent. The mountain does not fall. Not once. Not while he is standing on it." },
-          { name: "Bulwark of the Mountain", unlock: 8, desc: "Every 25 seconds, Durnan raises his shield: the party gains a shield absorbing 8% of party max HP + 2% per skill level. At skill level 3: a 14% max HP shield every 25s." }]
+          { name: "Bulwark of the Mountain", unlock: 7, desc: "Every 25 seconds, Durnan raises his shield: each living hero gains a shield absorbing 8% of their own max HP + 2% per skill level — and the moment the shield lands, Durnan TAUNTS the enemy for 5 seconds, turning its attacks on himself (the newest taunt wins, as always). At skill level 3: a 14% max HP shield every 25s. Unlocked one rank early, at 7★ — the mountain does not wait to be finished before it stands in front of its people. First activates shortly after a boss fight begins." }]
       },
       orien: {
         name: "Star Chart",
@@ -1136,14 +1166,15 @@
         name: "Marionette Waltz",
         desc: "Party damage +3% per skill level, and enemy attack −2% per skill level — her puppet strikes on its own dancing strings, and every so often it tangles the enemy's limbs mid-swing, slowing their blows. Her waltz grows with her effective rank (base stars + synthesis ranks): four syntheses take the 4★ puppeteer all the way to 8★.",
         more: [
-          { name: "Puppet Dance", desc: "Party critical chance +2% per skill level. A second, smaller puppet joins the act — it cannot hurt anything, but it dances exactly where the enemy is about to look, and a blade that lands while the enemy watches the wrong dancer lands deep. Her second skill, known from the start alongside Marionette Waltz." },
+          { name: "Puppet Dance", desc: "On every 5th attack in battle, Vesper summons a puppet that strikes the enemy for 150% of her attack per skill level. It dances out on her golden strings — clicking joints, painted grin, a little bow — and then, at exactly the wrong moment for the enemy, it stops dancing and hits." },
           { name: "Marionette's Masterpiece", unlock: 8, desc: "Every 25 seconds, Vesper weaves all her strings: the enemy is rooted (cannot attack) for 2s + 0.3s per skill level and takes 100% of her attack x skill level damage. At skill level 5: a 3.5s root, 500% attack." },
           { name: "Curtain Call", desc: "Gold from clears +5% per skill level — tower clears, grind clears, and offline earnings alike. No performance ends without a collection, and Vesper's audiences have never once left without paying — the tower, it turns out, is an audience like any other. Her third skill, known from the start alongside Marionette Waltz and Puppet Dance." }
         ]
       },
       orin: {
         name: "Ballad of the Paradise",
-        desc: "Party damage +3% per skill level, and Orin counts as a healer — his song heals the party over time and lifts their damage, so everyone shines a little brighter while he plays. He has been singing since before the tower existed, and time has never once touched him. His ballad grows with his effective rank (base stars + synthesis ranks): the longer he climbs, the more of the paradise he remembers how to sing.",
+        desc: "Party damage +3% per skill level, and Orin counts as a healer — his song heals the party over time and lifts their damage, so everyone shines a little brighter while he plays. He has been singing since before the tower existed, and time has never once touched him. His ballad grows with his effective rank (base stars + synthesis ranks): the longer he climbs, the more of the paradise he remembers how to sing. In the tower, his healing is based on his own max HP: on his every 3rd attack, a burst of 10% × his own max HP — the flat base, with no coefficient of his own behind it — lands on the lowest-HP hero first.",
+        dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Verse of Light — unlocks at effective rank 5★", desc: "A verse the paradise sang at dawn, remembered again: party critical chance +3% per skill level, as his melody finds the bright note inside every swing. A 3★ Orin reaches rank 5 after two syntheses." },
           { name: "Paradise Requiem — unlocks at effective rank 7★", desc: "The last and greatest song of the paradise, sung whole at last: party damage +6% per skill level and healing +30% per skill level. Four syntheses restore the songkeeper's full voice — the song the Unmaking could never eat, remembered entire." },
@@ -1152,13 +1183,14 @@
       },
       wren: {
         name: "Miracle Tonic",
-        desc: "Healing +30% per skill level, and Wren counts as a healer — her brews mend the party over time while she fights. Known from 1★; her kit grows with her effective rank (base stars + synthesis ranks).",
+        desc: "Healing +30% per skill level, and Wren counts as a healer — her brews mend the party over time while she fights. Known from 1★; her kit grows with her effective rank (base stars + synthesis ranks). In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 0.30 × skill level) × her own max HP lands on the lowest-HP hero first.",
+        dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Bitter Dose", unlock: 5, desc: "Her tonics turn caustic: party damage +4% per skill level, as every blow carries a little of her poison with it." },
           { name: "Phoenix Tonic", unlock: 7, desc: "When the party would fall, Wren's ultimate brew revives everyone at 40% HP and the fight continues — once per battle." }
         ]
       },
-      nia: { name: "Hearty Stew", desc: "Party healing +10% per skill level. A stew that tastes like the paradise's feasts — because her recipes are memories of them." ,
+      nia: { name: "Hearty Stew", desc: "Party healing +10% per skill level. A stew that tastes like the paradise's feasts — because her recipes are memories of them. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 0.10 × skill level) × her own max HP lands on the lowest-HP hero first." , dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Grand Feast", unlock: 5, desc: "Every 25 seconds, Nia serves a feast: the party heals for 4% of max HP + 1% per skill level and gains +3% damage per skill level for 5s. At skill level 5: a 9% max HP heal, +15% damage for 5s." }
         ]},
@@ -1190,7 +1222,7 @@
         more: [
           { name: "Seam Strike", unlock: 4, desc: "Every 15 seconds, Greta strikes a weak seam: 150% of her attack x skill level damage, and the enemy takes +5% damage per skill level for 5s. At skill level 4: 600% attack, +20% damage taken for 5s." }
         ]},
-      iris: { name: "Bloom", desc: "Party healing +8% per skill level. Her flowers remember the paradise's gardens, and they bloom for anyone still climbing." ,
+      iris: { name: "Bloom", desc: "Party healing +8% per skill level. Her flowers remember the paradise's gardens, and they bloom for anyone still climbing. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 0.08 × skill level) × her own max HP lands on the lowest-HP hero first." , dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Bloom Burst", unlock: 5, desc: "Every 20 seconds, her garden erupts: heals the party for 3% of max HP + 0.5% per skill level and roots the enemy for 1s + 0.3s per skill level. At skill level 5: a 5.5% max HP heal, 2.5s root." }
         ]},
@@ -1230,7 +1262,7 @@
         more: [
           { name: "Foxfire", unlock: 4, desc: "Every 15 seconds, Zinnia's foxfire ignites the enemy: burn of 8% of her attack x skill level/s for 5s. At skill level 3: 24% attack/s for 5s." }
         ]},
-      hilda: { name: "Liquid Courage", desc: "Party healing +10% per skill level. One mug of Hilda's brew and the party remembers it is unbreakable." ,
+      hilda: { name: "Liquid Courage", desc: "Party healing +10% per skill level. One mug of Hilda's brew and the party remembers it is unbreakable. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 0.10 × skill level) × her own max HP lands on the lowest-HP hero first." , dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Bottoms Up", unlock: 4, desc: "Every 20 seconds, Hilda raises a toast: the party heals for 4% of max HP + 1% per skill level. At skill level 3: a 7% max HP heal every 20s." }
         ]},
@@ -1250,7 +1282,7 @@
         more: [
           { name: "Crow's Feast", unlock: 5, desc: "Every 20 seconds, his crows feast: 100% of his attack x skill level damage, and the party heals for 25% of the damage dealt + 5% per skill level. At skill level 5: 500% attack burst, 50% of it returned as healing." }
         ]},
-      eamon: { name: "Last Light", desc: "Party healing +8% per skill level. His lamp holds one ember of Seraphina's light, like Lena's lantern — and as long as it burns, no one in his party is left in the dark." ,
+      eamon: { name: "Last Light", desc: "Party healing +8% per skill level. His lamp holds one ember of Seraphina's light, like Lena's lantern — and as long as it burns, no one in his party is left in the dark. In the tower, his healing is based on his own max HP: on his every 3rd attack, a burst of 10% × (1 + 0.08 × skill level) × his own max HP lands on the lowest-HP hero first." , dungeonNote: DUNGEON_HEAL_NOTE,
         more: [
           { name: "Beacon", unlock: 5, desc: "Every 25 seconds, his lamp sweeps the battlefield: heals the party for 3% of max HP + 0.5% per skill level and the enemy's next attack misses. At skill level 4: a 5% max HP heal, next attack misses." }
         ]},
@@ -1315,7 +1347,7 @@
         name: "Perfect Recall",
         desc: "Party critical chance +4% per skill level. She remembers every enemy pattern this tower has ever shown — she watched them all happen.",
         more: [
-          { name: "Moonbeam Guidance", desc: "Healing aura +210% per skill level, and her moonlight shields the party (enemy attacks −2% per level). The lowest ally is always wrapped in silver light first." },
+          { name: "Moonbeam Guidance", desc: "Healing aura +210% per skill level, and her moonlight shields the party (enemy attacks −2% per level). The lowest ally is always wrapped in silver light first. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 2.10 × skill level) × her own max HP lands on the lowest-HP hero first.", dungeonNote: DUNGEON_HEAL_NOTE },
           { name: "Waxing Insight", desc: "Party damage +4% per skill level. She names the crack in every defense before the first blow lands." },
           { name: "Full Moon Vigil — ULTIMATE", desc: "When the party would fall, Luna revives everyone at 40% HP and the fight continues (once a minute). No one climbs alone. No one falls alone." },
           { name: "Seraphina's Voice", unlock: 12, desc: "Every 30 seconds, Luna speaks with the goddess's voice: cleanses the party of ALL debuffs, heals for 4% of party max HP + 1% per skill level, and grants a shield absorbing 4% of party max HP + 1% per skill level. At skill level 6: a 10% heal and a 10% shield every 30s. She IS Seraphina's voice — the strongest support skill in the game." }]
@@ -3248,12 +3280,20 @@
        no name, no effect, no count until then — only the "Something stirs
        within…" hint line, hidden since Nov 20, 2026); the power lives
        here and in the battle loop.
-       Gates are ALWAYS `asc >= maxAsc` — never an enemy-attack scale: every
+       Gates are `asc >= maxAsc` — never an enemy-attack scale: every
        capstone damage number is priced off the hero's OWN attack, party
-       damage, or a fixed % of party max HP (the Ilya/Mari lesson). */
+       damage, or a fixed % of party max HP (the Ilya/Mari lesson). ONE
+       exception (Rachel, Nov 21): Durnan's Bulwark unlocks one rank
+       early, at asc >= maxAsc - 1 (effective 7★), inside capstoneActive. */
     function capstoneActive(s, id) {
       var o = s.heroes[id];
-      return !!o && s.party.indexOf(id) >= 0 && o.asc >= maxAsc(heroById(id));
+      // Durnan's Bulwark of the Mountain unlocks ONE RANK EARLY (Rachel,
+      // Nov 21): at effective rank 7 (asc >= maxAsc - 1) instead of his
+      // max rank 8, so a 7★ Durnan raises it now. His synthesis cap is
+      // unchanged — maxAsc still governs how far he can ascend; only the
+      // capstone gate sits one rank lower, for him alone.
+      var need = id === "durnan" ? Math.max(0, maxAsc(heroById(id)) - 1) : maxAsc(heroById(id));
+      return !!o && s.party.indexOf(id) >= 0 && o.asc >= need;
     }
     function capstoneLv(s, id) {
       var o = s.heroes[id];
@@ -3310,6 +3350,13 @@
       { id: "first-climb", name: "First Climb", kind: "The Original Duo", members: ["jenna", "han"], bonus: "Gold from clears +10%", flavor: "The original duo who climbed floor 1 together — a farm girl with a bow and the 1-star who wouldn't die." },
       { id: "stormfront", name: "Stormfront", kind: "Storm", members: ["sella", "faye"], bonus: "Party damage +8%", flavor: "The novice's spark meets the weaver's storm — the sky itself climbs with them." },
       { id: "silk-strings", name: "Silk & Strings", kind: "Threads", members: ["aurelia", "vesper"], bonus: "Crit chance +5% · Enemy attack −5%", flavor: "Golden silk and silver strings — every enemy is a puppet that hasn't noticed yet." },
+      /* The Golden Cradle (Nov 21, 2026): the first Family synergy — the
+         mother-and-daughter bond between Aurelia Vey and the orphan she
+         raised. Its CC half rides partyMods.ccMult (×1.25 on Aurelia's and
+         Vesper's own holds only) and is FLAT by design: Bold scaling never
+         touches it, because a scaled cocoon would hold permanently. Only
+         the crit half scales, like every other bond's numbers. */
+      { id: "golden-cradle", name: "The Golden Cradle", kind: "Family", members: ["aurelia", "vesper"], bonus: "CC lasts 25% longer · Crit chance +5%", flavor: "She raised her on golden thread — the only human hands that ever learned to spin it. What the mother weaves, the daughter dances." },
       { id: "center-stage", name: "Center Stage", kind: "Performance", members: ["lyra", "orin"], bonus: "Gold from clears +10%", flavor: "A dancer and a songkeeper — the crowd throws coins, and the tower applauds." },
       { id: "twin-walls", name: "Twin Walls", kind: "Frontline", members: ["brynn", "dain"], bonus: "Enemy attack −8%", flavor: "Two walls, no gaps — the Warden and the Wall of Floor Nine, shoulder to shoulder." },
       { id: "market-day", name: "Market Day", kind: "Hearth", members: ["nia", "marlo", "hilda"], bonus: "Gold from clears +10% · Healing +10%", flavor: "Fresh catch, fresh bread, fresh brew — the party eats like the climb is already won." },
@@ -3343,8 +3390,76 @@
       return n >= need;
     }
     function activeSynergies(party) { return SYNERGIES.filter(function (syn) { return synergyActive(syn, party); }); }
+    /** Rarity-and-size scaling for synergy bonuses (Nov 21, 2026, Rachel's
+        "Bold" pick): mult = max(1.0, (1 + 0.25 × (avgStars − 2)) ×
+        (1 + 0.50 × (size − 2))), where avgStars is the average BASE stars
+        (synthesis never counts) of the members actually in the link — for
+        anyOf bonds, the members present in the party — and size is the
+        members required (members.length, or the anyOf value). Moonlit Bond
+        is priced as Luna + the highest-star OTHER hero in the party, size
+        2. The ×1.0 floor means no bond ever reads weaker than its base.
+        Computed from the party at read time — no save fields, no
+        migration. */
+    function synergyScale(syn, party) {
+      var stars, size, i;
+      if (syn.lunaBond) {
+        if (party.indexOf("luna") < 0) return 1;
+        var best = -1;
+        for (i = 0; i < party.length; i++) {
+          if (party[i] !== "luna") best = Math.max(best, heroById(party[i]).stars);
+        }
+        if (best < 0) return 1;
+        stars = [heroById("luna").stars, best];
+        size = 2;
+      } else {
+        var present = [];
+        for (i = 0; i < syn.members.length; i++) {
+          if (party.indexOf(syn.members[i]) >= 0) present.push(syn.members[i]);
+        }
+        if (present.length === 0) return 1;
+        stars = [];
+        for (i = 0; i < present.length; i++) stars.push(heroById(present[i]).stars);
+        size = syn.anyOf || syn.members.length;
+      }
+      var avg = 0;
+      for (i = 0; i < stars.length; i++) avg += stars[i];
+      avg /= stars.length;
+      return Math.max(1, (1 + 0.25 * (avg - 2)) * (1 + 0.5 * (size - 2)));
+    }
+
+    /** A synergy's bonus text for the CURRENT party: the base text when
+        the bond is inactive (or its scale sits at the ×1.0 floor), and the
+        base percentages scaled by synergyScale when it is live — so the
+        page never shows a number the game is not actually applying.
+        Percents round to 1 decimal with a trailing .0 trimmed
+        (10.625% shows as +10.6%). */
+    function synergyBonusText(syn, party) {
+      if (!synergyActive(syn, party)) return syn.bonus;
+      var m = synergyScale(syn, party);
+      if (m === 1) return syn.bonus;
+      var fmtPct = function (v) { return (v % 1 === 0) ? String(v) : v.toFixed(1); };
+      if (syn.id === "golden-cradle") {
+        // The Golden Cradle's CC half is exempt from Bold scaling by design
+        // (a scaled cocoon would never let go) — only its crit half scales,
+        // so scale just that number and leave "25% longer" exactly as written.
+        return syn.bonus.replace("Crit chance +5%", "Crit chance +" + fmtPct(Math.round(5 * m * 10) / 10) + "%");
+      }
+      return syn.bonus.replace(/(\d+(?:\.\d+)?)%/g, function (whole, n) {
+        return fmtPct(Math.round(parseFloat(n) * m * 10) / 10) + "%";
+      });
+    }
+
+    /** Per-hero damage multiplier from synergies (Dragon Rivals). Applied in
+        partyDps (so idle/offline estimates match) and in the battle loop's
+        per-attack damage, so the bonus is real in the fight itself. The
+        +20% own damage is the bond's base value, scaled like every other
+        synergy: 1 + 0.20 × synergyScale. */
     function synergySelfMult(def, party) {
-      if ((def.id === "draven" || def.id === "rurik") && party.indexOf("draven") >= 0 && party.indexOf("rurik") >= 0) return 1.2;
+      if ((def.id === "draven" || def.id === "rurik") && party.indexOf("draven") >= 0 && party.indexOf("rurik") >= 0) {
+        var syn = null;
+        for (var i = 0; i < SYNERGIES.length; i++) if (SYNERGIES[i].id === "dragon-rivals") syn = SYNERGIES[i];
+        return 1 + 0.20 * (syn ? synergyScale(syn, party) : 1);
+      }
       return 1;
     }
 
@@ -3364,7 +3479,7 @@
        Daily jobs never count here: `job` is display/town-builder only. */
     function isHealerDef(def) { return !!def && (def.cls === "Priest" || def.cls === "Bard" || def.cls === "Lunar Oracle"); }
     function partyMods(s) {
-      var dps = 0, crit = 0, def = 0, heal = 0, gold = 0, hp = 0, dmgTaken = 0, critDmg = 0;
+      var dps = 0, crit = 0, def = 0, heal = 0, gold = 0, hp = 0, dmgTaken = 0, critDmg = 0, cc = 1;
       s.party.forEach(function (id) {
         var o = s.heroes[id];
         if (!o) return;
@@ -3385,7 +3500,7 @@
           case "rurik": dps += 0.03 * lv; crit += 0.02 * lv; break;
           case "aurelia": def += 0.05 * lv; crit += 0.04 * lv; break;
           case "aldric": dps += 0.04 * lv; break; // King's Edict — a king's word is a weapon his whole army swings
-          case "vesper": dps += 0.03 * lv; def += 0.02 * lv; crit += 0.02 * lv; gold += 0.05 * lv; break;
+          case "vesper": dps += 0.03 * lv; def += 0.02 * lv; gold += 0.05 * lv; break; // Marionette Waltz — her puppet strikes for the party and tangles the enemy's limbs; Puppet Dance (second skill) is her own summoned-puppet strike, not an aura — see heroDotDps and the battle loop (its old +2%/lv party crit was removed entirely in the Nov 21 rework, not moved); Curtain Call (third skill) — every coin in the house finds her purse (goldMult covers tower clears, grind clears, and offline earnings)
           case "orin":
             dps += 0.03 * lv;
             if (effRank(heroById(id), o) >= 5) crit += 0.03 * lv;
@@ -3441,35 +3556,44 @@
           case "luna": crit += 0.04 * lv; dps += 0.04 * lv; heal += 2.10 * lv; def += 0.02 * lv; break;
         }
       });
+      // Party synergies — each bond's flat base bonus, scaled by
+      // synergyScale (rarity-and-size scaling) for the party actually
+      // fielding it, stacking with the per-hero skills above.
       activeSynergies(s.party).forEach(function (syn) {
+        var m = synergyScale(syn, s.party);
         switch (syn.id) {
-          case "twin-blades": dps += 0.10; crit += 0.05; break;
-          case "spear-wall": def += 0.10; break;
-          case "mage-tower": crit += 0.10; break;
-          case "healers-grace": heal += 0.30; break;
-          case "first-climb": gold += 0.10; break;
-          case "moonlit-bond": dps += 0.05; heal += 0.10; break;
-          case "stormfront": dps += 0.08; break;
-          case "silk-strings": crit += 0.05; def += 0.05; break;
-          case "center-stage": gold += 0.10; break;
-          case "twin-walls": def += 0.08; break;
-          case "market-day": gold += 0.10; heal += 0.10; break;
-          case "volley": crit += 0.08; break;
-          case "ashford-line": dps += 0.06; crit += 0.03; break;
-          case "neither-flood-nor-sea": dps += 0.05; crit += 0.05; break;
-          case "overgrowth": heal += 0.15; hp += 0.05; break;
-          case "deep-winter": def += 0.05; dps += 0.05; break;
-          case "encore": crit += 0.05; gold += 0.05; break;
-          case "drowned-crown": dps += 0.08; heal += 0.10; break;
-          case "blood-oath": dps += 0.08; hp += 0.05; break;
-          case "starless-sky": def += 0.05; hp += 0.05; break;
-          case "master-apprentice": dps += 0.05; def += 0.05; break;
-          case "kings-oath": dps += 0.06; crit += 0.03; break;
-          case "two-crowns": dps += 0.05; hp += 0.05; break;
-          case "remembered-hour": heal += 0.10; def += 0.05; break;
-          case "old-script": hp += 0.05; crit += 0.05; break;
-          case "runes-ravens": dps += 0.08; break;
-          case "wind-shadow": crit += 0.05; gold += 0.10; break;
+          case "twin-blades": dps += 0.10 * m; crit += 0.05 * m; break;
+          case "spear-wall": def += 0.10 * m; break;
+          case "mage-tower": crit += 0.10 * m; break;
+          case "healers-grace": heal += 0.30 * m; break;
+          case "first-climb": gold += 0.10 * m; break;
+          case "moonlit-bond": dps += 0.05 * m; heal += 0.10 * m; break;
+          case "stormfront": dps += 0.08 * m; break;
+          case "silk-strings": crit += 0.05 * m; def += 0.05 * m; break;
+          // The Golden Cradle: the crit half scales like any bond's; the CC
+          // half is a FLAT ×1.25 on Aurelia's and Vesper's holds (ccMult) and
+          // is never scaled — see the synergy def.
+          case "golden-cradle": crit += 0.05 * m; cc = 1.25; break;
+          case "center-stage": gold += 0.10 * m; break;
+          case "twin-walls": def += 0.08 * m; break;
+          case "market-day": gold += 0.10 * m; heal += 0.10 * m; break;
+          case "volley": crit += 0.08 * m; break;
+          case "ashford-line": dps += 0.06 * m; crit += 0.03 * m; break;
+          case "neither-flood-nor-sea": dps += 0.05 * m; crit += 0.05 * m; break;
+          case "overgrowth": heal += 0.15 * m; hp += 0.05 * m; break;
+          case "deep-winter": def += 0.05 * m; dps += 0.05 * m; break;
+          case "encore": crit += 0.05 * m; gold += 0.05 * m; break;
+          case "drowned-crown": dps += 0.08 * m; heal += 0.10 * m; break;
+          case "blood-oath": dps += 0.08 * m; hp += 0.05 * m; break;
+          case "starless-sky": def += 0.05 * m; hp += 0.05 * m; break;
+          case "master-apprentice": dps += 0.05 * m; def += 0.05 * m; break;
+          case "kings-oath": dps += 0.06 * m; crit += 0.03 * m; break;
+          case "two-crowns": dps += 0.05 * m; hp += 0.05 * m; break;
+          case "remembered-hour": heal += 0.10 * m; def += 0.05 * m; break;
+          case "old-script": hp += 0.05 * m; crit += 0.05 * m; break;
+          case "runes-ravens": dps += 0.08 * m; break;
+          case "wind-shadow": crit += 0.05 * m; gold += 0.10 * m; break;
+          // dragon-rivals is an own-damage bonus — see synergySelfMult.
         }
       });
       return {
@@ -3487,7 +3611,13 @@
         // Winds (party attack speed) rides atkSpdMult, applied in partyDps.
         dmgTakenMult: Math.max(0.5, 1 - dmgTaken),
         atkSpdMult: capstoneAtkSpdMult(s),
-        critDmgMult: 1 + critDmg
+        critDmgMult: 1 + critDmg,
+        // The Golden Cradle's hold-length multiplier (1.25 while Aurelia and
+        // Vesper fight together, else 1) — read by every site that computes
+        // THEIR hold durations: the cocoon in both battle loops, the two
+        // capstone roots in both cap timers, and the cocoon uptime estimate
+        // in partyHoldShare. No other hero's CC ever reads it.
+        ccMult: cc
       };
     }
     function partyDps(s) {
@@ -3925,6 +4055,19 @@
       if (capstoneActive(s, "orien")) total += heroAtk(heroById("orien"), o, s) * 2.5 * skillLevel(o) / 40;
       return total;
     }
+    /** Puppet Dance, time-averaged — Vesper's reworked second skill: one
+        summoned-puppet strike per 5 of her attacks for 150% of her attack
+        per skill level. Shared by partyDotDps, dungeonDotDps, battleDps
+        and the Levy's basis below, so the puppet is always priced the
+        same way in every place — exactly like cometDps above.
+        Marionette's Masterpiece (capstone) rides capstoneDotDps, never
+        here, so it is never priced twice. */
+    function puppetDps(s) {
+      if (!s || !s.heroes) return 0;
+      var o = s.heroes["vesper"];
+      if (!o || s.party.indexOf("vesper") < 0) return 0;
+      return heroAtk(heroById("vesper"), o, s) * 1.5 * skillLevel(o) * heroById("vesper").atkSpeed / 5;
+    }
     /* ---- Max-potential capstone damage (Nov 19, 2026) ----
        Timed bursts and DoTs fold into Tower DPS exactly like the DoTs
        above — time-averaged over their cooldowns / uptimes, priced off
@@ -4048,7 +4191,7 @@
       var ratio = Math.max(0, Math.min(1, cur / max));
       return Math.min(0.50, (1 - ratio) * 0.50);
     }
-    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears and wipes restore it explicitly at their call sites, and a floor switch mid-fight keeps it. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
+    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
     /* Party DPS as it actually lands in a tower battle: the Cantor
        Dirge on Floors 55/70 and the Keeper's Long Vigil on Floor 95
        shave party attack before it hits, Soren's
@@ -4092,7 +4235,7 @@
          order: hits (above) are lifted by Widow's Feast, the DoTs
          are not — but the Cantor Dirge shaves everything, DoTs
          included, exactly as it does in the tick. */
-      var dotDps = venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
+      var dotDps = venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + puppetDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
       /* Zone-boss skills that change damage land here too, like the
          Dirges: Sticky Grasp shaves 20% while the goo holds, and a
          Thorn-Snared party deals nothing at all. */
@@ -4149,7 +4292,18 @@
         case "joss": if (capstoneActive(s, "joss")) { dps = atk * 1.5 * lv / 20; label = "mirror strike"; } break; // Trick Mirror: the enemy strikes ITSELF for 150% ATK × lv every 20s
         case "greta": if (capstoneActive(s, "greta")) { dps = atk * 1.5 * lv / 15; label = "seam strike"; } break; // Seam Strike: 150% ATK × lv every 15s
         case "ash": if (capstoneActive(s, "ash")) { dps = atk * 1.5 * lv / 20; label = "pack hunt"; } break; // Pack Hunt: 150% ATK × lv every 20s
-        case "vesper": if (capstoneActive(s, "vesper")) { dps = atk * lv / 25; label = "masterpiece"; } break; // Marionette's Masterpiece: 100% ATK × lv every 25s
+        case "vesper": {
+          // Puppet Dance (reworked Nov 21, 2026): one summoned-puppet strike
+          // per 5 of Vesper's attacks for 150% of her attack per skill
+          // level — time-averaged to her attack rate / 5, exactly as the
+          // tower loop deals it; the dungeon loop reads it from puppetDps
+          // below, like Cometfall. (Her old +2%/lv party crit aura is gone entirely.)
+          dps = atk * 1.5 * lv * def.atkSpeed / 5;
+          label = "puppet strikes";
+          // Marionette's Masterpiece (capstone): 100% ATK × lv every 25s (the root deals no damage)
+          if (capstoneActive(s, "vesper")) dps += atk * lv / 25;
+          break;
+        }
         case "straw": if (capstoneActive(s, "straw")) { dps = atk * lv / 20; label = "crow's feast"; } break; // Crow's Feast: 100% ATK × lv every 20s
         case "pippa": if (capstoneActive(s, "pippa")) { dps = atk * 1.5 * lv / 20; label = "skylark"; } break; // Skylark: 150% ATK × lv every 20s
         case "kael": {
@@ -4193,7 +4347,7 @@
        tab so the breakdown is visible at a glance. Display only. */
     function partyDotDps(s) {
       if (partySnared() && bossSkillId(s.fightFloor) === "gravevine") return 0;
-      return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
+      return (venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + puppetDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s)) * dirgeMult(s.fightFloor) * stickyMult(s.fightFloor);
     }
     function monsterMaxHp(f) {
       // HP flattens after Floor 30 so a boss 10 floors up is ~2×, not ~5×:
@@ -4557,7 +4711,7 @@
       if (!o || s.party.indexOf("aldric") < 0) return 0;
       var mods = partyMods(s);
       var aldricHit = heroDps(heroById("aldric"), o, s) * synergySelfMult(heroById("aldric"), s.party) * mods.atkSpdMult * mods.dpsMult;
-      var base = effectivePartyDps(s) + venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
+      var base = effectivePartyDps(s) + venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + puppetDps(s) + floorDotDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
       return Math.max(0, base - aldricHit - aldricVerdictDps(s)) * 0.05 * skillLevel(o);
     }
 
@@ -4760,12 +4914,12 @@
       tomas: { hair: "#5d4630", skin: "#ffe0bd", eye: "#a67c12", robe: "#4a5a7d", trim: "#8a6f4d", style: "messy", emblem: "★", freckles: true },
       pippa: { hair: "#a67c52", skin: "#ffe9d6", eye: "#3d9e4d", robe: "#4a7d4f", trim: "#2f6b3a", style: "curlytails", emblem: "●", freckles: true },
       brann: { hair: "#2e2320", skin: "#c6885e", eye: "#b57a12", robe: "#eef2f7", trim: "#7db8e8", style: "curly", emblem: "🔔" },
-      nyx: { hair: "#3d2b57", skin: "#ffe9d6", eye: "#b45cff", robe: "#241a33", trim: "#c9c2d9", style: "long", emblem: "✦", freckles: true },
+      nyx: { hair: "#3d2b57", skin: "#ffe9d6", eye: "#b45cff", robe: "#241a33", trim: "#c9c2d9", style: "bob", emblem: "✦", freckles: true },
       kael: { hair: "#453064", skin: "#ffe3c2", eye: "#b45cff", robe: "#2a2138", trim: "#c9c2d9", style: "spiky", emblem: "☾" },
       wren: { hair: "#a9825e", skin: "#ffe9d6", eye: "#5da24a", robe: "#5f8f52", trim: "#f3ead8", style: "bob", emblem: "🌿", freckles: true },
       lyra: { hair: "#c1272d", skin: "#ffe9d6", eye: "#d99a06", robe: "#b91c2e", trim: "#ffd94d", style: "long", emblem: "★" },
       brynn: { hair: "#cfd6e4", skin: "#ffe9d6", eye: "#8b5cf6", robe: "#3c4356", trim: "#7a4fd0", style: "helmet", emblem: "🛡" },
-      faye: { hair: "#f2ead2", skin: "#ffe9d6", eye: "#3d9bd6", robe: "#4a5a74", trim: "#e8c34a", style: "storm", emblem: "⚡", freckles: true },
+      faye: { hair: "#f2ead2", skin: "#ffe9d6", eye: "#3d9bd6", robe: "#4a5a74", trim: "#e8c34a", style: "messy", emblem: "⚡", freckles: true },
       draven: { hair: "#3fc1dd", skin: "#ffe9d6", eye: "#0e9db8", robe: "#eef6fb", trim: "#d9b45a", style: "long", emblem: "🐉" },
       diddle: { hair: "#17141f", skin: "#ffe9d6", eye: "#7c3aed", robe: "#23222e", trim: "#8b5cf6", style: "messy", emblem: "📖" },
       /* The synergy six (Nov 18, 2026) — chibi looks matched to their portraits:
@@ -4844,7 +4998,7 @@
        grip point (54, 50), where the Chibi renderer's hand now closes over
        it, and each is THAT hero's weapon from their portrait: Soren's and
        Aldric's greatswords, Torin's sword and axe, Tomas's battered sword,
-       Yurneth's pale blade, Brynn's arming sword, Nix's twin ice blades,
+       Yurneth's pale dagger, Brynn's arming sword, Nix's twin ice blades,
        Amara's trident, Durnan's war hammer, Juno's spyglass, the bows of
        Arden, Mira and Ash — and for the heroes whose portraits carry no
        sword at all, their own signature: Ilya's thorn vine, Mari's
@@ -4852,25 +5006,24 @@
        gear cane, Ysolde's mirror shield, Eldric's glowing rune, and
        Morrigan's crow-magic wand. */
     function heldWeaponSVG(id) {
-      function bow(limb, grip) { return '<g><path d="M59 8q-11 21 0 42" fill="none" stroke=' + limb + ' stroke-width="2.6" stroke-linecap="round" /><line x1="59" y1="8" x2="59" y2="50" stroke="#e8dcc2" stroke-width="0.8" /><rect x="57.2" y="25" width="3.6" height="8" rx="1.6" fill=' + grip + ' /><line x1="59" y1="29" x2="42" y2="29" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M42 29l5-2v4z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M59 29l-3.4-2.4M59 29l-3.4 2.4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /></g>'; }
       function greatsword(blade, edge, guard, grip) { return '<g transform="rotate(13 54 46)"><rect x="52.7" y="42" width="2.6" height="8" rx="1.1" fill=' + grip + ' /><rect x="49.2" y="40" width="9.6" height="2.4" rx="1.1" fill=' + guard + ' /><path d="M54 10l2.6 15v15h-5.2V25z" fill=' + blade + ' stroke=' + edge + ' stroke-width="0.7" /><path d="M54 14v22" stroke=' + edge + ' stroke-width="0.9" stroke-linecap="round" opacity="0.8" /><circle cx="54" cy="51.5" r="1.5" fill=' + guard + ' /></g>'; }
       switch (id) {
         /* Arden's greenwood bow, held DOWN at her side with the arrow nocked pointing down-forward — never at her face (Rachel, Nov 20 follow-up: the old bow's arrow ran horizontally at her eye) */
         case "jenna": return '<g><path d="M62 33q-15 17-19 37" fill="none" stroke="#2f6b4f" stroke-width="2.6" stroke-linecap="round" /><line x1="62" y1="33" x2="43" y2="70" stroke="#e8dcc2" stroke-width="0.8" /><circle cx="51.5" cy="51.5" r="2.9" fill="#8a6f4d" /><line x1="54" y1="49" x2="37" y2="62.5" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M37 62.5l6.8-0.8-3 5.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M54 49l-4.2-0.6M54 49l-1.2 4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /></g>';
-        /* Mira's recurve bow */
-        case "mira": return bow("#6e4f35", "#4a3626");
+        /* Mira's recurve bow, held DOWN at her side with the arrow nocked pointing down-forward — never at her face (Nov 21 follow-up: she was the last archer still carrying the old upright bow whose arrow ran horizontally at her eye — Arden's original bow problem, which Arden and Ash already had fixed) */
+        case "mira": return '<g><path d="M62 33q-15 17-19 37" fill="none" stroke="#6e4f35" stroke-width="2.6" stroke-linecap="round" /><line x1="62" y1="33" x2="43" y2="70" stroke="#e8dcc2" stroke-width="0.8" /><circle cx="51.5" cy="51.5" r="2.9" fill="#4a3626" /><line x1="54" y1="49" x2="37" y2="62.5" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M37 62.5l6.8-0.8-3 5.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M54 49l-4.2-0.6M54 49l-1.2 4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /></g>';
         /* Ash's violet-wood bow, held DOWN at his side with the arrow nocked pointing down-forward — never across his face (Nov 20 follow-up: same fault as Arden's old bow; his bird still rides his shoulder) */
         case "ash": return '<g><path d="M62 33q-15 17-19 37" fill="none" stroke="#5b4a8a" stroke-width="2.6" stroke-linecap="round" /><line x1="62" y1="33" x2="43" y2="70" stroke="#e8dcc2" stroke-width="0.8" /><circle cx="51.5" cy="51.5" r="2.9" fill="#3a2f52" /><line x1="54" y1="49" x2="37" y2="62.5" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M37 62.5l6.8-0.8-3 5.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M54 49l-4.2-0.6M54 49l-1.2 4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /></g>';
         /* Soren's greatsword */
         case "han": return greatsword("#3a3f4a", "#c9a86a", "#c9a86a", "#2b1c10");
         /* Aldric's royal greatsword */
         case "aldric": return greatsword("#8b1e2d", "#e8c34a", "#e8c34a", "#4a2318");
-        /* Torin: his red-edged sword alone (the grey axe fragment that floated beside it is gone — Nov 20 follow-up) */
-        case "velkist": return greatsword("#2b2e3a", "#b91c2e", "#8a93a8", "#2b1c10");
+        /* Torin's red-edged sword: the crimson lives ONLY in the thin edge line around the blade, the way a honed red edge should read — the fuller down the middle is plain steel and stops well short of the guard (Nov 21 follow-up: the old red fuller ran right down to the guard and pooled into a weird red wedge at his handle. Yes, the red edge itself is supposed to be there — it is his sword's signature — the wedge at the handle was not) */
+        case "velkist": return '<g transform="rotate(13 54 46)"><rect x="52.7" y="42" width="2.6" height="8" rx="1.1" fill="#2b1c10" /><rect x="49.2" y="40" width="9.6" height="2.4" rx="1.1" fill="#8a93a8" /><path d="M54 10l2.6 15v15h-5.2V25z" fill="#2b2e3a" stroke="#b91c2e" stroke-width="0.7" /><path d="M54 14v17" stroke="#7d8698" stroke-width="0.9" stroke-linecap="round" opacity="0.8" /><circle cx="54" cy="51.5" r="1.5" fill="#8a93a8" /></g>';
         /* Tomas's battered sword: nicked edge, rust at the guard */
         case "tomas": return '<g transform="rotate(11 54 46)"><rect x="52.7" y="42" width="2.6" height="8" rx="1.1" fill="#5d4630" /><rect x="49.6" y="40" width="8.8" height="2.3" rx="1.1" fill="#8a6f4d" /><path d="M54 14l2.3 13v13h-4.6V27z" fill="#aab4c4" stroke="#77808f" stroke-width="0.7" /><path d="M56.3 24l-1.8 1.6 1.8 1.6" fill="none" stroke="#77808f" stroke-width="0.8" /><circle cx="52.6" cy="38" r="0.9" fill="#b06a35" opacity="0.85" /><circle cx="55.2" cy="35.5" r="0.7" fill="#b06a35" opacity="0.7" /></g>';
-        /* Yurneth's pale blade: slim, light, almost glowing */
-        case "yurneth": return '<g transform="rotate(13 54 46)"><rect x="52.9" y="42" width="2.2" height="7.5" rx="1" fill="#232c4a" /><rect x="50" y="40.2" width="8" height="2" rx="1" fill="#d9b45a" /><path d="M54 8l1.9 16v16.2h-3.8V24z" fill="#eef4fb" stroke="#b9c9dd" stroke-width="0.6" /><path d="M54 8l1.9 16v16.2h-3.8V24z" fill="#ffffff" opacity="0.35" /></g>';
+        /* Yurneth's pale DAGGER, gripped in his right hand, blade pointing down-forward (Nov 21 follow-up: the old long sword floated vertically at his side, his hand nowhere near the grip — he is a dagger fighter, and the daggers at his belt are this one's twins). Short pale blade, gold guard and pommel, dark grip seated in his palm; his hand is redrawn over the grip in the Chibi renderer below */
+        case "yurneth": return '<g transform="rotate(16 51 52.5)"><rect x="49.9" y="49" width="2.2" height="7" rx="1.1" fill="#232c4a" /><circle cx="51" cy="48.2" r="1.3" fill="#d9b45a" /><rect x="48.5" y="55.8" width="5" height="1.8" rx="0.9" fill="#d9b45a" /><path d="M49.6 57.6h2.8l-1.4 9.5z" fill="#eef4fb" stroke="#b9c9dd" stroke-width="0.6" /><path d="M49.9 58.5h1.5l-0.9 7z" fill="#ffffff" opacity="0.4" /></g>';
         /* Brynn's arming sword (her tower shield already guards her left) */
         case "brynn": return '<g transform="rotate(13 54 46)"><rect x="52.8" y="42" width="2.4" height="7.5" rx="1" fill="#2b303c" /><rect x="49.8" y="40.2" width="8.4" height="2.2" rx="1" fill="#8b7fd4" /><path d="M54 13l2.2 13v14.2h-4.4V26z" fill="#cfd8e6" stroke="#8a93a8" stroke-width="0.6" /></g>';
         /* Nix dual-wields: one straight ice sword in EACH hand, grips seated exactly in her palms (Nov 20 follow-up) */
@@ -4890,13 +5043,13 @@
         /* Rook carries NO staff (his portrait has none — Nov 20 follow-up): his pocket watch, held up in his hand, its chain running back across his chest */
         case "rook": return '<g><path d="M52 45.5q-5.5-0.5-9 2.5" stroke="#d9b45a" stroke-width="0.9" fill="none" stroke-dasharray="1.6 1.1" stroke-linecap="round" /><circle cx="52" cy="47.4" r="1.5" fill="none" stroke="#9a743f" stroke-width="0.9" /><circle cx="52" cy="52.5" r="5" fill="#d9b45a" stroke="#9a743f" stroke-width="1" /><circle cx="52" cy="52.5" r="3.6" fill="#fff8ee" /><path d="M52 52.5v-2.2M52 52.5l1.6 1" stroke="#8a6a3f" stroke-width="0.7" stroke-linecap="round" /><circle cx="52" cy="52.5" r="0.55" fill="#9a743f" /></g>';
         /* Ysolde's mirror shield: a true heater shield — wide flat top tapering to a point at the bottom, silver rim, bright mirror face (the old round disc read as a plate — Nov 20 follow-up) */
-        case "ysolde": return '<g><path d="M47 31h17v11q0 10.5-8.5 16.5q-8.5-6-8.5-16.5z" fill="#aebdd0" stroke="#7e90a8" stroke-width="1.2" /><path d="M49.3 33.3h12.4v8.9q0 8.3-6.2 13q-6.2-4.7-6.2-13z" fill="#eef4fa" stroke="#c3d2e4" stroke-width="0.8" /><path d="M51.5 36l6.5 9.5M54 35l6 8.5" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" opacity="0.95" /><circle cx="55.5" cy="42" r="1.4" fill="#d9b45a" /></g>';
+        case "ysolde": return '<g transform="rotate(-8 25 52.5)"><rect x="23.9" y="49" width="2.2" height="7" rx="1.1" fill="#4a3a2a" /><circle cx="25" cy="48.2" r="1.3" fill="#d9b45a" /><rect x="21.3" y="55.8" width="7.4" height="1.9" rx="0.95" fill="#aebdd0" stroke="#7e90a8" stroke-width="0.6" /><path d="M23.2 57.7h3.6l-1.8 11.5z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.6" /><path d="M25 59.5v7" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" opacity="0.7" /></g><g><path d="M47 31h17v11q0 10.5-8.5 16.5q-8.5-6-8.5-16.5z" fill="#aebdd0" stroke="#7e90a8" stroke-width="1.2" /><path d="M49.3 33.3h12.4v8.9q0 8.3-6.2 13q-6.2-4.7-6.2-13z" fill="#eef4fa" stroke="#c3d2e4" stroke-width="0.8" /><path d="M51.5 36l6.5 9.5M54 35l6 8.5" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" opacity="0.95" /><circle cx="55.5" cy="42" r="1.4" fill="#d9b45a" /></g>';
         /* Eldric's glowing rune, carved on its ember stone */
-        case "eldric": return '<g><line x1="54" y1="36" x2="54" y2="56" stroke="#5d564e" stroke-width="2.3" stroke-linecap="round" /><circle cx="54" cy="27" r="7" fill="#6b6560" stroke="#4a443e" stroke-width="1" /><circle cx="54" cy="27" r="8.6" fill="#e0653a" opacity="0.18" /><path d="M54 21.5v11M54 21.5l4 3M54 25.5l4 3" stroke="#ff9a5c" stroke-width="1.5" fill="none" stroke-linecap="round" /></g>';
+        case "eldric": return '<g><circle cx="51" cy="49" r="6.4" fill="#f59e0b" opacity="0.16" /><path d="M51 41.5l4.6 4.2-1.4 6.8-3.2 3-3.2-3-1.4-6.8z" fill="#f6b352" stroke="#b97e0e" stroke-width="0.9" stroke-linejoin="round" /><path d="M46.4 45.7h9.2M51 41.5l-1.2 6.5 1.2 7.5M46.4 45.7l3.4 2.3M55.6 45.7l-3.4 2.3" stroke="#d98a2b" stroke-width="0.6" fill="none" opacity="0.8" /><path d="M51 45.8v5.6M51 45.8l2.6 1.9M51 48.6l2.6 1.9" stroke="#fff8ee" stroke-width="1.15" fill="none" stroke-linecap="round" /></g>';
         /* Morrigan's crow-magic wand: violet light at its tip (her crow rides her shoulder) */
-        case "morrigan": return '<g><line x1="50" y1="54" x2="58" y2="30" stroke="#3a2a1e" stroke-width="2.2" stroke-linecap="round" /><circle cx="59" cy="26" r="4" fill="#a855f7" opacity="0.9" /><circle cx="59" cy="26" r="5.8" fill="#a855f7" opacity="0.22" /><text x="52" y="20" font-size="5" fill="#d8b4fe">✦</text><text x="63" y="34" font-size="4.4" fill="#d8b4fe">✦</text></g>';
+        case "morrigan": return '<g></g>';
         /* Juno's spyglass, raised in her hand */
-        case "juno": return '<g transform="rotate(-18 54 42)"><rect x="48" y="38" width="13" height="5.4" rx="2.2" fill="#c9a227" stroke="#9a743f" stroke-width="0.8" /><rect x="59" y="37.2" width="4.6" height="7" rx="1.8" fill="#e8c34a" stroke="#9a743f" stroke-width="0.8" /><circle cx="63.8" cy="40.7" r="1.9" fill="#7fb8e8" stroke="#4a6a8a" stroke-width="0.6" /><rect x="51" y="38" width="1.8" height="5.4" fill="#8a6f4d" /><rect x="55.5" y="38" width="1.8" height="5.4" fill="#8a6f4d" /></g>';
+        case "juno": return '<g transform="rotate(-24 51 52.5)"><rect x="39" y="50.2" width="9.5" height="4.4" rx="2" fill="#8a6f4d" stroke="#6b4a2f" stroke-width="0.7" /><rect x="47.5" y="49.3" width="13.5" height="6.2" rx="2.4" fill="#c9a227" stroke="#9a743f" stroke-width="0.8" /><rect x="60" y="48.3" width="5.4" height="8.2" rx="2" fill="#e8c34a" stroke="#9a743f" stroke-width="0.8" /><circle cx="65.9" cy="52.4" r="2.3" fill="#7fb8e8" stroke="#4a6a8a" stroke-width="0.7" /><circle cx="65.2" cy="51.7" r="0.8" fill="#eaf6ff" opacity="0.9" /><rect x="52.5" y="49.3" width="1.8" height="6.2" fill="#8a6f4d" /><rect x="57.5" y="49.3" width="1.8" height="6.2" fill="#8a6f4d" /></g>';
         default: return greatsword("#5d6673", "#cfd8e6", "#8a93a8", "#4a3626");
       }
     }
@@ -4913,10 +5066,13 @@
         p.push('<circle cx="32" cy="34" r="27" fill="#ffd94d" opacity="0.13"/><circle cx="32" cy="34" r="20" fill="#ffe9a8" opacity="0.10"/>');
       }
       if (look.style === "twintails") {
-        p.push('<rect x="4" y="14" width="10" height="34" rx="5" fill="' + hair + '"/><rect x="50" y="14" width="10" height="34" rx="5" fill="' + hair + '"/><text x="9" y="52" font-size="7" text-anchor="middle">🎀</text><text x="55" y="52" font-size="7" text-anchor="middle">🎀</text>');
+        /* braid shading on BOTH tails now — soft strand lines, never dots (Nov 21 follow-up: the old zero-length strokes on the left tail alone rendered as two black dots in Arden's hair) */
+        /* her hair bows, DRAWN in pink silk at the ends of her braids — the 🎀 glyphs rendered as hollow boxes in her hair (Nov 21 follow-up, the same fault Joss's bells already fixed) */
+        p.push('<rect x="4" y="14" width="10" height="34" rx="5" fill="' + hair + '"/><rect x="50" y="14" width="10" height="34" rx="5" fill="' + hair + '"/><path d="M6.5 24q2.5 1.2 5 0M6.5 33q2.5 1.2 5 0M6.5 42q2.5 1.2 5 0M52.5 24q2.5 1.2 5 0M52.5 33q2.5 1.2 5 0M52.5 42q2.5 1.2 5 0" stroke="#00000022" stroke-width="1.1" fill="none" stroke-linecap="round" /><g transform="translate(9 49)" fill="#ff9ecf" stroke="#d14f8c" stroke-width="0.7"><path d="M0 0 L-5.4-3.9 Q-7.2 0 -5.4 3.9 Z"/><path d="M0 0 L5.4-3.9 Q7.2 0 5.4 3.9 Z"/><path d="M-1.3 1.4 L-2.8 5.4 L0 4 L2.8 5.4 L1.3 1.4 Z" fill="#f78fb8"/><circle cx="0" cy="0" r="1.8" fill="#f472b6"/></g><g transform="translate(55 49)" fill="#ff9ecf" stroke="#d14f8c" stroke-width="0.7"><path d="M0 0 L-5.4-3.9 Q-7.2 0 -5.4 3.9 Z"/><path d="M0 0 L5.4-3.9 Q7.2 0 5.4 3.9 Z"/><path d="M-1.3 1.4 L-2.8 5.4 L0 4 L2.8 5.4 L1.3 1.4 Z" fill="#f78fb8"/><circle cx="0" cy="0" r="1.8" fill="#f472b6"/></g>');
       }
       if (look.style === "curlytails") {
-        p.push('<circle cx="10" cy="20" r="7" fill="' + hair + '"/><circle cx="8" cy="32" r="6" fill="' + hair + '"/><circle cx="54" cy="20" r="7" fill="' + hair + '"/><circle cx="56" cy="32" r="6" fill="' + hair + '"/><text x="10" y="16" font-size="7" text-anchor="middle">🎀</text><text x="54" y="16" font-size="7" text-anchor="middle">🎀</text>');
+        /* the bows are DRAWN, in each girl's own trim colour — Pippa's green, Nia's cream: the 🎀 glyphs rendered as hollow boxes at the top corners of their curls (Nov 21 follow-up, the same fault Arden's drawn bows and Joss's bells already fixed). Joss still gets none — his drawn gold bells at the bun ties are his ornaments */
+        p.push('<circle cx="10" cy="20" r="7" fill="' + hair + '"/><circle cx="8" cy="32" r="6" fill="' + hair + '"/><circle cx="54" cy="20" r="7" fill="' + hair + '"/><circle cx="56" cy="32" r="6" fill="' + hair + '"/>' + (def.id !== "joss" ? '<g transform="translate(10 13.5) scale(0.82)" fill="' + trim + '" stroke="#00000030" stroke-width="0.8"><path d="M0 0 L-5.4-3.9 Q-7.2 0 -5.4 3.9 Z"/><path d="M0 0 L5.4-3.9 Q7.2 0 5.4 3.9 Z"/><path d="M-1.3 1.4 L-2.8 5.4 L0 4 L2.8 5.4 L1.3 1.4 Z" opacity="0.85"/><circle cx="0" cy="0" r="1.8"/></g><g transform="translate(54 13.5) scale(0.82)" fill="' + trim + '" stroke="#00000030" stroke-width="0.8"><path d="M0 0 L-5.4-3.9 Q-7.2 0 -5.4 3.9 Z"/><path d="M0 0 L5.4-3.9 Q7.2 0 5.4 3.9 Z"/><path d="M-1.3 1.4 L-2.8 5.4 L0 4 L2.8 5.4 L1.3 1.4 Z" opacity="0.85"/><circle cx="0" cy="0" r="1.8"/></g>' : ''));
       }
       if (look.style === "ponytail") {
         p.push('<path d="M38 6q14 2 12 18q-1 8-6 12l-4-4q4-10-2-26z" fill="' + hair + '"/><circle cx="37" cy="7" r="3.4" fill="#2b2e3a"/>');
@@ -4931,18 +5087,39 @@
       }
       if (def.id === "faye") {
         /* wild wind-blown storm hair, spiking out in every direction */
-        p.push('<g fill="' + hair + '"><path d="M19 13q-9-6-14-3q6 5 9 9z"/><path d="M45 13q9-6 14-3q-6 5-9 9z"/><path d="M25 7q-3-6-10-6q5 4 6 9z"/><path d="M39 7q3-6 10-6q-5 4-6 9z"/><path d="M15 23q-8-2-12 3q7 2 11 0z"/><path d="M49 23q8-2 12 3q-7 2-11 0z"/></g>');
+        p.push('<g fill="' + hair + '"><path d="M20 13l-7-8 10 1zM27 9l-3-9 9 3zM34 8l3-8 5 7zM41 10l7-6 2 9zM46 15l9-4-3 9zM47 23l9 1-6 6zM15 24l-9 2 7 5zM18 16l-9-3 4 8z" /><path d="M13.5 22q-2.2 9-1.2 19l5.8-1.3q-1.8-8.8-1.6-17.7zM50.5 22q2.2 9 1.2 19l-5.8-1.3q1.8-8.8 1.6-17.7z" /><path d="M16.8 34q-2 3.8-1.4 7.5M47.2 34q2 3.8 1.4 7.5" stroke="' + hair + '" stroke-width="2.2" fill="none" stroke-linecap="round" /></g>');
       }
-      if (def.id !== "dun") { p.push('<rect x="14" y="7" width="36" height="' + backH + '" rx="15" fill="' + hair + '"/>'); }
+      /* Yurneth's back hair stops at his shoulders (height 29, not the long fall of 46): his portrait's silver hair is shoulder-length and windswept, and the full-length fall veiled his whole body to below his waist (Nov 21 follow-up) */
+      if (def.id !== "dun" && def.id !== "eldric") { p.push('<rect x="14" y="7" width="36" height="' + (def.id === "yurneth" ? 29 : def.id === "ilya" ? 30 : def.id === "mira" ? 35 : backH) + '" rx="15" fill="' + hair + '"/>'); }
       if (def.id === "brynn") {
         /* dark steel back-plate behind her, and her massive tower shield planted at her side */
         p.push('<rect x="13" y="6" width="38" height="37" rx="15" fill="#39415a"/>');
         p.push('<path d="M0.5 27h15.5v14q0 12.5-7.75 17.5Q0.5 53.5 0.5 41z" fill="#454e61" stroke="#2c3242" stroke-width="1.6"/><path d="M3.6 30.5h9.3v11q0 8.5-4.65 12.3Q3.6 50 3.6 41.5z" fill="none" stroke="#7a4fd0" stroke-width="1.1"/><text x="8.2" y="43" font-size="9" text-anchor="middle" fill="#c9b8ff">♜</text>');
       }
-      if (look.style === "braid" && def.id !== "dun" && def.id !== "eolka") {
+      if (look.style === "braid" && def.id !== "dun" && def.id !== "eolka" && def.id !== "ilya") {
         p.push('<rect x="47" y="22" width="8" height="26" rx="4" fill="' + hair + '"/><path d="M48 30h6M48 38h6M48 46h6" stroke="#00000028" stroke-width="2"/>');
       }
-      if (look.style !== "hooded" && look.style !== "bun" && look.style !== "topknot" && look.style !== "helmet" && def.id !== "dun") {
+      if (def.id === "faye") {
+        /* her loose side braid, half-undone by the wind, with a little gold lightning charm tied at the end — SHORT now, like the rest of her hair */
+        p.push('<rect x="47" y="22" width="8" height="15" rx="4" fill="' + hair + '"/><path d="M48 29h6M48 34.5h6" stroke="#d9c9a0" stroke-width="2" /><text x="51" y="42.5" font-size="6" text-anchor="middle" fill="#e8c34a">⚡</text>');
+      }
+      if (def.id === "mira") {
+        /* layered waves framing her face on BOTH sides, balanced, falling to her shoulders, with wavy strand lines through them */
+        p.push('<path d="M19.5 17q-3.2 6-2.4 12.5q0.6 5-1.2 9.5q3 1.6 5.4-0.6q-1.2-4.2-0.6-9q0.7-5.8-0.6-11.9z" fill="' + hair + '"/><path d="M44.5 17q3.2 6 2.4 12.5q-0.6 5 1.2 9.5q-3 1.6-5.4-0.6q1.2-4.2 0.6-9q-0.7-5.8 0.6-11.9z" fill="' + hair + '"/><path d="M18.6 21q-1.2 5-0.2 10M45.4 21q1.2 5 0.2 10" stroke="#543e26" stroke-width="0.85" fill="none" stroke-linecap="round" opacity="0.8" /><path d="M23 10.5q4-2 9-1.8M31 9.8q5-0.6 9 1.4" stroke="#543e26" stroke-width="0.85" fill="none" stroke-linecap="round" opacity="0.7" />');
+      }
+      if (def.id === "ilya") {
+        /* his ONE braid: short messy green spikes on top, and ONE thick braid woven with thorn vine, falling over his right shoulder down his chest */
+        p.push('<path d="M19 14l-2.5-5.5L22 11l0.5-6L27 9.5 29 3l3.5 5L37 4l1 6 5-3.5-1 6.5 5-2-3 5.5q-12-4.5-25-2.5z" fill="' + hair + '"/><path d="M41.5 24q4.5 1 4.8 6l0.7 24q0.1 4.5-3.4 4.7q-3.6-0.2-3.7-4.7l-0.4-22q0-5.5 2-8.7z" fill="' + hair + '"/><path d="M40.8 33l5.4 3.4M41 39.5l5.3 3.4M41.1 46l5.2 3.3M46.4 33l-5.4 3.4M46.3 39.5l-5.3 3.4M46.2 46l-5.2 3.3" stroke="#143d22" stroke-width="1" stroke-linecap="round" opacity="0.8" /><path d="M41.2 30.5q4.8 1.4 5 6M41.3 43q4.6 1.2 4.8 5.5" stroke="#143d22" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.65" /><path d="M46.8 28q-4 10-1.5 20q1.2 5-0.5 9" fill="none" stroke="#6b4a2f" stroke-width="1.2" stroke-linecap="round" /><path d="M45.2 34.5l2.8-1-0.6 2.6zM44.6 45l-2.9-0.8 0.9 2.5z" fill="#4a3626" /><ellipse cx="47.8" cy="40" rx="2.1" ry="1.1" fill="#5da24a" transform="rotate(32 47.8 40)" /><ellipse cx="43.2" cy="51.5" rx="1.9" ry="1" fill="#6fb85c" transform="rotate(-24 43.2 51.5)" /><path d="M41.8 57.5q1.8 1.8 3.6 0.2" stroke="#d9b45a" stroke-width="1.6" fill="none" stroke-linecap="round" />');
+      }
+      if (def.id === "nix") {
+        /* her hair WAVES in the air: the left side buzzed close in pale blue-grey, all the length swept over and STREAMING off to her right in long wind-blown waves */
+        p.push('<path d="M17.5 25.5q-1-9.5 4.5-14.5l3 1.8q-3.2 5.4-3.4 12.2z" fill="#9db9cc" /><path d="M19.5 15.5q-1 4-0.8 8M22 13.8q-1.4 4.4-1.2 9" stroke="#7e9cb3" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.85" /><g fill="' + hair + '"><path d="M28 10q10-6 20-2q-6 1.5-9 5q7-2.5 15 1q-7 1-11 4.5q8-1 13 4q-8 0.5-13-2.5q-8-4.5-15-10.5z" /><path d="M42 16q9-3 17 1.5q-7 1.2-11 4.5q6.5-0.5 11 3.5q-7.5 1.2-13.5-2.5q-4.5-2.8-3.5-7z" /><path d="M44 24q7-1 12 3.5q-6 1.5-10.5-0.8q-3.5-1.8-1.5-2.7z" /></g><path d="M33 9.5q7-3.5 14-2.5M40 18.5q6-2 12 0.5M43.5 25.5q5-0.8 9.5 1.8" stroke="#ffffff" stroke-width="1.1" fill="none" stroke-linecap="round" opacity="0.55" /><path d="M56.5 13.5q3-1 4.5 1.2M57.5 22.5q2.8-0.4 4 1.8" stroke="' + hair + '" stroke-width="1.5" fill="none" stroke-linecap="round" /><g fill="#d6ecf7" stroke="#8fc3e8" stroke-width="0.45"><path d="M19.8 33.5l1.1 2.3 1-2.3-1-2.2z" /><path d="M22.3 36.3l0.8 1.7 0.8-1.7-0.8-1.6z" opacity="0.9" /></g>');
+      }
+      if (def.id === "morrigan") {
+        /* her hair is WILD — one flowing mass of black curls, never a cluster of separate ball-puffs */
+        p.push('<g><path d="M32 2.5q9.5-0.5 14 5.5q6 2.5 6.8 9.5q4.2 4.8 1.6 11.2q3 5.8-0.8 10.6q0.8 5.8-4 8.6q-5.4 1.8-9-1.2q1.2-4.8 0.2-9.4q-2.6 3.4-6.2 3.4q-3.6 0-6.2-3.4q-1 4.6 0.2 9.4q-3.6 3-9 1.2q-4.8-2.8-4-8.6q-3.8-4.8-0.8-10.6q-2.6-6.4 1.6-11.2q0.8-7 6.8-9.5q4.5-6 14-5.5z" fill="' + hair + '" /><g stroke="' + hair + '" stroke-width="2" fill="none" stroke-linecap="round"><path d="M13.5 33q-3.2 5.5-0.8 10.2q1.6 3 5 2.8" /><path d="M50.5 33q3.2 5.5 0.8 10.2q-1.6 3-5 2.8" /><path d="M18 7.5q-4.5 2.8-5 8" /><path d="M46 7.5q4.5 2.8 5 8" /></g><g stroke="#3a3350" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.85"><path d="M21 12q-2.5 5-1 10M43 12q2.5 5 1 10M26 6.5q-1 4 0.5 8M38 6.5q1 4-0.5 8" /><path d="M15.5 24q-1.8 4.5-0.5 8.5M48.5 24q1.8 4.5 0.5 8.5" /></g><circle cx="17" cy="44.5" r="0.9" fill="#3a3350" opacity="0.9" /><circle cx="47" cy="44.5" r="0.9" fill="#3a3350" opacity="0.9" /></g>');
+      }
+      if (look.style !== "hooded" && look.style !== "bun" && look.style !== "topknot" && look.style !== "helmet" && def.id !== "dun" && def.id !== "nyx" && def.id !== "kael" && def.id !== "nix" && def.id !== "mira" && def.id !== "eldric") {
         p.push('<path d="M32 8q1-6 7-6.5" stroke="' + hair + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>');
       }
       if (look.style === "bun") {
@@ -4972,23 +5149,53 @@
         p.push('<g fill="#bff5d8" opacity="0.5"><circle cx="15" cy="34" r="2.6"/><path d="M12.8 36q2.2 3 4.4 0l-0.6 3.4-1.6-1.4-1.6 1.4z"/><circle cx="49.5" cy="30" r="2.2"/><path d="M47.7 32q1.8 2.4 3.6 0l-0.5 2.8-1.3-1.1-1.3 1.1z"/></g>');
       }
       p.push('<rect x="20" y="49" width="24" height="2.6" fill="#00000026"/>');
-      p.push('<text x="32" y="47.5" font-size="6.5" text-anchor="middle" fill="#fff">' + look.emblem + '</text>');
+      if (def.id === "yurneth") {
+        /* his belt, SHAPED to his body: the band painted back out in his robe cloth, replaced with a thinner belt that dips with his waist, a small gold buckle at its center */
+        p.push('<rect x="20" y="48.7" width="24" height="3.2" fill="' + robe + '"/><path d="M20.6 50.6q11.4 2.6 22.8 0" stroke="#171a26" stroke-width="1.7" fill="none" stroke-linecap="round" /><path d="M20.6 50.6q11.4 2.6 22.8 0" stroke="#2e3448" stroke-width="0.6" fill="none" stroke-linecap="round" opacity="0.7" transform="translate(0 -0.8)" /><rect x="30.7" y="50.4" width="2.6" height="2.1" rx="0.6" fill="none" stroke="#d9b45a" stroke-width="0.75" />');
+      }
+      if (def.id !== "rurik" && def.id !== "draven") { p.push('<text x="32" y="47.5" font-size="6.5" text-anchor="middle" fill="#fff">' + look.emblem + '</text>'); }
+      if (def.id === "draven") {
+        /* his emblem is a DRAWN gold dragon-curl on his chest — a curled dragon spiral with a horned head, over the cyan sash of his portrait's white-and-gold robe */
+        p.push('<path d="M21 40.5l22 12.5v4.2L21 44.7z" fill="#38c8dd" opacity="0.85" /><path d="M21 40.5l22 12.5" stroke="#d9b45a" stroke-width="0.9" opacity="0.9" /><path d="M35.5 43.2q3.8 0.4 3.8 3.4q0 2.7-2.7 2.7q-2.3 0-2.3-2q0-1.6 1.5-1.7" fill="none" stroke="#d9b45a" stroke-width="1.3" stroke-linecap="round" /><path d="M39.3 43.4l1.8-2-0.4 2.4 1.9-0.9-1.2 2.1" fill="none" stroke="#d9b45a" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" /><circle cx="39.6" cy="45.2" r="0.55" fill="#0e9db8" />');
+      }
+      if (def.id === "rurik") {
+        /* his emblem is a DRAWN gold flame */
+        p.push('<path d="M32 42.8q3.2 3.2 3.2 6.4q0 2.9-3.2 3.4q-3.2-0.5-3.2-3.4q0-1.7 0.9-2.9q0.2 1.1 0.9 1.9q0.5-2.3 1.4-5.2z" fill="#e8a812" stroke="#b97e0e" stroke-width="0.6" /><path d="M32 47.5q1.5 1.5 1.5 3q0 1.4-1.5 1.7q-1.5-0.3-1.5-1.7q0-0.9 0.5-1.6q0.1 0.6 0.5 1q0.2-1.2 0.5-2.5z" fill="#ffd94d" />');
+      }
+      if (def.id === "amara") {
+        /* her outfit is CLOTHING with armor ON it: her teal robe shows at her sides, waist and hem; over it sit SHAPED gold pieces — two rounded shoulder plates, one curved chest plate, a single small scallop shell, her teal heart-gem */
+        p.push('<ellipse cx="21.8" cy="42" rx="3.6" ry="3" fill="#d9a441" stroke="#9a743f" stroke-width="0.8" /><ellipse cx="42.2" cy="42" rx="3.6" ry="3" fill="#d9a441" stroke="#9a743f" stroke-width="0.8" /><path d="M19.2 40.4q2.6-1.6 5.2 0M39.6 40.4q2.6-1.6 5.2 0" stroke="#f2d07a" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.85" /><path d="M24.8 43.2q3.5 2.4 7.2 0.8q3.7 1.6 7.2-0.8l-0.7 7.6q-0.5 5-6.5 5.6q-6-0.6-6.5-5.6z" fill="#d9a441" stroke="#9a743f" stroke-width="0.9" /><path d="M25.4 49.5q6.6 2.2 13.2 0l-0.3 2.8q-6.3 2-12.6 0z" fill="#1f6f6b" opacity="0.8" /><path d="M32 44.6v10.2" stroke="#9a743f" stroke-width="0.7" stroke-linecap="round" opacity="0.6" /><circle cx="32" cy="47.6" r="1.7" fill="#3fae8a" stroke="#e8c34a" stroke-width="0.7" /><path d="M29.9 54.2a2.3 2.3 0 0 1 4.2 0l-0.5 1.8h-3.2z" fill="#f3ead8" stroke="#c9a86a" stroke-width="0.6" /><path d="M32 52.4v3.4M30.4 53l1 2.6M33.6 53l-1 2.6" stroke="#c9a86a" stroke-width="0.55" stroke-linecap="round" /><g fill="#e8e4da" stroke="#b9b2a4" stroke-width="0.5"><circle cx="20.6" cy="41" r="1.15" /><circle cx="23.6" cy="43.6" r="0.85" /><circle cx="43.8" cy="40.6" r="1" /><circle cx="40.9" cy="44" r="0.75" /><circle cx="26.2" cy="51.8" r="0.8" /><circle cx="38.4" cy="54.6" r="0.7" /></g><g fill="#8a8272"><circle cx="20.6" cy="41" r="0.5" /><circle cx="23.6" cy="43.6" r="0.38" /><circle cx="43.8" cy="40.6" r="0.44" /><circle cx="40.9" cy="44" r="0.33" /><circle cx="26.2" cy="51.8" r="0.35" /><circle cx="38.4" cy="54.6" r="0.3" /></g><path d="M27 59.8h10" stroke="#e8c34a" stroke-width="1" stroke-linecap="round" opacity="0.9" /><circle cx="32" cy="59.8" r="1.1" fill="#d9a441" stroke="#9a743f" stroke-width="0.6" />');
+      }
+      if (def.id === "morrigan") {
+        /* her crow: a PROPER black crow perched big on her right shoulder — full body, cocked head, long beak, fanned tail, feet gripping her shoulder, one violet eye bright */
+        p.push('<path d="M45.8 44.8q-4.2 1.8-6 5.2" stroke="#17141f" stroke-width="2" fill="none" stroke-linecap="round" /><path d="M47.5 45.8q-3.4 2.2-4.4 5" stroke="#241f31" stroke-width="1.4" fill="none" stroke-linecap="round" /><ellipse cx="50.5" cy="42" rx="5.8" ry="4.4" fill="#17141f" /><circle cx="54.2" cy="37.8" r="3.1" fill="#17141f" /><path d="M56.9 37.2l3.6-0.9-3.3 2.5z" fill="#2b2e3a" /><circle cx="54.9" cy="37.3" r="0.72" fill="#a855f7" /><circle cx="55.1" cy="37.1" r="0.28" fill="#e9d5ff" /><path d="M47.8 39.6q4-1.8 7.4 0.6M46.8 42.8q3.4 1.4 7 0.4" stroke="#3a3350" stroke-width="0.9" fill="none" stroke-linecap="round" /><path d="M48.6 46.2l-0.4 2M52.4 46.2l0.2 2" stroke="#2b2e3a" stroke-width="0.8" stroke-linecap="round" /><path d="M47.2 48.4h2.2M51.4 48.4h2.2" stroke="#2b2e3a" stroke-width="0.8" stroke-linecap="round" />');
+      }
       if (def.id === "orin") {
         /* patchwork traveling coat — mismatched patches, dashed stitching, stitched gold stars */
         p.push('<g><rect x="21" y="51" width="9.5" height="8.5" rx="1.6" fill="#6e5638"/><rect x="34" y="52.5" width="8.5" height="7.5" rx="1.6" fill="#2e4a7d"/><path d="M21 51h9.5v8.5H21zM34 52.5h8.5v7.5H34z" fill="none" stroke="#f3ead8" stroke-width="0.65" stroke-dasharray="1.6 1.3" opacity="0.85"/><text x="25.7" y="58" font-size="4.6" text-anchor="middle" fill="#ffd94d">★</text><text x="38.2" y="58.6" font-size="4.2" text-anchor="middle" fill="#ffd94d">★</text><text x="41.5" y="46" font-size="4" text-anchor="middle" fill="#ffd94d">✦</text></g>');
       }
       if (luna) p.push('<text x="25" y="55" font-size="6" fill="#ffe9a8">✦</text><text x="36" y="57" font-size="5" fill="#ffe9a8">✦</text>');
-      if (def.id === "velkist") p.push('<path d="M44 40q7 3 6 12l-6 2z" fill="#b91c2e"/>');
+      /* Torin's cape: a deep wine-red flap behind his sword shoulder, deliberately darker than his blade's bright red edge and starting below the guard, so cloth and sword never merge into one red shape at his handle (Nov 21 follow-up) */
+      if (def.id === "velkist") p.push('<path d="M44.5 43.5q6.5 3 5.5 11l-5.5 2z" fill="#8f1626"/>');
       /* Yurneth's green pendant on its dark cord, and the twin daggers sheathed at his belt — silver blades, gold guards, dark grips */
       if (def.id === "yurneth") {
-        p.push('<path d="M26.5 39.5q5.5 4.5 11 0" stroke="#2b2e3a" stroke-width="0.9" fill="none"/><ellipse cx="32" cy="44.4" rx="1.7" ry="2.3" fill="#35a05f" stroke="#d9b45a" stroke-width="0.7"/><g stroke-linecap="round"><path d="M24.5 51.5v3.2" stroke="#4a3626" stroke-width="1.8"/><path d="M22.9 55.2h3.2" stroke="#d9b45a" stroke-width="1.1"/><path d="M24.5 55.7l-1.1 4.4h2.2z" fill="#cfd8e6" stroke="none"/><path d="M39.5 51.5v3.2" stroke="#4a3626" stroke-width="1.8"/><path d="M37.9 55.2h3.2" stroke="#d9b45a" stroke-width="1.1"/><path d="M39.5 55.7l-1.1 4.4h2.2z" fill="#cfd8e6" stroke="none"/></g>');
+        p.push('<path d="M26.5 39.5q5.5 4.5 11 0" stroke="#2b2e3a" stroke-width="0.9" fill="none"/><ellipse cx="32" cy="44.4" rx="1.7" ry="2.3" fill="#35a05f" stroke="#d9b45a" stroke-width="0.7"/><g stroke-linecap="round"><path d="M24.5 51.5v3.2" stroke="#4a3626" stroke-width="1.8"/><path d="M22.9 55.2h3.2" stroke="#d9b45a" stroke-width="1.1"/><path d="M23.4 55.7h2.2l-1.1 4.4z" fill="#cfd8e6" stroke="none"/><path d="M39.5 51.5v3.2" stroke="#4a3626" stroke-width="1.8"/><path d="M37.9 55.2h3.2" stroke="#d9b45a" stroke-width="1.1"/><path d="M38.4 55.7h2.2l-1.1 4.4z" fill="#cfd8e6" stroke="none"/></g>');
       }
-      /* ---- The Ara twins, told apart (Rachel, Nov 20): no more matched hooded pair. Nyx: wispy strands framing her face, a spiderweb worked on her shoulder, violet smoke curling at her hems. Kael: violet tips on his short spikes, a dagger earring, a crescent-moon pendant on a cord, and one big silver pauldron with the crescent stamped on it. ---- */
+      /* ---- The Ara twins, told apart (Rachel, Nov 20) — and both hooded again (Rachel, Nov 21): their hoods are drawn over their hair further down, and everything that tells them apart stays visible under them. Nyx: wispy strands framing her face, a spiderweb worked on her shoulder, violet smoke curling at her hems. Kael: violet tips on his short spikes, a dagger earring, a crescent-moon pendant on a cord, and one big silver pauldron with the crescent stamped on it. ---- */
+      /* Nyx's spiderweb, worked across her left shoulder — a proper corner web: silver threads fanning from the shoulder seam, two rows of sagging cross-threads, and the weaver herself hanging below it on a thread (Nov 21 follow-up: the old few strokes at her collar read as a tiny flag on a pole, not a web — Rachel couldn't tell what it was) */
       if (def.id === "nyx") {
-        p.push('<path d="M18.5 20q-1.8 8-0.6 15M45.5 20q1.8 8 0.6 15" stroke="' + hair + '" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 24q-1 6 0.4 11M44 24q1 6-0.4 11" stroke="#5a4382" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.8"/><g stroke="#c9c2d9" stroke-width="0.7" fill="none" opacity="0.9"><path d="M21.5 39.5l7.5 3M22.5 38l1 8M21.5 39.5q4 0.5 7.5 3M21.5 39.5q0.5 4 1 6.5"/><path d="M23.5 40.2q2.8 1 4.8 2.8M23.8 43q2.4 0.8 4 2.4" stroke-width="0.55"/></g><circle cx="21.5" cy="39.5" r="0.9" fill="#d0a2ff"/><path d="M6 62q4-3 8-1.5M50 64q5-3.5 9-2" stroke="#8b5cf6" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.55"/><path d="M8 57q3-2.4 6.5-1.4M52 59q4-2.8 7.5-1.8" stroke="#a78bfa" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.45"/>');
+        p.push('<path d="M18.5 20q-1.8 8-0.6 15M45.5 20q1.8 8 0.6 15" stroke="' + hair + '" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M20 24q-1 6 0.4 11M44 24q1 6-0.4 11" stroke="#5a4382" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.8"/><g stroke="#c9c2d9" stroke-width="0.7" fill="none" opacity="0.95" stroke-linecap="round"><path d="M21 39l9.5 1.8M21 39l7.8 6.4M21 39l3.4 9.6"/><path d="M26.2 40q-0.6 1.3-0.9 2.5M25.3 42.5q-1.3 1-2.4 1.8" stroke-width="0.55"/><path d="M29.4 40.6q-0.9 2-1.5 4M27.9 44.6q-2 1.6-3.9 2.9" stroke-width="0.55"/></g><path d="M29.8 41.6v5.2" stroke="#c9c2d9" stroke-width="0.55" stroke-linecap="round"/><g stroke="#c9c2d9" stroke-width="0.45" stroke-linecap="round" fill="none"><path d="M28.7 47.2l-1.5-1M28.6 48.2l-1.6 0.1M28.7 49.1l-1.3 1.1M30.9 47.2l1.5-1M31 48.2l1.6 0.1M30.9 49.1l1.3 1.1"/></g><circle cx="29.8" cy="48.2" r="1.35" fill="#17101f" stroke="#c9c2d9" stroke-width="0.45"/><circle cx="29.8" cy="47.5" r="0.5" fill="#d0a2ff"/><path d="M6 62q4-3 8-1.5M50 64q5-3.5 9-2" stroke="#8b5cf6" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.55"/><path d="M8 57q3-2.4 6.5-1.4M52 59q4-2.8 7.5-1.8" stroke="#a78bfa" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.45"/>');
       }
       if (def.id === "kael") {
-        p.push('<path d="M21 13.5l1.8-3M28 10.8l1.2-3.2M36 10.8l1.4-3M43 13.5l1.8-2.8" stroke="#8b5cf6" stroke-width="1.7" stroke-linecap="round" opacity="0.95"/><path d="M47.6 30.5v2.6" stroke="#c9c2d9" stroke-width="0.8" stroke-linecap="round"/><path d="M47.6 33.1l-1.1 3.4h2.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.4"/><path d="M26 38.5q6 3.6 12 0" stroke="#2b2e3a" stroke-width="0.8" fill="none"/><text x="32" y="43.8" font-size="5" text-anchor="middle" fill="#e8ecf2">☾</text><path d="M19 45.5v-2.8a6.2 6.2 0 0 1 12.4 0v2.8z" fill="#c9ced9" stroke="#8a93a8" stroke-width="1"/><path d="M19.8 42.8h10.8" stroke="#8a93a8" stroke-width="0.8"/><text x="25.2" y="44.8" font-size="5" text-anchor="middle" fill="#4a3a6e">☾</text>');
+        p.push('<path d="M21 13.5l1.8-3M28 10.8l1.2-3.2M36 10.8l1.4-3M43 13.5l1.8-2.8" stroke="#8b5cf6" stroke-width="1.7" stroke-linecap="round" opacity="0.95"/><path d="M47.6 30.5v2.6" stroke="#c9c2d9" stroke-width="0.8" stroke-linecap="round"/><path d="M47.6 33.1l-1.1 3.4h2.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.4"/><path d="M26 38.5q6 3.6 12 0" stroke="#2b2e3a" stroke-width="0.8" fill="none"/><text x="32" y="43.8" font-size="5" text-anchor="middle" fill="#e8ecf2">☾</text><path d="M17.6 43.6v-2a4.5 4.5 0 0 1 9 0v2z" fill="#c9ced9" stroke="#8a93a8" stroke-width="0.9"/><path d="M18.3 41.7h7.6" stroke="#8a93a8" stroke-width="0.7"/><text x="22.1" y="43.5" font-size="3.8" text-anchor="middle" fill="#4a3a6e">☾</text>');
+      }
+      if (def.id === "ysolde") {
+        /* her mirror glint: a bright diagonal shine struck across her mirrored plate, the paradise as it was flashing back */
+        p.push('<g stroke="#ffffff" fill="none" stroke-linecap="round"><path d="M24 40l13 15" stroke-width="2.4" opacity="0.75" /><path d="M29 39.5l11 12.5" stroke-width="1.1" opacity="0.55" /><path d="M23.5 47l6 7" stroke-width="1" opacity="0.45" /><text x="41" y="44" font-size="5" fill="#ffffff" stroke="none" opacity="0.9">✦</text></g>');
+      }
+      if (def.id === "eldric") {
+        /* his rune tattoos: glowing BLUE rune lines on his ARMS, like his portrait */
+        p.push('<g stroke="#7dd3fc" stroke-linecap="round" fill="none"><path d="M22.2 46.5v5.5M22.2 46.5l2.5 1.8M22.2 49.3l2.5 1.8" stroke-width="1" opacity="0.95" /><path d="M41.8 46.5l-2.3 3.2 2.3 3.2M39.9 49.7h3" stroke-width="1" opacity="0.9" /><circle cx="22.4" cy="49.5" r="2.7" fill="#38bdf8" opacity="0.13" stroke="none" /><circle cx="41.4" cy="49.7" r="2.5" fill="#38bdf8" opacity="0.12" stroke="none" /></g>');
       }
       p.push('<ellipse cx="26" cy="65" rx="4.6" ry="2.5" fill="#4a3568"/><ellipse cx="38" cy="65" rx="4.6" ry="2.5" fill="#4a3568"/>');
       if (def.id === "zinnia") {
@@ -4996,12 +5203,16 @@
         p.push('<path d="M18 14q-2-10 4-12q3 5 4 10z" fill="#e5484d"/><path d="M19.5 12q-0.5-6 2-8q1.5 3.5 2 7z" fill="#ffe9d6"/><path d="M46 14q2-10-4-12q-3 5-4 10z" fill="#e5484d"/><path d="M44.5 12q0.5-6-2-8q-1.5 3.5-2 7z" fill="#ffe9d6"/>');
       }
       p.push('<circle cx="32" cy="24" r="15" fill="' + skin + '"/>');
-      if (look.style === "messy" || look.style === "spiky" || look.style === "topknot") {
+      if (def.id !== "eldric" && (look.style === "messy" || look.style === "spiky" || look.style === "topknot")) {
         p.push('<path d="M17 25c0-10 6.2-16 15-16s15 6 15 16l-3.5-4.5L40 24l-3.8-5L32 23l-4-4.5L24.5 24 21 19.5 17.8 24z" fill="' + hair + '"/>');
-      } else {
+      } else if (def.id !== "eldric") {
         p.push('<path d="M17 25c0-10 6.2-16 15-16s15 6 15 16c-4-6-8.4-8.6-15-8.6S21 19 17 25z" fill="' + hair + '"/>');
       }
-      if (def.id !== "dun") { p.push('<path d="M21 14.5q5-4.5 11-4.8" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.55"/>'); }
+      if (def.id !== "dun" && def.id !== "eldric") { p.push('<path d="M21 14.5q5-4.5 11-4.8" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linecap="round" opacity="0.55"/>'); }
+      if (def.id === "eldric") {
+        /* his braided beard: white falls at his cheeks and jaw, gathering into ONE thick plait down the center of his chest — plait cross-strokes, a brass band, and a tassel end — with his mouth a firm line in the mustache */
+        p.push('<path d="M21.5 28.5q-0.8 8.5 2 13.5q1.6 2.9 4.3 4l0.4-7.2q-3.9-2.9-5.4-10.2z" fill="#f2ead2" /><path d="M42.5 28.5q0.8 8.5-2 13.5q-1.6 2.9-4.3 4l-0.4-7.2q3.9-2.9 5.4-10.2z" fill="#f2ead2" /><path d="M28.6 35.5h6.8l0.9 20.5q-4.3 1.7-8.6 0z" fill="#f2ead2" /><path d="M29.3 39.8l5.4 3M34.7 42.8l-5.4 3M29.3 45.8l5.4 3M34.7 48.8l-5.4 3M29.3 51.8l5.4 3" stroke="#d9cdb2" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.9" /><rect x="28.4" y="55.8" width="7.2" height="1.9" rx="0.9" fill="#b08954" /><path d="M30.2 57.7q-0.4 2.8 0.6 5M32 57.7v5.4M33.8 57.7q0.4 2.8-0.6 5" stroke="#e8dfc8" stroke-width="1.1" fill="none" stroke-linecap="round" /><path d="M28.5 30.5q3.5 1.6 7 0" stroke="#d9cdb2" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.9" /><path d="M29.2 32.2q2.8-1.1 5.6 0" stroke="#7a5a3a" stroke-width="1.1" fill="none" stroke-linecap="round" />');
+      }
       if (def.id === "keeper") {
         /* ash-grey hair falling well past his shoulders, streaked black where the Unmaking touched him */
         p.push('<g fill="' + hair + '"><rect x="13.5" y="20" width="5.5" height="26" rx="2.7"/><rect x="45" y="20" width="5.5" height="26" rx="2.7"/></g>');
@@ -5022,7 +5233,7 @@
       }
       if (def.id === "vesper") {
         /* gold threads woven through the curls, catching the light */
-        p.push('<g fill="none" stroke="#e8c34a" stroke-width="0.9" stroke-linecap="round" opacity="0.95"><path d="M13 13q19-10 38 1"/><path d="M11 23q21-12 42-1"/><path d="M18 7q14 7 30 3"/><path d="M15 32q-2 5 1 9M49 32q2 5-1 9"/></g><text x="12" y="20" font-size="5" fill="#ffd94d">✦</text><text x="50" y="11" font-size="4.5" fill="#ffd94d">✦</text>');
+        p.push('<g stroke="#e8c34a" stroke-width="0.75" fill="none" stroke-linecap="round" opacity="0.95"><path d="M19 4.5q11 7 23 3.5" /><path d="M23 11.5q9-5.5 19 0.5" /><path d="M13 12q7 5 5 11q-1.6 6 2 12q0.4 5-1 9" /><path d="M18.5 8q5.5 6 4 12.5q-1.2 6 1.5 11" opacity="0.8" /><path d="M51 12q-7 5-5 11q1.6 6-2 12q-0.3 4 0.7 7.5" /><path d="M47 18q6 4 6.5 10q0.4 6 3 10.5" opacity="0.9" /><path d="M49.5 30q5 3 6.5 8.5q1 4 3.5 7" stroke="#ffd94d" /></g><g fill="#ffe98a"><circle cx="26" cy="8.6" r="0.65" /><circle cx="38" cy="9.4" r="0.55" /><circle cx="16" cy="24" r="0.6" /><circle cx="48.5" cy="25" r="0.6" /><circle cx="54.5" cy="36" r="0.65" /><circle cx="21" cy="37" r="0.5" /></g><text x="20" y="13" font-size="4.4" fill="#ffd94d">✦</text><text x="43" y="17" font-size="3.8" fill="#ffd94d">✦</text>');
       }
       if (def.id === "orin") {
         /* loose copper topknot with a single feather, and golden motes drifting around him */
@@ -5030,12 +5241,20 @@
         p.push('<text x="10" y="18" font-size="5.5" fill="#ffd94d" opacity="0.95">✦</text><text x="52" y="24" font-size="4.5" fill="#ffd94d" opacity="0.85">✧</text>');
       }
       if (def.id === "draven") {
-        p.push('<g fill="#2ea8c4" stroke="#1d7d99" stroke-width="0.8"><path d="M22 11q-4-8-9-9q3 5 3 9q0 3 2 4q1-3 4-4z"/><path d="M42 11q4-8 9-9q-3 5-3 9q0 3-2 4q-1-3-4-4z"/></g>');
-        p.push('<g><path d="M42.5 30.5q2.2-1.6 4.4 0q-2.2 1.8-4.4 0zM44.8 33.6q1.8-1.3 3.6 0q-1.8 1.5-3.6 0z" fill="#3fc1dd" opacity="0.65"/><text x="7" y="34" font-size="6" fill="#67e8f9" opacity="0.9">✦</text><text x="55" y="30" font-size="5" fill="#67e8f9" opacity="0.75">✧</text><text x="58" y="46" font-size="6" fill="#a5f3fc" opacity="0.85">✦</text></g>');
+        p.push('<g fill="#2ea8c4" stroke="#1d7d99" stroke-width="0.8"><path d="M22 13q-1-8-6.5-12.5q0.5 5-0.8 8.5q-1.2 3.2-0.4 6.2q1.8-2.8 4.4-2.4q1.8 0.3 2.8 2.2z" /><path d="M42 13q1-8 6.5-12.5q-0.5 5 0.8 8.5q1.2 3.2 0.4 6.2q-1.8-2.8-4.4-2.4q-1.8 0.3-2.8 2.2z" /><path d="M16.8 4.2q2 0.8 2.6 2.8M47.2 4.2q-2 0.8-2.6 2.8M15.6 8.6q2.2 0.6 3 2.6M48.4 8.6q-2.2 0.6-3 2.6" stroke="#1d7d99" stroke-width="0.75" fill="none" stroke-linecap="round" opacity="0.85" /></g>');
+        p.push('<g><g fill="#3fc1dd" opacity="0.6"><path d="M37.5 27.5q2-1.5 4 0q-2 1.7-4 0zM39.8 30.3q1.9-1.4 3.8 0q-1.9 1.6-3.8 0zM37.8 32.8q1.8-1.3 3.6 0q-1.8 1.5-3.6 0zM40.5 35.2q1.6-1.2 3.2 0q-1.6 1.4-3.2 0zM38.6 37.6q1.5-1.1 3 0q-1.5 1.3-3 0z" /><path d="M21.5 30.3q1.9-1.4 3.8 0q-1.9 1.6-3.8 0zM22.8 33.4q1.6-1.2 3.2 0q-1.6 1.4-3.2 0z" opacity="0.8" /></g><g><circle cx="47.3" cy="29.5" r="1.05" fill="#d9b45a" stroke="#9a743f" stroke-width="0.5" /><path d="M47.3 30.5l-1.3 3.2 1.9-0.8-0.9 2.4 2-2.9-1.7-0.4z" fill="#38c8dd" stroke="#1d7d99" stroke-width="0.45" /></g><text x="7" y="34" font-size="6" fill="#67e8f9" opacity="0.9">✦</text><text x="55" y="30" font-size="5" fill="#67e8f9" opacity="0.75">✧</text><text x="58" y="46" font-size="6" fill="#a5f3fc" opacity="0.85">✦</text></g>');
+      }
+      if (def.id === "draven") {
+        /* his LONG flowing hair: two cyan locks falling past his shoulders beside his face, plus two wind-streamed strands flying off his left side */
+        p.push('<path d="M15.5 20q-2.5 18 0.5 34l5.5-1.5q-2.5-16-2-32.5z" fill="' + hair + '"/><path d="M48.5 20q2.5 18-0.5 34l-5.5-1.5q2.5-16 2-32.5z" fill="' + hair + '"/><path d="M18 26q-1 12 0.5 24M46 26q1 12-0.5 24" stroke="#2a9db8" stroke-width="0.9" fill="none" stroke-linecap="round" opacity="0.8" /><path d="M15 27q-7-1.5-11.5 2q5 1.8 11.5 1.2zM15.8 34.5q-6.5 0.5-10.3 4.5q5.3 0.6 10.8-1.2z" fill="' + hair + '" opacity="0.95" />');
+      }
+      if (def.id === "rurik") {
+        /* his single folded crimson dragon wing over his left shoulder, deep crimson membrane, near-black frame bones, a little gold flame licking off the wing's shoulder joint */
+        p.push('<path d="M21 40q-13-3-17-15q7 1 10-3q1 5 5 6q-1-5 2-8q3 8 4 15z" fill="#8e1f2f" stroke="#4a0d16" stroke-width="1.1" /><path d="M19 38q-8-6-11-12M20 34q-5-7-6-12" stroke="#4a0d16" stroke-width="0.9" fill="none" opacity="0.75" /><path d="M20.5 39.5q-6.5-5-9.5-10.5" stroke="#c1272d" stroke-width="0.8" fill="none" opacity="0.65" /><path d="M22.5 36.8q1.7-0.8 1.7-2.6q0-1.3-1-2.3q-0.1 0.9-0.7 1.5q-0.6-0.6-0.7-1.4q-0.8 1-0.6 2.4q0.2 1.6 1.9 2.1z" fill="#e8a812" opacity="0.95" /><path d="M22.4 35.2q0.8-0.4 0.8-1.3q0-0.6-0.4-1.1q-0.1 0.4-0.3 0.7q-0.3-0.3-0.4-0.7q-0.4 0.5-0.3 1.2q0.1 0.8 0.9 1z" fill="#ffd94d" />');
       }
       if (def.id === "rurik") {
         p.push('<g fill="#2b2320" stroke="#14100e" stroke-width="0.8"><path d="M22 11q-5-8-11-9q4 5 4 10q0 3 2 4q1-4 5-5z"/><path d="M42 11q5-8 11-9q-4 5-4 10q0 3-2 4q-1-4-5-5z"/><path d="M15 6q2 1 4 0M49 6q-2 1-4 0" stroke="#4a3a30" stroke-width="1" fill="none"/></g>');
-        p.push('<g><path d="M17.5 30.5q2.2-1.6 4.4 0q-2.2 1.8-4.4 0zM15.2 33.6q1.8-1.3 3.6 0q-1.8 1.5-3.6 0z" fill="#c1272d" opacity="0.7"/><text x="5" y="44" font-size="7">🔥</text><text x="56" y="38" font-size="5.5">🔥</text></g>');
+        p.push('<g><path d="M17.5 30.5q2.2-1.6 4.4 0q-2.2 1.8-4.4 0zM15.2 33.6q1.8-1.3 3.6 0q-1.8 1.5-3.6 0z" fill="#c1272d" opacity="0.7"/><path d="M21.8 57.5q1.9-0.9 1.9-2.9q0-1.5-1.2-2.6q-0.1 1-0.8 1.7q-0.7-0.7-0.8-1.6q-0.9 1.2-0.7 2.7q0.2 1.8 2.1 2.3z" fill="#ff7a3c" opacity="0.95" /><path d="M42.6 52.5q1.7-0.8 1.7-2.6q0-1.3-1-2.3q-0.1 0.9-0.7 1.5q-0.6-0.6-0.7-1.4q-0.8 1-0.6 2.4q0.2 1.6 1.9 2.1z" fill="#e8a812" opacity="0.95" /></g>');
       }
       if (def.id === "brynn") {
         /* her full steel helmet — dome, violet-trimmed band, cheek guards and nasal, tower emblem on the brow; every strand of hair is tucked inside */
@@ -5047,6 +5266,16 @@
       }
       if (look.style === "hooded") {
         p.push('<path d="M12 28a20 20 0 0 1 40 0l-4.6 0.4a15.4 15.4 0 0 0-30.8 0z" fill="' + robe + '"/><path d="M16.6 28.4a15.4 15.4 0 0 1 30.8 0" fill="none" stroke="' + trim + '" stroke-width="1.3"/>');
+      }
+      /* The Ara twins' hoods — UP again (Rachel, Nov 21: both siblings hooded, the way their portraits wear them). One pointed hood in each twin's own robe cloth, and everything that tells them apart stays visible under it: Nyx's face-framing wisps are redrawn inside the opening and her long hair still pours out below the drape; Kael's spiky fringe fills his opening, his violet tips poke out over the rim, and his dagger earring hangs outside the drape — Rachel likes that earring, it does not come off */
+      if (def.id === "nyx" || def.id === "kael") {
+        p.push('<path d="M14.5 34.5q-1.8-11 2.8-18.5Q22 7.5 32 7.5q10 0 14.7 9q4.6 7.5 2.8 18.5l-5.4 0.2q0.6-8.8-2.4-14.6Q38.4 13.8 32 13.8q-6.4 0-9.4 6.3Q19.6 25.9 20.2 34.7z" fill="' + robe + '"/><path d="M20.2 34.7q-0.6-8.8 2.4-14.6M43.8 34.7q0.6-8.8-2.4-14.6" stroke="' + trim + '" stroke-width="1.1" fill="none" stroke-linecap="round" opacity="0.9"/><path d="M17.8 31.5q-0.8-6 1.2-11M46.2 31.5q0.8-6-1.2-11" stroke="#00000022" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M24 10.2q8-2.2 16 0" stroke="#ffffff" stroke-width="1.3" fill="none" stroke-linecap="round" opacity="0.18"/>');
+      }
+      if (def.id === "nyx") {
+        p.push('<g fill="none" stroke-linecap="round"><path d="M21.8 20.5q-1.3 7-0.4 12.5M42.2 20.5q1.3 7 0.4 12.5" stroke="' + hair + '" stroke-width="1.9"/><path d="M23.6 23q-0.8 5 0.2 9.5M40.4 23q0.8 5-0.2 9.5" stroke="#5a4382" stroke-width="0.85" opacity="0.85"/></g>');
+      }
+      if (def.id === "kael") {
+        p.push('<g><path d="M25.5 15.8l-0.9-3.1M32 14.9v-3.3M38.5 15.8l0.9-3.1" stroke="#8b5cf6" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.95"/><path d="M47.6 30.5v2.6" stroke="#c9c2d9" stroke-width="0.8" stroke-linecap="round"/><path d="M47.6 33.1l-1.1 3.4h2.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.4"/></g>');
       }
       if (def.id === "sella") {
         p.push('<path d="M18 12q14-9 28 0q1 3-3 3q-11-4-22 0q-4 0-3-3z" fill="#2e4a7d"/><text x="44" y="12" font-size="7">⚡</text>');
@@ -5061,11 +5290,11 @@
         p.push('<g><text x="45" y="14" font-size="7" text-anchor="middle" fill="#ffd94d">✦</text><line x1="46.5" y1="14" x2="46.5" y2="20" stroke="#ffd94d" stroke-width="1.4" stroke-linecap="round"/><text x="16" y="34" font-size="6">🎀</text></g>');
       }
       if (def.id === "velkist") p.push('<path d="M41 20l-2.5 9" stroke="#c98a6a" stroke-width="1.6" stroke-linecap="round"/>');
-      /* Yurneth's scar: one long slash kept on purpose across his cheek — the wound he refused to let the tower heal */
-      if (def.id === "yurneth") p.push('<path d="M43 24l-3.5 7" stroke="#c98a6a" stroke-width="1.6" stroke-linecap="round"/>');
-      /* Yurneth's long flowing hair: silver locks falling well past his shoulders on both sides, the way his portrait wears it — never the short bob the generic styles would give him */
+      /* Yurneth's scar: a thin pale line across his cheek, below the eye — the wound he refused to let the tower heal (Nov 21 follow-up: the old thick brown bar sat ON his right eye and read as a random brown mark; his portrait's scar is a fine pale line on the cheek, never over the eye) */
+      if (def.id === "yurneth") p.push('<path d="M43.5 32l-3.3 3.9" stroke="#eac9a0" stroke-width="0.9" stroke-linecap="round" opacity="0.95"/>');
+      /* Yurneth's shoulder-length locks: silver hair falling to his shoulders on both sides, the way his portrait wears it, the ends flicking outward in the wind — never the waist-length veil the long fall gave him (Nov 21 follow-up) */
       if (def.id === "yurneth") {
-        p.push('<rect x="14.6" y="18" width="4" height="32" rx="2" fill="' + hair + '"/><rect x="45.4" y="18" width="4" height="32" rx="2" fill="' + hair + '"/><path d="M16.6 24v22M47.4 24v22" stroke="#c3cede" stroke-width="0.9" stroke-linecap="round" opacity="0.8"/>');
+        p.push('<path d="M19 17.5q-3.4 5.5-2.8 11.5q0.5 5-1.4 8.8q3.2 1.2 5-1.2q-1-4-0.2-8.6q0.8-5-0.9-10z" fill="' + hair + '"/><path d="M45 17.5q3.4 5.5 2.8 11.5q-0.5 5 1.4 8.8q-3.2 1.2-5-1.2q1-4 0.2-8.6q-0.8-5 0.9-10z" fill="' + hair + '"/><g stroke="#aebdd2" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.85"><path d="M21 11.5q9-3.5 19-1.5" /><path d="M20 16.5q10-3.8 21-1.2" /><path d="M22.5 7.8q8-2.2 15 0.6" /><path d="M17.8 22q-1 5 0.2 9.5M46.2 22q1 5-0.2 9.5" stroke-width="0.85" /></g><g stroke="#8fa2ba" stroke-width="0.85" fill="none" stroke-linecap="round" opacity="0.8"><path d="M24 13.8q8-2.8 16-1M25 19q7-2.2 14-0.6" /></g><path d="M15.2 37.2q2 2 4.2 0.6M44.6 37.6q2.2 1.4 4.2-0.6" stroke="' + hair + '" stroke-width="1.4" fill="none" stroke-linecap="round" />');
       }
       if (def.id === "tomas") p.push('<rect x="37" y="14" width="6" height="3.4" rx="1.4" fill="#f5e6c8" stroke="#c9a86a" stroke-width="0.7" transform="rotate(18 40 16)"/>');
       p.push('<ellipse cx="25.6" cy="26" rx="2.9" ry="3.9" fill="' + eye + '"/><ellipse cx="38.4" cy="26" rx="2.9" ry="3.9" fill="' + eye + '"/>');
@@ -5133,10 +5362,6 @@
         p.push('<circle cx="29.5" cy="34.6" r="1.1" fill="#c9c2d9" stroke="#8a93a8" stroke-width="0.5"/>');
         p.push('<path d="M22 39.5h20" stroke="#c9c2d9" stroke-width="2" stroke-linecap="round"/><path d="M25 38l1.5 3M29.5 38l1.5 3M34 38l1.5 3M38.5 38l1.5 3" stroke="#8a93a8" stroke-width="1" stroke-linecap="round"/><path d="M24 41.5q8 3 16 0" stroke="#8a93a8" stroke-width="0.9" fill="none" opacity="0.7"/>');
         p.push('<g><rect x="5" y="46" width="10" height="13" rx="1.5" fill="#6e5638" stroke="#4a3626" stroke-width="0.8"/><rect x="6.5" y="47.5" width="7" height="10" rx="1" fill="#f3ead8"/><path d="M8.5 50h3.5M8.5 53h3.5M8.5 55.5h2.5" stroke="#8a6f4d" stroke-width="0.7"/></g>');
-      }
-      if (def.id === "ilya") {
-        /* thorns woven through the green braid, and a sprig of the last garden wall at his collar */
-        p.push('<path d="M26 10l3 4M30 8l2.5 4.5M34 9l2 4" stroke="#2f7d3a" stroke-width="1.4" stroke-linecap="round"/><path d="M24 44q8 4 16 0" stroke="#2f7d3a" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="32" cy="45.5" r="1.6" fill="#4ade80"/>');
       }
       p.push('<path d="M29.6 31.6q2.4 2.8 4.8 0q-0.6 2.6-2.4 2.6q-1.8 0-2.4-2.6z" fill="#e2607a"/>');
       p.push('<ellipse cx="19.8" cy="30" rx="3.1" ry="1.7" fill="#ff9db1" opacity="0.85"/><ellipse cx="44.2" cy="30" rx="3.1" ry="1.7" fill="#ff9db1" opacity="0.85"/>');
@@ -5212,10 +5437,11 @@
           designs, not side props, so their branches counter-shift back
           to exactly where they always were; Diddle's book, tucked under
           his far arm, does the same. */
-      p.push('<ellipse cx="19" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/><ellipse cx="45" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/>');
+      if (def.id !== "orin" && def.id !== "silas") { p.push('<ellipse cx="19" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/><ellipse cx="45" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/>'); }
       p.push('<g transform="translate(-6 0)">');
       if (luna) {
-        p.push('<line x1="53" y1="20" x2="53" y2="58" stroke="#8f7fe0" stroke-width="2.4" stroke-linecap="round" /><text x="53" y="17" font-size="13" text-anchor="middle">🌙</text>');
+        /* her crescent, DRAWN in gold — the 🌙 glyph rendered as a hollow box at the top of her staff (Nov 21 follow-up) */
+        p.push('<line x1="53" y1="20" x2="53" y2="58" stroke="#8f7fe0" stroke-width="2.4" stroke-linecap="round" /><path fill-rule="evenodd" fill="#ffd94d" stroke="#d9a441" stroke-width="0.7" d="M53 2.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17z M58.5 3a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0-15z" /><path d="M62.5 5.6l1.1 2.5 2.5 1.1-2.5 1.1-1.1 2.5-1.1-2.5-2.5-1.1 2.5-1.1z" fill="#ffe9a8" stroke="#d9a441" stroke-width="0.4" stroke-linejoin="round" />');
       } else if (def.id === "aaron" || def.id === "dain") {
       /* a real spear: long shaft + steel leaf tip */
         p.push('<line x1="55" y1="58" x2="55" y2="16" stroke="#8a6f4d" stroke-width="2.6" stroke-linecap="round" /><path d="M55 4l3.4 9L55 16l-3.4-3z" fill="#d7dee9" stroke="#8a93a8" stroke-width="0.8" />');
@@ -5224,7 +5450,8 @@
       } else if (def.id === "sella") {
         p.push('<line x1="53" y1="24" x2="53" y2="58" stroke="#2e4a7d" stroke-width="2.4" stroke-linecap="round" /><text x="53" y="22" font-size="13" text-anchor="middle">⚡</text>');
       } else if (def.id === "nerissa") {
-        p.push('<line x1="53" y1="24" x2="53" y2="58" stroke="#d9b45a" stroke-width="2.4" stroke-linecap="round" /><text x="53" y="22" font-size="12" text-anchor="middle">🔮</text>');
+        /* her orb, DRAWN as a glass sphere with light moving in it — the 🔮 glyph rendered as a hollow box on her staff (Nov 21 follow-up) */
+        p.push('<line x1="53" y1="24" x2="53" y2="58" stroke="#d9b45a" stroke-width="2.4" stroke-linecap="round" /><circle cx="53" cy="17" r="6.4" fill="#cfe9ff" stroke="#d9b45a" stroke-width="1" /><path d="M49.3 18.6q3.7-4.2 7.4 0q-3.7 2.8-7.4 0z" fill="#8b5cf6" opacity="0.55" /><circle cx="50.8" cy="14.4" r="1.5" fill="#ffffff" opacity="0.9" /><rect x="50.6" y="22.8" width="4.8" height="1.8" rx="0.9" fill="#d9b45a" />');
       } else if (def.id === "pippa") {
       /* her slingshot, a proper Y held up in her right hand like her portrait: forked wooden frame, red elastic bands, a leather pouch and a stone (Nov 20 follow-up: the old cords-and-pouch read as floating rectangles and a stick) */
         p.push('<path d="M51 58V47M51 47l-4.5-8.5M51 47l4.5-8.5" stroke="#8a6f4d" stroke-width="2.3" fill="none" stroke-linecap="round" /><rect x="49.9" y="47" width="2.2" height="11" rx="1.1" fill="#7a5a30" /><path d="M46.5 38.5L49.2 43M55.5 38.5L52.8 43" stroke="#b03a2e" stroke-width="1.4" stroke-linecap="round" /><ellipse cx="51" cy="44" rx="2.7" ry="1.7" fill="#6e4f35" /><circle cx="51" cy="43.2" r="1.8" fill="#9aa3b5" />');
@@ -5240,7 +5467,7 @@
         p.push('<path d="M52 50q-15-5-25 1q9 5 19 2" fill="none" stroke="#e5384f" stroke-width="1.6" stroke-linecap="round" opacity="0.85" /><path d="M53 57q-11 7-23 5q9-3 13-9" fill="none" stroke="#e5384f" stroke-width="1.3" stroke-linecap="round" opacity="0.7" /><path d="M56 48q9-7 16-5q-7 3-11 9" fill="none" stroke="#f0657f" stroke-width="1.4" stroke-linecap="round" opacity="0.8" /><path d="M50 54q-6 3-12 1" fill="none" stroke="#f0657f" stroke-width="1.1" stroke-linecap="round" opacity="0.65" /><g><path d="M54 54 L42 32 A25 25 0 0 1 66 32 Z" fill="#c1272d" stroke="#ffd94d" stroke-width="1" /><path d="M54 54 L47 31 M54 54 L54 29 M54 54 L61 31" stroke="#ffd94d" stroke-width="1.3" /><path d="M42 32l-1.6-4.4L45 30zM54 29v-5l2.8 3.8zM66 32l1.6-4.4L63 30z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><circle cx="54" cy="54" r="2" fill="#ffd94d" /></g>');
       } else if (def.id === "nyx") {
       /* Nyx's twin daggers — one gripped in EACH hand, the grips seated exactly in her palms and the blades angled down-inward, points converging low in front of her like her portrait's cross (Nov 20 follow-up: the old pair floated beside her hands, neither gripped) */
-        p.push('<g transform="rotate(-20 25 52.5)"><rect x="23.9" y="49" width="2.2" height="7" rx="1.1" fill="#4a3568" /><circle cx="25" cy="48.2" r="1.3" fill="#c9c2d9" /><rect x="22.5" y="55.8" width="5" height="1.8" rx="0.9" fill="#c9c2d9" /><path d="M23.6 57.6h2.8l-1.4 10.5z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.6" /></g><g transform="rotate(20 51 52.5)"><rect x="49.9" y="49" width="2.2" height="7" rx="1.1" fill="#4a3568" /><circle cx="51" cy="48.2" r="1.3" fill="#c9c2d9" /><rect x="48.5" y="55.8" width="5" height="1.8" rx="0.9" fill="#c9c2d9" /><path d="M49.6 57.6h2.8l-1.4 10.5z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.6" /></g>');
+        p.push('<g transform="rotate(-20 25 52.5)"><rect x="23.9" y="49" width="2.2" height="7" rx="1.1" fill="#4a3568" /><circle cx="25" cy="48.2" r="1.3" fill="#c9c2d9" /><rect x="22.5" y="55.8" width="5" height="1.8" rx="0.9" fill="#c9c2d9" /><path d="M23.6 57.6h2.8l-1.4 10.5z" fill="#cfe3d2" stroke="#7fae7d" stroke-width="0.6" /><path d="M25 58.6v8.2" stroke="#57d977" stroke-width="1" stroke-linecap="round" opacity="0.85" /><path d="M24 59l-0.3 6M26 59l0.3 6" stroke="#a855f7" stroke-width="0.5" stroke-linecap="round" opacity="0.55" /><path d="M25 68.9q1.2 1.7 0 2.7q-1.2-1 0-2.7z" fill="#57d977" opacity="0.9" /></g><g transform="rotate(20 51 52.5)"><rect x="49.9" y="49" width="2.2" height="7" rx="1.1" fill="#4a3568" /><circle cx="51" cy="48.2" r="1.3" fill="#c9c2d9" /><rect x="48.5" y="55.8" width="5" height="1.8" rx="0.9" fill="#c9c2d9" /><path d="M49.6 57.6h2.8l-1.4 10.5z" fill="#cfe3d2" stroke="#7fae7d" stroke-width="0.6" /><path d="M51 58.6v8.2" stroke="#57d977" stroke-width="1" stroke-linecap="round" opacity="0.85" /><path d="M50 59l-0.3 6M52 59l0.3 6" stroke="#a855f7" stroke-width="0.5" stroke-linecap="round" opacity="0.55" /><path d="M51 68.9q1.2 1.7 0 2.7q-1.2-1 0-2.7z" fill="#57d977" opacity="0.9" /></g>');
       } else if (def.id === "kael") {
       /* Kael's ONE long sword, gripped in his right hand and held down at his side, blade pointing at the ground — the grip seated exactly in his palm, silver guard below his fist (Nov 20 follow-up: the old sword stood beside his hand with the hilt below it, ungripped) */
         p.push('<g transform="rotate(6 51 52.5)"><rect x="49.9" y="48.5" width="2.2" height="8" rx="1.1" fill="#453064" /><circle cx="51" cy="47.6" r="1.4" fill="#c9ced9" /><rect x="46.9" y="56.3" width="8.2" height="2.2" rx="1.1" fill="#c9ced9" /><path d="M48.8 58.5h4.4v9.5L51 74l-2.2-5.5z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.6" /><path d="M51 61v9" stroke="#b45cff" stroke-width="0.8" stroke-linecap="round" opacity="0.65" /></g>');
@@ -5252,13 +5479,13 @@
         p.push('<g transform="rotate(14 54 40)"><rect x="52.8" y="42" width="2.6" height="8" rx="1.1" fill="#4a2b1a" /><rect x="49.4" y="40" width="9.4" height="2.4" rx="1.1" fill="#d9a441" /><path d="M54.1 12l2.5 14v14h-5V26z" fill="#3a3f4a" stroke="#d9a441" stroke-width="0.7" /><path d="M54.1 16v20" stroke="#ff7a3c" stroke-width="1.3" stroke-linecap="round" /></g>');
       } else if (def.id === "vesper") {
       /* her little wooden puppet, SMALL and standing on the ground beside her on thin silver strings — the pre-fix version Rachel preferred (Nov 20 follow-up: the enlarged puppet floated at chest height; it stands again) */
-        p.push('<g stroke="#dfe6f2" stroke-width="0.6" opacity="0.85"><path d="M50 14 L57 48" /><path d="M58 12 L59.5 48" /><path d="M62 16 L62 56" /><path d="M46 18 L54.5 56" /></g><g><rect x="56.8" y="42.8" width="4.8" height="3.6" rx="0.7" fill="#232a5e" /><rect x="55.6" y="46" width="7.2" height="1.3" rx="0.6" fill="#232a5e" /><rect x="56.8" y="45.2" width="4.8" height="1" fill="#e8c34a" /><text x="59.2" y="46" font-size="3" text-anchor="middle" fill="#ffd94d">☾</text><circle cx="59.2" cy="50" r="3" fill="#c9a06a" stroke="#9a743f" stroke-width="0.6" /><circle cx="58.2" cy="49.7" r="0.5" fill="#2b1c10" /><circle cx="60.2" cy="49.7" r="0.5" fill="#2b1c10" /><path d="M58.1 51.6q1.1 0.9 2.2 0" stroke="#2b1c10" stroke-width="0.55" fill="none" stroke-linecap="round" /><path d="M56.5 54 L54.3 58.5 M61.9 54 L64 58.5" stroke="#c9a06a" stroke-width="1.5" stroke-linecap="round" /><rect x="56.6" y="53.4" width="5.2" height="7.4" rx="1.4" fill="#232a5e" stroke="#e8c34a" stroke-width="0.7" /><path d="M57.8 60.8 L57 67 M60.6 60.8 L61.4 67" stroke="#c9a06a" stroke-width="1.5" stroke-linecap="round" /><circle cx="56.8" cy="68" r="1.15" fill="#5d4630" /><circle cx="61.6" cy="68" r="1.15" fill="#5d4630" /></g>');
+        p.push('<g stroke="#e8c34a" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.95"><path d="M50 14q3 17 7 34" /><path d="M58 12q1 18 1.5 36" /><path d="M62 16q0.8 20 0 40" /><path d="M46 18q4 19 8.5 38" /></g><g fill="#ffe98a"><circle cx="52.6" cy="26" r="0.6" /><circle cx="59" cy="30" r="0.55" /><circle cx="62.4" cy="36" r="0.6" /><circle cx="49.8" cy="38" r="0.5" /></g><g><rect x="56.8" y="42.8" width="4.8" height="3.6" rx="0.7" fill="#232a5e" /><rect x="55.6" y="46" width="7.2" height="1.3" rx="0.6" fill="#232a5e" /><rect x="56.8" y="45.2" width="4.8" height="1" fill="#e8c34a" /><text x="59.2" y="46" font-size="3" text-anchor="middle" fill="#ffd94d">☾</text><circle cx="59.2" cy="50" r="3" fill="#c9a06a" stroke="#9a743f" stroke-width="0.6" /><circle cx="58.2" cy="49.7" r="0.5" fill="#2b1c10" /><circle cx="60.2" cy="49.7" r="0.5" fill="#2b1c10" /><path d="M58.1 51.6q1.1 0.9 2.2 0" stroke="#2b1c10" stroke-width="0.55" fill="none" stroke-linecap="round" /><path d="M56.5 54 L54.3 58.5 M61.9 54 L64 58.5" stroke="#c9a06a" stroke-width="1.5" stroke-linecap="round" /><rect x="56.6" y="53.4" width="5.2" height="7.4" rx="1.4" fill="#232a5e" stroke="#e8c34a" stroke-width="0.7" /><path d="M57.8 60.8 L57 67 M60.6 60.8 L61.4 67" stroke="#c9a06a" stroke-width="1.5" stroke-linecap="round" /><circle cx="56.8" cy="68" r="1.15" fill="#5d4630" /><circle cx="61.6" cy="68" r="1.15" fill="#5d4630" /></g>');
       } else if (def.id === "orin") {
       /* his battered lute, held across his body in playing position like his portrait: a pear-shaped wooden body against his torso with a star-rosette sound hole and strings, and a long neck with tuning pegs rising past his hand (Nov 20 follow-up: the old round body read as a drum disc floating at his side) */
-        p.push('<path d="M50 45l11-11" stroke="#7a5a30" stroke-width="3.2" stroke-linecap="round" /><circle cx="62" cy="32.5" r="2" fill="#5d4630" /><path d="M60.5 30.5l2-1.5M61.8 33.8l2.4-0.6M59 29.8l0.8-2.4" stroke="#5d4630" stroke-width="0.9" stroke-linecap="round" /><path d="M44 41q9 1.5 10.5 10q1.3 7.8-3.8 12.5q-5.4 5-12 3.4q-6.8-1.7-8.6-8.8q-1.7-6.8 1.8-12.6q3.2-5.3 7.5-5.5z" fill="#b08954" stroke="#7a5a30" stroke-width="1" /><path d="M44 44q7 1.2 8.2 8.4q1 6-2.8 9.8" fill="none" stroke="#c49a63" stroke-width="2" opacity="0.7" stroke-linecap="round" /><circle cx="44.5" cy="53" r="2.9" fill="#4a2f18" /><text x="44.5" y="54.8" font-size="4.2" text-anchor="middle" fill="#ffd94d">★</text><path d="M47 44.5l-1.8 15M49.5 46l-1.6 14.5M52 48l-1.2 13" stroke="#e8dcc2" stroke-width="0.45" opacity="0.8" /><path d="M38.5 60.5q2 1.4 4.4 1.2" stroke="#7a5a30" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.8" />');
+        p.push('<path d="M44.5 46L57.5 32.5" stroke="#7a5a30" stroke-width="3.1" stroke-linecap="round" /><circle cx="58.6" cy="31.4" r="2.1" fill="#5d4630" /><path d="M57.2 29.6l1.8-1.6M59.8 30.2l2.2-0.7M56.4 33l-0.4 2.2" stroke="#5d4630" stroke-width="0.9" stroke-linecap="round" /><path d="M43 46.5q4.5 2.8 4.8 7.8q0.3 5.8-3.2 9.4q-3.8 3.8-9 2.6q-5.6-1.2-7.6-6.6q-1.8-5 0.8-9.6q2.4-4.2 6.2-4.6z" fill="#b08954" stroke="#7a5a30" stroke-width="1" /><path d="M41.5 49.5q3.8 2.2 4 6.4q0.2 4.4-2.2 7.4" fill="none" stroke="#c49a63" stroke-width="1.8" opacity="0.7" stroke-linecap="round" /><circle cx="35.5" cy="53" r="2.7" fill="#4a2f18" /><text x="35.5" y="54.7" font-size="3.9" text-anchor="middle" fill="#ffd94d">★</text><path d="M33.8 58.9L56.2 32.9M35.9 59.6L57.9 33.8M38 60L59.3 35" stroke="#e8dcc2" stroke-width="0.45" opacity="0.85" /><rect x="33" y="58.2" width="5.6" height="1.5" rx="0.7" fill="#5d4630" transform="rotate(-49 35.8 59)" /><path d="M30.5 63.5q2 1.4 4.4 1.2" stroke="#7a5a30" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.8" />');
       } else if (def.id === "silas") {
       /* Silas's dark lute, redrawn as a proper lute held across his body (Nov 20 follow-up: the old round body read as a black drum with a purple center): a pear-shaped body of lightless wood, a void-violet sound hole, strings, cracks, and a long neck with pegs — and the scrap of sheet music still dissolving off it into ash */
-        p.push('<path d="M50 45l11-11" stroke="#17141f" stroke-width="3.2" stroke-linecap="round" /><circle cx="62" cy="32.5" r="2" fill="#0d0b14" /><path d="M60.5 30.5l2-1.5M61.8 33.8l2.4-0.6M59 29.8l0.8-2.4" stroke="#0d0b14" stroke-width="0.9" stroke-linecap="round" /><path d="M44 41q9 1.5 10.5 10q1.3 7.8-3.8 12.5q-5.4 5-12 3.4q-6.8-1.7-8.6-8.8q-1.7-6.8 1.8-12.6q3.2-5.3 7.5-5.5z" fill="#241f31" stroke="#0d0b14" stroke-width="1" /><path d="M44 44q7 1.2 8.2 8.4q1 6-2.8 9.8" fill="none" stroke="#2e2742" stroke-width="2" opacity="0.8" stroke-linecap="round" /><circle cx="44.5" cy="53" r="2.9" fill="#7c3aed" opacity="0.85" /><circle cx="44.5" cy="53" r="1.4" fill="#c4b5fd" /><path d="M47 44.5l-1.8 15M49.5 46l-1.6 14.5M52 48l-1.2 13" stroke="#8b7fd4" stroke-width="0.45" opacity="0.6" /><path d="M38 47l3.5 2.5-2.5 2.5 3.5 2M52 60l-3 2.8 3 2.8" stroke="#0d0b14" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.9" /><g transform="rotate(18 60 30)"><rect x="57.5" y="26" width="5.5" height="7" rx="0.6" fill="#e8e4da" opacity="0.85" /><path d="M58.5 28.5h3.5M58.5 30.5h3.5" stroke="#4a4458" stroke-width="0.5" /></g><circle cx="61" cy="36" r="0.7" fill="#8b7fd4" opacity="0.7" /><circle cx="59" cy="39" r="0.55" fill="#c4b5fd" opacity="0.55" />');
+        p.push('<path d="M44.5 46L57.5 32.5" stroke="#17141f" stroke-width="3.1" stroke-linecap="round" /><circle cx="58.6" cy="31.4" r="2.1" fill="#0d0b14" /><path d="M57.2 29.6l1.8-1.6M59.8 30.2l2.2-0.7M56.4 33l-0.4 2.2" stroke="#0d0b14" stroke-width="0.9" stroke-linecap="round" /><path d="M43 46.5q4.5 2.8 4.8 7.8q0.3 5.8-3.2 9.4q-3.8 3.8-9 2.6q-5.6-1.2-7.6-6.6q-1.8-5 0.8-9.6q2.4-4.2 6.2-4.6z" fill="#241f31" stroke="#0d0b14" stroke-width="1" /><path d="M41.5 49.5q3.8 2.2 4 6.4q0.2 4.4-2.2 7.4" fill="none" stroke="#2e2742" stroke-width="1.8" opacity="0.8" stroke-linecap="round" /><circle cx="35.5" cy="53" r="2.7" fill="#7c3aed" opacity="0.85" /><circle cx="35.5" cy="53" r="1.3" fill="#c4b5fd" /><path d="M33.8 58.9L56.2 32.9M35.9 59.6L57.9 33.8M38 60L59.3 35" stroke="#8b7fd4" stroke-width="0.45" opacity="0.65" /><rect x="33" y="58.2" width="5.6" height="1.5" rx="0.7" fill="#0d0b14" transform="rotate(-49 35.8 59)" /><path d="M30.5 51l3 2.2-2.2 2.2 3 1.8M45.5 61.5l-2.6 2.4 2.6 2.4" stroke="#0d0b14" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.9" /><g transform="rotate(18 61 26)"><rect x="58.5" y="22.5" width="5.5" height="7" rx="0.6" fill="#e8e4da" opacity="0.85" /><path d="M59.5 25h3.5M59.5 27h3.5" stroke="#4a4458" stroke-width="0.5" /></g><circle cx="62" cy="33" r="0.7" fill="#8b7fd4" opacity="0.7" /><circle cx="60" cy="36.5" r="0.55" fill="#c4b5fd" opacity="0.55" />');
       } else if (def.id === "mara") {
       /* Mara's cracked black lute: lightless wood webbed with fractures, a sound hole that opens onto violet void instead of shadow, and a scrap of sheet music dissolving off its neck into ash */
         p.push('<g transform="rotate(-14 53 48)"><rect x="55.5" y="24" width="3.4" height="15" rx="1.4" fill="#17141f" transform="rotate(10 57 31)" /><circle cx="59.5" cy="23.5" r="2" fill="#0d0b14" /><ellipse cx="51" cy="50" rx="7.2" ry="8.8" fill="#241f31" stroke="#0d0b14" stroke-width="1" /><ellipse cx="51" cy="52.5" rx="5.4" ry="6.4" fill="#2e2742" opacity="0.7" /><circle cx="51" cy="49" r="2.9" fill="#7c3aed" opacity="0.85" /><circle cx="51" cy="49" r="1.4" fill="#c4b5fd" /><path d="M45.5 45l4 3-3 3 4.5 2.5M56 44l-3.5 3.5 3 3M48 57l3.5-3 3 3.5" stroke="#0d0b14" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.9" /><path d="M49.6 41.5v15M51 41.2v15.4M52.4 41.5v15" stroke="#8b7fd4" stroke-width="0.45" opacity="0.6" /></g><g transform="rotate(18 60 30)"><rect x="57.5" y="26" width="5.5" height="7" rx="0.6" fill="#e8e4da" opacity="0.85" /><path d="M58.5 28.5h3.5M58.5 30.5h3.5" stroke="#4a4458" stroke-width="0.5" /></g><circle cx="61" cy="36" r="0.7" fill="#8b7fd4" opacity="0.7" /><circle cx="59" cy="39" r="0.55" fill="#c4b5fd" opacity="0.55" />');
@@ -5276,7 +5503,7 @@
         p.push('<line x1="53" y1="26" x2="53" y2="58" stroke="#7a5a30" stroke-width="2.4" stroke-linecap="round" /><circle cx="53" cy="19" r="6.2" fill="#bfe3ff" opacity="0.85" stroke="#7cc7ff" stroke-width="1.2" /><text x="53" y="23" font-size="9" text-anchor="middle" fill="#e8a812">⚡</text><path d="M46.5 11.5l3 3M59.5 11.5l-3 3" stroke="#ffd94d" stroke-width="1.2" stroke-linecap="round" />');
       } else if (def.id === "nia") {
       /* her wooden spoon: the hearth cook's whole arsenal, worn smooth by ten thousand stirs */
-        p.push('<g transform="rotate(24 54 44)"><rect x="52.6" y="40" width="2.8" height="16" rx="1.4" fill="#8a6f4d" /><ellipse cx="54" cy="33" rx="4.4" ry="6" fill="#b08954" stroke="#8a6f4d" stroke-width="0.8" /><ellipse cx="54" cy="33" rx="2.4" ry="4" fill="#c9a06a" /></g><text x="59" y="24" font-size="6" opacity="0.85">♨</text>');
+        p.push('<g transform="rotate(20 51 52.5)"><rect x="49.9" y="31" width="2.8" height="26" rx="1.4" fill="#8a6f4d" /><ellipse cx="51.3" cy="29.5" rx="4.4" ry="6.2" fill="#b08954" stroke="#8a6f4d" stroke-width="0.8" /><ellipse cx="51.3" cy="29.5" rx="2.4" ry="4.1" fill="#c9a06a" /><path d="M49.4 34.5q1.9 1.2 3.8 0" stroke="#8a6f4d" stroke-width="0.7" fill="none" stroke-linecap="round" opacity="0.8" /></g><text x="59" y="24" font-size="6" opacity="0.85">♨</text>');
       } else if (def.id === "dun") {
       /* his smith's hammer: a great steel head on a long haft, carried over the shoulder like a second spine */
         p.push('<g transform="rotate(28 54 40)"><rect x="52.6" y="38" width="3" height="20" rx="1.4" fill="#6b4a2f" /><rect x="46" y="26" width="16" height="10" rx="2.5" fill="#5d6673" stroke="#3c4657" stroke-width="1" /><rect x="46" y="26" width="16" height="3" rx="1.5" fill="#7d8aa5" /></g>');
@@ -5324,7 +5551,7 @@
         p.push('<circle cx="54" cy="42" r="8" fill="#c9d2ff" opacity="0.25" /><circle cx="54" cy="42" r="6" fill="#dfe6ff" stroke="#8b7fd4" stroke-width="1" /><path d="M51 39.5q3-2.5 6 0" stroke="#ffffff" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.9" /><text x="54" y="45" font-size="5" text-anchor="middle" fill="#7c5cd6">✦</text><path d="M50 49h8" stroke="#8b7fd4" stroke-width="1.4" stroke-linecap="round" />');
       } else if (def.id === "zinnia") {
       /* her ribbons: red and gold, forever mid-twirl — the trick is never the landing. The trick is the ribbon. */
-        p.push('<g transform="translate(6 0)"><path d="M48 30q12-6 16 2q-8 2-14 8q-4 4-8 2q4-6 6-12z" fill="#e8382a" opacity="0.9" /><path d="M48 44q10 2 14 8q-6 2-12-2q-4-3-2-6z" fill="#e8c34a" opacity="0.9" /><text x="58" y="28" font-size="6" fill="#ffd94d">✦</text></g>');
+        p.push('<g transform="translate(6 0)"><path d="M48 30q12-6 16 2q-8 2-14 8q-4 4-8 2q4-6 6-12z" fill="#e8382a" opacity="0.9" /><g transform="translate(-15 0)"><path d="M50 47.5l-5.2-3.6q0.4 3.6 0 4.4q3.2 0.4 5.2-0.8z" fill="#e8c34a" stroke="#c9a227" stroke-width="0.6" stroke-linejoin="round" /><path d="M50 47.5l5.2-3.6q-0.4 3.6 0 4.4q-3.2 0.4-5.2-0.8z" fill="#f2d24b" stroke="#c9a227" stroke-width="0.6" stroke-linejoin="round" /><path d="M49.2 48.6q-2.8 3.4-6.2 4.4q2.8 1.6 5.8 0.2q2.2-1 2.2-4.6zM50.8 48.6q2.8 3.4 6.2 4.4q-2.8 1.6-5.8 0.2q-2.2-1-2.2-4.6z" fill="#e8c34a" stroke="#c9a227" stroke-width="0.55" stroke-linejoin="round" /><circle cx="50" cy="47.8" r="1.5" fill="#ffd94d" stroke="#c9a227" stroke-width="0.6" /></g><text x="58" y="28" font-size="6" fill="#ffd94d">✦</text></g>');
       } else if (def.id === "hilda") {
       /* her tankard: oak, iron-banded, and foaming over — the brew is always offered around, and never turned down */
         p.push('<path d="M48 36h11l1 14a3 3 0 0 1-3 3h-7a3 3 0 0 1-3-3z" fill="#8a6f4d" stroke="#6b4a2f" stroke-width="1" /><path d="M48 41h12M48 46h12.5" stroke="#4a3a2a" stroke-width="1.1" /><circle cx="52" cy="33" r="3" fill="#fff8ee" /><circle cx="56" cy="34.5" r="2.4" fill="#fff8ee" /><circle cx="49" cy="35" r="2" fill="#fff8ee" /><circle cx="60" cy="42" r="1" fill="#fff8ee" opacity="0.9" />');
@@ -5336,7 +5563,7 @@
         p.push('<path d="M46 38q4-3 8 0v12q-4-3-8 0z" fill="#d8cbb2" stroke="#8a7a5a" stroke-width="0.8" /><path d="M54 38q4-3 8 0v12q-4-3-8 0z" fill="#c9bda8" stroke="#8a7a5a" stroke-width="0.8" /><path d="M48 41h4M48 44h4M56 41h4M56 44h4" stroke="#6b7f9e" stroke-width="0.7" /><circle cx="50" cy="53" r="1" fill="#bfe3ff" /><circle cx="58" cy="54" r="0.8" fill="#bfe3ff" />');
       } else if (def.id === "agatha") {
       /* her needle and thread, held DOWN in her lap now: the silver needle angles down across her skirt with its thread trailing down to the spool (Nov 20 follow-up: the old needle angled up with its tip at her eye) */
-        p.push('<line x1="59" y1="40" x2="47" y2="58" stroke="#dfe6f2" stroke-width="1.6" stroke-linecap="round" /><ellipse cx="58.6" cy="41.2" rx="1.5" ry="1" fill="none" stroke="#9aa3b5" stroke-width="0.7" transform="rotate(56 58.6 41.2)" /><path d="M59 40q4 7 1 12q-2.5 4.5-8 4" stroke="#d9d2c2" stroke-width="0.9" fill="none" stroke-linecap="round" /><circle cx="62" cy="56" r="1.6" fill="#4a4458" stroke="#d9d2c2" stroke-width="0.7" />');
+        p.push('<line x1="56.5" y1="46.5" x2="46.5" y2="57.5" stroke="#dfe6f2" stroke-width="1.6" stroke-linecap="round" /><path d="M56.5 46.5l1.3-1.8" stroke="#dfe6f2" stroke-width="1.3" stroke-linecap="round" /><ellipse cx="55.9" cy="47.6" rx="1.4" ry="0.9" fill="none" stroke="#9aa3b5" stroke-width="0.7" transform="rotate(48 55.9 47.6)" /><path d="M56.8 46.8q4.5 5.5 3.8 10.5q-0.6 4-4.6 5.6" stroke="#d9d2c2" stroke-width="0.9" fill="none" stroke-linecap="round" /><circle cx="59.5" cy="61.5" r="2.3" fill="#4a4458" stroke="#2e2a3a" stroke-width="0.6" /><path d="M57.4 60.6q2.1 1 4.2 0M57.2 61.9q2.3 1 4.6 0M57.6 63.1q1.9 0.8 3.8 0" stroke="#d9d2c2" stroke-width="0.6" fill="none" stroke-linecap="round" opacity="0.85" />');
       } else if (def.id === "straw") {
       /* his pitchfork: three honest prongs, a worn haft, and a crow's feather's worth of patience */
         p.push('<g transform="rotate(16 54 40)"><rect x="52.8" y="40" width="2.4" height="18" rx="1.2" fill="#6b4a2f" /><path d="M49 40v-12M54 40v-14M59 40v-12" stroke="#9aa3b5" stroke-width="1.6" stroke-linecap="round" /><path d="M49 40h10" stroke="#7d8aa5" stroke-width="1.6" stroke-linecap="round" /></g>');
@@ -5346,17 +5573,29 @@
       } else if (def.id === "diddle") {
       /* his dark recurve bow, gripped in his right hand: black limbs, a pale string, and one arrow nocked pointing down-forward (Nov 20 follow-up: the old bow floated at his right, ungripped) */
       /* his worn book, tucked under his left arm against his body: battered brown cover, dog-eared pages, read in every language and never once put down (Nov 20 follow-up: the old book floated detached at his side) */
-        p.push('<g><path d="M56 30q-10 22 0 44" fill="none" stroke="#17141f" stroke-width="2.6" stroke-linecap="round" /><path d="M56 30q-10 22 0 44" fill="none" stroke="#8b5cf6" stroke-width="0.8" stroke-linecap="round" opacity="0.7" /><line x1="56" y1="30" x2="56" y2="74" stroke="#d9d2c2" stroke-width="0.8" /><circle cx="51" cy="52.5" r="2.9" fill="#8b5cf6" opacity="0.9" /><line x1="54" y1="54" x2="39" y2="65" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M39 65l6.8-0.8-3 5.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M54 54l-4.2-0.6M54 54l-1.2 4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /><g transform="rotate(-8 25 52)"><rect x="19" y="44" width="12" height="16" rx="1.6" fill="#6b4a2f" stroke="#4a3a2a" stroke-width="0.9" /><rect x="21" y="46" width="8" height="12" rx="0.8" fill="#e8dcc2" /><path d="M22.5 49h5M22.5 52h5M22.5 55h4" stroke="#6b7f9e" stroke-width="0.7" stroke-linecap="round" /><circle cx="29" cy="46.5" r="0.9" fill="#8b5cf6" /></g></g>');
+        p.push('<g><path d="M56 30q-10 22 0 44" fill="none" stroke="#17141f" stroke-width="2.6" stroke-linecap="round" /><path d="M56 30q-10 22 0 44" fill="none" stroke="#8b5cf6" stroke-width="0.8" stroke-linecap="round" opacity="0.7" /><line x1="56" y1="30" x2="56" y2="74" stroke="#d9d2c2" stroke-width="0.8" /><circle cx="51" cy="52.5" r="2.9" fill="#8b5cf6" opacity="0.9" /><line x1="54" y1="54" x2="39" y2="65" stroke="#8a6f4d" stroke-width="1.4" stroke-linecap="round" /><path d="M39 65l6.8-0.8-3 5.2z" fill="#dfe6f2" stroke="#9aa3b5" stroke-width="0.5" /><path d="M54 54l-4.2-0.6M54 54l-1.2 4" stroke="#d9d2c2" stroke-width="0.9" stroke-linecap="round" /><g transform="rotate(-8 25 54)"><rect x="19" y="46" width="12" height="15.5" rx="1.6" fill="#6b4a2f" stroke="#4a3a2a" stroke-width="0.9" /><rect x="21" y="48" width="8" height="11.5" rx="0.8" fill="#e8dcc2" /><path d="M22.5 51h5M22.5 54h5M22.5 57h4" stroke="#6b7f9e" stroke-width="0.7" stroke-linecap="round" /><circle cx="29" cy="48.5" r="0.9" fill="#8b5cf6" /></g></g>');
       } else {
         p.push(heldWeaponSVG(def.id));
       }
       p.push('</g>');
       /* Grip hands, redrawn OVER the weapons for the heroes whose grips were rebuilt in the Nov 20 follow-ups: the palm closes over the grip, so the weapon reads as HELD, never beside the hand. (Dain needs none — his shield block sits under the generic hands already; Rook's watch rests on top of his.) */
-      if (def.id === "nyx" || def.id === "nix" || def.id === "diddle") {
+      if (def.id === "nyx" || def.id === "nix") {
         p.push('<ellipse cx="19" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/><ellipse cx="45" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/>');
       }
-      if (def.id === "kael" || def.id === "jenna" || def.id === "pippa" || def.id === "brann" || def.id === "ilya" || def.id === "ysolde" || def.id === "petra") {
+      if (def.id === "kael" || def.id === "jenna" || def.id === "mira" || def.id === "pippa" || def.id === "brann" || def.id === "ilya" || def.id === "petra" || def.id === "yurneth" || def.id === "diddle" || def.id === "eldric" || def.id === "juno" || def.id === "agatha" || def.id === "nia") {
         p.push('<ellipse cx="45" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/>');
+      }
+      if (def.id === "ysolde") {
+        /* her SWORD hand: her shield hand stays BEHIND her shield, and only her free left hand is redrawn, closing over her sword's grip */
+        p.push('<ellipse cx="19" cy="52.5" rx="3.4" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6"/>');
+      }
+      if (def.id === "orin" || def.id === "silas") {
+        /* the Cantors' lute hands: BOTH hands on the instrument — the strumming hand over the strings by the sound hole, and the neck hand up on the neck with a robe-sleeve arm running from the shoulder to meet it */
+        p.push('<path d="M40.5 44q3.8-3.8 7-6.8" stroke="' + robe + '" stroke-width="3.4" fill="none" stroke-linecap="round" /><ellipse cx="29.5" cy="53.5" rx="3.5" ry="3" fill="' + skin + '" stroke="#00000022" stroke-width="0.6" /><path d="M27.2 51.8q0.7 1.7 0.4 3.3M30 51.2q0.6 1.8 0.3 3.5M32.6 51.9q0.5 1.6 0.2 3.1" stroke="#00000030" stroke-width="0.7" fill="none" stroke-linecap="round" /><ellipse cx="47.5" cy="37" rx="3.1" ry="2.7" fill="' + skin + '" stroke="#00000022" stroke-width="0.6" /><path d="M45.6 35.4q1.8 0.7 3.7 0.2M45.9 38.4q1.7-0.6 3.4-0.2" stroke="#00000030" stroke-width="0.7" fill="none" stroke-linecap="round" />');
+      }
+      if (def.id === "diddle") {
+        /* his book hand: his left hand grips the book's BOTTOM edge from underneath, palm under the cover with three fingertips curling up over its lower rim */
+        p.push('<ellipse cx="16.5" cy="61.2" rx="3.6" ry="2.9" fill="' + skin + '" stroke="#00000022" stroke-width="0.6" /><path d="M13.8 59.3q0.8 1.8 0.4 3.4M16.8 58.6q0.7 1.9 0.3 3.6M19.7 59.1q0.6 1.7 0.2 3.2" stroke="#00000030" stroke-width="0.75" fill="none" stroke-linecap="round" />');
       }
       /* Odo's brown work gloves — on BOTH hands (Nov 20 follow-up: one hand was gloved, the other bare), the right one closing over his hammer's grip */
       if (def.id === "odo") {
@@ -5954,7 +6193,7 @@
       if (!syns.length) return "";
       var h = '<div class="syn-badges" aria-label="Active party synergies">';
       syns.forEach(function (syn) {
-        h += '<span class="syn-badge" title="' + esc(syn.bonus + " — " + syn.flavor) + '">✨ ' + esc(syn.name) + ' · <span class="b">' + esc(syn.bonus) + "</span></span>";
+        h += '<span class="syn-badge" title="' + esc(synergyBonusText(syn, save.party) + " — " + syn.flavor) + '">✨ ' + esc(syn.name) + ' · <span class="b">' + esc(synergyBonusText(syn, save.party)) + "</span></span>";
       });
       return h + "</div>";
     }
@@ -6581,14 +6820,13 @@
           var def = heroById(id); var o = s.heroes[id]; if (!o) return;
           var lx = Math.round(((s.party.length - 1) / 2 - idx) * 11);
           var lr = (lx * 0.15).toFixed(1);
-          h += '<li class="chibi-slot"><div class="anim-bob" data-dchibi="' + id + '" style="animation-delay:' + (idx * 0.35) + 's;--lx:' + lx + 'px;--lr:' + lr + 'deg">' + chibiSVG(def, 46) + '</div><span class="chibi-taunt" data-dchibi-taunt="' + id + '" style="display:none" aria-hidden="true">🛡</span><p class="chibi-fallen" data-dchibi-fallen="' + id + '" style="display:none">💫 FALLEN</p><p class="nm">' + esc(def.name.split(" ")[0]) + '</p><p class="lv">Lv' + o.level + "</p></li>";
+          h += '<li class="chibi-slot"><div class="anim-bob" data-dchibi="' + id + '" style="animation-delay:' + (idx * 0.35) + 's;--lx:' + lx + 'px;--lr:' + lr + 'deg">' + chibiSVG(def, 46) + '</div><span class="chibi-taunt" data-dchibi-taunt="' + id + '" style="display:none" aria-hidden="true">🛡</span><p class="nm">' + esc(def.name.split(" ")[0]) + '</p><p class="lv">Lv' + o.level + "</p></li>";
         });
         h += '</ul><div class="monster-box"><div class="anim-bob"><div class="monster-orb" aria-hidden="true">👾</div></div><p class="monster-tag">Dungeon Monster</p></div></div></div>';
         h += '<div class="bar-outer bar-enemy" role="progressbar" aria-label="Dungeon monster health"><div class="bar-inner" id="dg-enemy-bar"></div></div><p class="bar-label" id="dg-enemy-text"></p>';
-        var dgPHp = dungeonBattle.heroHps.reduce(function (a, b) { return a + b; }, 0);
+        var dgPHp = dungeonBattle.partyHp;
         var dgPMax = partyMaxHp(save);
-        h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dgPHp) + " / " + fmt(dgPMax) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).</p>";
-        h += '<ul id="dg-hero-hp-bars" class="hero-hp-bars" aria-label="Each hero\'s health"></ul>';
+        h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health in dungeon"><div class="bar-inner" id="dg-party-bar" style="width:100%"></div></div><p class="bar-label" id="dg-party-text">Party HP ' + fmt(dgPHp) + " / " + fmt(dgPMax) + (dungeonBattle.shield > 0 ? " · 🛡 shield " + fmt(dungeonBattle.shield) : "") + " — one shared pool for the whole party: it carries across waves, your healers' trickle mends it every second, and if it empties the run ends (the run still counts). Nobody falls down here — every hero fights until the pool or the wave gives out.</p>";
         h += '<p class="xs" id="dg-wave-line" style="margin-top:0.375rem;font-weight:700;color:var(--dim)">' + dungeonWaveLine(dg0, dungeonBattle.wave, dungeonFoeHeld(dungeonBattle.fx), dungeonDifficultyDef(dungeonBattle.diff || "normal").mult) + "</p>";
         h += '<div id="dg-status-badges" style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.375rem">' + dungeonStatusBadges(dungeonBattle.fx) + "</div>";
         h += '<p class="party-status" id="dg-status">' + dungeonStatusLine() + "</p>";
@@ -6664,19 +6902,20 @@
         h += '<div style="margin-top:0.375rem;display:flex;align-items:center;gap:0.5rem"><div style="height:0.625rem;flex:1;overflow:hidden;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.5);padding:2px" role="progressbar" aria-label="' + esc(dg.name) + ": your party's effective Battle Power as a percentage of the recommended Battle Power for " + esc(selDiff.label) + '" aria-valuenow="' + Math.min(100, bpPct) + '" aria-valuemin="0" aria-valuemax="100" aria-valuetext="' + bpPct + '%"><div style="height:100%;border-radius:999px;width:' + Math.min(100, bpPct) + '%;background:' + (bpReady ? "linear-gradient(90deg,#2dd4bf,#7dd3fc)" : "linear-gradient(90deg,#fb7185,#ff7eb6)") + '"></div></div><span style="white-space:nowrap;font-size:11px;font-weight:900;color:' + (bpReady ? "#5eead4" : "#fda4af") + '">' + bpPct + "% of recommended</span></div></div>";
         h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + dg.drops.map(function (dr) { var m = materialById(dr.mat); return m.icon + " " + esc(m.name) + " " + Math.round(dr.min * selDiff.mult) + "–" + Math.round(dr.max * selDiff.mult); }).join(" · ") + " · 🪙 " + Math.round(dg.gold * selDiff.mult).toLocaleString("en-US") + " gold" + (selDiff.mult > 1 ? " (×" + selDiff.mult + " on " + esc(selDiff.label) + ", before luck)" : "") + "</p>";
         h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + Math.round(JACKPOT_GEMS * selDiff.mult) + "💎</span></p>";
-        /* Wave-by-wave incoming damage vs the party's healer procs,
-           priced with the exact formulas the run loop applies (the flat
-           split-HP rate aimed at one hero; healing at its long-run proc
-           average) — so a wave that out-damages the healing (the point
-           the targeted hero starts draining) is visible before the run,
-           not a surprise mid-delving. */
+        /* Wave-by-wave incoming damage vs the party's healer trickle,
+           priced with the exact formulas the run loop applies (the
+           wave's attack stat from dungeonWaveAtk, growing +25% per
+           wave; healing at the pooled trickle rate) — so a wave that
+           out-damages the trickle (the point the shared pool starts
+           draining) is visible before the run, not a surprise
+           mid-delving. */
         var trickle = dungeonHealPerSec(s);
         var dmods = partyMods(s);
         h += '<div style="margin-top:0.5rem;border:2px solid var(--border);border-radius:1rem;background:#1b123580;padding:0.5rem 0.75rem" aria-label="' + esc(dg.name) + ': wave damage versus your party healing">';
         h += '<p class="xs bold dim" style="margin:0">⚔ WAVE DAMAGE vs 💚 YOUR HEALING ' + (trickle > 0 ? fmt(trickle) + "/s" : "— NONE (NO HEALER)") + "</p>";
         h += '<div style="margin-top:0.375rem;display:flex;flex-wrap:wrap;gap:0.25rem">';
         for (var w = 1; w <= dg.waves; w++) {
-          var inc = splitEnemyDps(s) * selDiff.mult * (1 + 0.25 * (w - 1)) * dmods.enemyAtkMult;
+          var inc = dungeonWaveAtk(dg, w, selDiff.mult) * dmods.enemyAtkMult;
           var covered = inc <= trickle;
           h += '<span style="border-radius:999px;border:1px solid ' + (covered ? "#2dd4bf88" : "#fb718588") + ";background:" + (covered ? "#2dd4bf14" : "#fb718514") + ";color:" + (covered ? "#5eead4" : "#fda4af") + ';padding:0.125rem 0.5rem;font-size:11px;font-weight:900">W' + w + " " + fmt(inc) + "/s" + (covered ? " ✓" : " · net −" + fmt(inc - trickle) + "/s") + "</span>";
         }
@@ -6746,55 +6985,27 @@
       var st = document.getElementById("dg-status");
       if (st) st.textContent = dungeonStatusLine();
       var fx = dungeonBattle.fx;
-      var dgMaxes = heroMaxHpList(save);
-      var dgHps = dungeonBattle.heroHps;
-      var dgShields = dungeonBattle.heroShields;
-      var dgPHpNow = dgHps.reduce(function (a, b) { return a + b; }, 0);
-      var dgPMaxNow = dgMaxes.reduce(function (a, b) { return a + b; }, 0);
+      var dgPMaxNow = partyMaxHp(save);
+      var dgPHpNow = dungeonBattle.partyHp;
       var pb = document.getElementById("dg-party-bar");
       if (pb) pb.style.width = Math.max(0, Math.min(100, dgPMaxNow > 0 ? dgPHpNow / dgPMaxNow * 100 : 0)) + "%";
       var pt = document.getElementById("dg-party-text");
-      if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dgPHpNow)) + " / " + fmt(dgPMaxNow) + " — health carries across waves; a wipe ends the run (the run was spent when the party delved in).";
-      /* Split-HP per-hero bars + chibi state, mirroring the tower: the
-         taunting tank wears 🛡, a fallen hero greys out with 💫 FALLEN. */
+      if (pt) pt.textContent = "Party HP " + fmt(Math.max(0, dgPHpNow)) + " / " + fmt(dgPMaxNow) + (dungeonBattle.shield > 0 ? " · 🛡 shield " + fmt(dungeonBattle.shield) : "") + " — one shared pool for the whole party: it carries across waves, your healers' trickle mends it every second, and if it empties the run ends (the run still counts). Nobody falls down here — every hero fights until the pool or the wave gives out.";
+      /* Pooled combat: one bar for the whole party. The taunting hero
+         still wears 🛡 on their chibi — but down here a taunt blunts
+         every blow for the whole party instead of redirecting the foe. */
       var dgTauntNow = null;
       for (var dti = fx.taunts.length - 1; dti >= 0; dti--) {
         var dt2 = fx.taunts[dti];
-        var dtIdx = save.party.indexOf(dt2.id);
-        if (fx.clock < dt2.until && dtIdx >= 0 && (dgHps[dtIdx] || 0) > 0) { dgTauntNow = dt2; break; }
+        if (fx.clock < dt2.until && save.party.indexOf(dt2.id) >= 0) { dgTauntNow = dt2; break; }
       }
-      var dgTargetIdx = dgTauntNow ? save.party.indexOf(dgTauntNow.id) : fx.targetIdx;
-      var dhhb = document.getElementById("dg-hero-hp-bars");
-      if (dhhb) {
-        var dhhbH = "";
-        save.party.forEach(function (hid, hi) {
-          var hdef = heroById(hid);
-          if (!hdef || !save.heroes[hid]) return;
-          var hmx = dgMaxes[hi] || 0;
-          var hcur = dgHps[hi] || 0;
-          var hfallen = hcur <= 0;
-          var hshield = dgShields[hi] || 0;
-          var hTaunting = dgTauntNow && dgTauntNow.id === hid;
-          var hTarget = !hfallen && dgTargetIdx === hi;
-          dhhbH += '<li><span class="hhb-name">' + (hTaunting ? "🛡 " : "") + esc(hdef.name.split(" ")[0]) + '</span>' +
-            '<span class="hhb-bar" role="progressbar" aria-label="' + esc(hdef.name) + ' health" aria-valuenow="' + (hmx > 0 ? Math.round((Math.max(0, hcur) / hmx) * 100) : 0) + '" aria-valuemin="0" aria-valuemax="100"><span class="hhb-fill" style="width:' + (hmx > 0 ? (Math.max(0, hcur) / hmx) * 100 : 0) + '%;background:' + (hfallen ? "#64748b" : hdef.color) + '"></span></span>' +
-            '<span class="hhb-text">' + (hfallen ? '<span style="font-weight:900;color:#fda4af">💫 FALLEN</span>' : fmt(hcur) + " / " + fmt(hmx) + (hshield > 0 ? " · 🛡 " + fmt(hshield) : "") + (hTaunting ? " · 🎯 taunting" : hTarget ? " · 🎯 targeted" : "")) + "</span></li>";
-        });
-        dhhb.innerHTML = dhhbH;
-      }
-      save.party.forEach(function (hid, hi) {
+      save.party.forEach(function (hid) {
         var bob = document.querySelector('[data-dchibi="' + hid + '"]');
         if (!bob) return;
         var slot = bob.closest ? bob.closest(".chibi-slot") : null;
         if (!slot) return;
-        var hcurS = dgHps[hi] || 0;
-        var hfallenS = hcurS <= 0;
-        bob.style.filter = hfallenS ? "grayscale(1)" : "";
-        bob.style.opacity = hfallenS ? "0.45" : "";
         var tm = slot.querySelector("[data-dchibi-taunt]");
         if (tm) tm.style.display = (dgTauntNow && dgTauntNow.id === hid) ? "inline" : "none";
-        var fl = slot.querySelector("[data-dchibi-fallen]");
-        if (fl) fl.style.display = hfallenS ? "block" : "none";
       });
       var wl = document.getElementById("dg-wave-line");
       if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx), dungeonDifficultyDef(dungeonBattle.diff || "normal").mult);
@@ -7343,10 +7554,11 @@
       if (skill) {
         h += '<div class="skill-box" style="margin-top:0.5rem"><p class="sk-name">✦ ' + esc(skill.name) + (o ? ' <span class="bold dim" style="font-weight:700"> · Skill Lv ' + skillLevel(o) + "</span>" : "") + "</p>";
         h += '<p class="sk-desc">' + esc(skill.desc) + "</p>";
+        if (skill.dungeonNote) h += dungeonHealNoteHTML(skill.dungeonNote);
         var hiddenMore = 0;
         (skill.more || []).forEach(function (m) {
           if (m.unlock && (!o || effRank(def, o) < m.unlock)) { hiddenMore++; return; }
-          h += '<div class="sk-more"><p class="sk-name">✦ ' + esc(m.name) + '</p><p class="sk-desc">' + esc(m.desc) + "</p></div>";
+          h += '<div class="sk-more"><p class="sk-name">✦ ' + esc(m.name) + '</p><p class="sk-desc">' + esc(m.desc) + "</p>" + (m.dungeonNote ? dungeonHealNoteHTML(m.dungeonNote) : "") + "</div>";
         });
         if (hiddenMore > 0) h += '<div class="sk-more"><p class="sk-desc">' + capstoneHint(def) + "</p></div>";
         h += "</div>";
@@ -7375,13 +7587,13 @@
       if (syns.length) {
         h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.375rem" aria-label="Active party synergies"><span class="xs" style="font-weight:900;letter-spacing:0.1em;color:#ffd94d">✨ ACTIVE SYNERGIES</span>';
         syns.forEach(function (syn) {
-          h += '<span class="syn-badge" title="' + esc(syn.flavor) + '">' + esc(syn.name) + ' · <span class="b">' + esc(syn.bonus) + "</span></span>";
+          h += '<span class="syn-badge" title="' + esc(syn.flavor) + '">' + esc(syn.name) + ' · <span class="b">' + esc(synergyBonusText(syn, s.party)) + "</span></span>";
         });
         h += "</div>";
       }
       /* synergy list */
       h += '<div class="anime-card mt4 card-pad" aria-label="All party synergies"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">✨ Party Synergies</h3>';
-      h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:600">When these heroes fight in the party together, their bond ignites — the bonus is live in battle, idle gold, and offline earnings.</p>';
+      h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:600">When these heroes fight in the party together, their bond ignites — the bonus is live in battle, idle gold, and offline earnings. A live bond\'s bonus scales up with its members\' rarity and the size of the link, so an active card shows the exact numbers your current party gets.</p>';
       h += '<ul class="syn-list">';
       SYNERGIES.forEach(function (syn) {
         var active = synergyActive(syn, s.party);
@@ -7401,7 +7613,7 @@
             (owned ? esc(md.name) : md.id === "luna" ? esc(md.name) : "???") + " · <span style=\"" + starTextStyle(md.stars) + "\">" + md.stars + "★</span>" + (inParty ? " ⚔" : owned ? "" : " 🔒") + "</span>";
         });
         if (syn.anyOf) h += '<span class="xs bold dim" style="padding:0.25rem 0">(any ' + syn.anyOf + " of " + syn.members.length + ")</span>";
-        h += '</div><p class="xs" style="margin-top:0.375rem;font-weight:900;color:#ffd94d">' + esc(syn.bonus) + '</p><p class="xs dim" style="font-style:italic">' + esc(syn.flavor) + "</p></li>";
+        h += '</div><p class="xs" style="margin-top:0.375rem;font-weight:900;color:#ffd94d">' + esc(synergyBonusText(syn, s.party)) + '</p>' + (active ? "" : '<p class="xs dim" style="font-weight:700">Base bonus — scales up with member rarity & link size once active.</p>') + '<p class="xs dim" style="font-style:italic">' + esc(syn.flavor) + "</p></li>";
       });
       h += "</ul></div>";
       } else if (heroesTab === "upgrades") {
@@ -7562,10 +7774,11 @@
       if (skill) {
         h += '<div class="skill-box"><p class="sk-name">✦ ' + esc(skill.name) + (o ? ' <span class="bold dim" style="font-weight:700"> · Skill Lv ' + skillLevel(o) + "</span>" : "") + "</p>";
         h += '<p class="sk-desc">' + esc(skill.desc) + (o ? " Each synthesis raises its level by 1." : "") + "</p>";
+        if (skill.dungeonNote) h += dungeonHealNoteHTML(skill.dungeonNote);
         var hiddenMore = 0;
         (skill.more || []).forEach(function (m) {
           if (m.unlock && (!o || effRank(def, o) < m.unlock)) { hiddenMore++; return; }
-          h += '<div class="sk-more"><p class="sk-name">✦ ' + esc(m.name) + '</p><p class="sk-desc">' + esc(m.desc) + "</p></div>";
+          h += '<div class="sk-more"><p class="sk-name">✦ ' + esc(m.name) + '</p><p class="sk-desc">' + esc(m.desc) + "</p>" + (m.dungeonNote ? dungeonHealNoteHTML(m.dungeonNote) : "") + "</div>";
         });
         if (hiddenMore > 0) {
           h += '<div class="sk-more"><p class="sk-desc">' + capstoneHint(def) + "</p></div>";
@@ -9517,6 +9730,12 @@
       burn.until = 0;
       snare.until = 0;
       resetBattleTimers();
+      /* Stage switch (Rachel, Nov 20, 2026): entering a different tower
+         floor restores every party hero to full HP — fallen heroes revive
+         at full. Tower only: dungeon runs keep their own HP across waves,
+         and quests and AFK/idle are untouched. */
+      heroHps = heroMaxHpList(next);
+      partyHp = heroHps.reduce(function (a, b) { return a + b; }, 0);
       persist(next);
       renderMain();
       /* Some floors, once the tower knows them, greet you with something
@@ -10105,27 +10324,19 @@
       var m = typeof mult === "number" ? mult : 1;
       return Math.round(monsterMaxHp(dg.powerFloor) * (1 + 0.4 * (wave - 1)) * m * dg.powerMult);
     }
-    /* The party's expected healing rate inside a dungeon, per second —
-       the long-run average of the split-HP healer proc the run loop now
-       fires: each healer-class hero in the party procs on their own every
-       3rd attack for healerProcAmount — 10% × (1 + their own coefficient
-       × skill level) × their OWN max HP — so the expected rate is each
-       healer's own proc size times their attacks-per-second ÷ 3, summed
-       over healers; zero without a healer. The run loop fires the real
-       procs on the attack beats; this average is what the Dungeon tab's
-       wave preview and the effective-BP survival credit read, so the
-       three can never drift far apart. */
+    /* The party's healing rate inside a dungeon, per second — the
+       pooled trickle (restored Nov 21, 2026 with the pooled-HP dungeon
+       revert): while a healer-class hero stands in the party, the shared
+       pool mends by 1.2% × 4 = 4.8% of the party's max HP per second,
+       scaled by the party's healMult (every healing aura in partyMods);
+       zero without a healer. The run loop applies this exact rate to the
+       pool every tick, and the Dungeon tab's wave preview and the
+       effective-BP survival credit read the same helper, so the three
+       can never drift apart. */
     function dungeonHealPerSec(s) {
-      var mods = partyMods(s);
-      var maxes = heroMaxHpList(s);
-      var rate = 0;
-      for (var i = 0; i < s.party.length; i++) {
-        var id = s.party[i];
-        var o = s.heroes[id];
-        if (!o || !isHealerDef(heroById(id))) continue;
-        rate += healerProcAmount(id, o, maxes[i] || 0) * ((heroById(id).atkSpeed * mods.atkSpdMult) / 3);
-      }
-      return rate;
+      var hasHealer = s.party.some(function (id) { return s.heroes[id] && isHealerDef(heroById(id)); });
+      if (!hasHealer) return 0;
+      return partyMaxHp(s) * 0.012 * 4 * partyMods(s).healMult;
     }
     /* The current party's Battle Power (BP): heroPower — a hero's battle
        DPS plus 5% of their HP, gear and synergy included — summed over
@@ -10197,7 +10408,7 @@
     var DUNGEON_BP_SECONDS_PER_WAVE = 12;
     var DUNGEON_BP_HP_RESERVE = 0.3;
     var DUNGEON_BP_HOLD_SHARE = 0.8;
-    var DUNGEON_BP_HEAL_PER_SEC = 0.012 * 4; /* the BP model's reference heal rate — the old trickle at healMult 1, kept as the yardstick the recommendation and the effective-BP credit are priced against (the live loops now heal in procs whose long-run average sits at this rate) */
+    var DUNGEON_BP_HEAL_PER_SEC = 0.012 * 4; /* the BP model's reference heal rate — the dungeon run loop's own trickle at healMult 1, kept as the yardstick the recommendation and the effective-BP credit are priced against */
     var DUNGEON_BP_DOT_SHARE = 0.2;
     function dungeonRecommendedBp(dg, mult) {
       var m = typeof mult === "number" ? mult : 1;
@@ -10245,7 +10456,7 @@
         return o && s.party.indexOf(id) >= 0 ? o : null;
       };
       var aurelia = owned("aurelia");
-      if (aurelia) stack(((2 + 0.5 * (skillLevel(aurelia) - 1)) * heroById("aurelia").atkSpeed) / 5); /* Silk Cocoon */
+      if (aurelia) stack(((2 + 0.5 * (skillLevel(aurelia) - 1)) * partyMods(s).ccMult * heroById("aurelia").atkSpeed) / 5); /* Silk Cocoon (×1.25 under the Golden Cradle) */
       if (owned("ilya")) stack((2 * heroById("ilya").atkSpeed) / 5); /* Entangle */
       if (owned("orien")) stack((4 * heroById("orien").atkSpeed) / 5); /* Eclipse */
       var eolka = owned("eolka");
@@ -10315,7 +10526,7 @@
        they are priced off a floor's monster attack, which dungeons
        don't have) and without the tower's Dirge / sticky shaves. */
     function dungeonDotDps(s) {
-      return venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
+      return venomDps(s) + bleedDps(s) + frostDps(s) + burnDotDps(s) + snareDotDps(s) + tidalDps(s) + cometDps(s) + puppetDps(s) + capstoneDotDps(s) + aldricVerdictDps(s);
     }
     /* Per-wave status-effect state for a dungeon run — the dungeon
        mirror of the tower battle loop's status state. Most timers run
@@ -10354,7 +10565,6 @@
         capEvadeUntil: 0, capBramNext: 0,
         capStormUntil: 0, capStormRollAt: 0, capMissUntil: 0,
         capSorenUsed: false, capSorenWinUntil: 0,
-        targetIdx: 0, targetNextPick: 0,
         taunts: [],
         dainNext: 3
       };
@@ -10374,27 +10584,31 @@
       return "Delving… wave " + dungeonBattle.wave + " of " + dungeonBattle.waves + " · Party DPS " + fmt(effectivePartyDps(save) + dotDps) + (dotDps > 0 ? " (incl. " + fmt(dotDps) + "/s from DoTs)" : "");
     }
     /* The live wave line for the run card, shared by the initial render
-       and the per-tick update: this wave's focused damage vs the
-       party's healer procs, and whether the wave is held fast. `mult`
-       is the run's difficulty multiplier, so the line prices the wave
-       the party is actually fighting. The wave's damage is the same
-       flat split-HP rate as the tower — 25% of the party's AVERAGE max
-       HP per second, × difficulty, growing +25% per wave — focused on
-       ONE hero, not spread; the healers' number is the long-run average
-       of their every-3rd-attack procs (dungeonHealPerSec), so it reads
-       "~…/s in bursts", never a trickle. */
+       and the per-tick update: this wave's attack against the whole
+       party vs the healers' trickle, and whether the wave is held fast.
+       `mult` is the run's difficulty multiplier, so the line prices the
+       wave the party is actually fighting. The wave's damage is priced
+       off the dungeon's powerFloor (dungeonWaveAtk), growing +25% per
+       wave — the same rate the run loop charges and the cards preview;
+       a live taunt blunts it by 10% + 2% per the taunter's skill level
+       (capped at 90%), and the drains/covers call is made on that
+       blunted rate. */
     function dungeonWaveLine(dg, wave, foeHeld, mult) {
-      var waveDps = splitEnemyDps(save) * mult * (1 + 0.25 * (wave - 1)) * partyMods(save).enemyAtkMult;
+      var waveAtk = dungeonWaveAtk(dg, wave, mult) * partyMods(save).enemyAtkMult;
       var trickle = dungeonHealPerSec(save);
       var tauntNowD = null;
       if (dungeonBattle && dungeonBattle.fx && dungeonBattle.fx.taunts) {
-        var liveT = dungeonBattle.fx.taunts.filter(function (t) { return dungeonBattle.fx.clock < t.until && save.party.indexOf(t.id) >= 0 && (dungeonBattle.heroHps[save.party.indexOf(t.id)] || 0) > 0; });
-        if (liveT.length) tauntNowD = liveT[liveT.length - 1];
+        var liveT = dungeonBattle.fx.taunts.filter(function (t) { return dungeonBattle.fx.clock < t.until && save.party.indexOf(t.id) >= 0; });
+        liveT.sort(function (a, b) { return b.startedAt - a.startedAt; });
+        if (liveT.length) tauntNowD = liveT[0];
       }
-      return "Wave " + wave + " focuses one hero for " + fmt(waveDps) + "/s" + (tauntNowD ? " — 🎯 TAUNTED onto " + heroById(tauntNowD.id).name.split(" ")[0] : "") + " · 💚 your healers mend ~" + fmt(trickle) + "/s in bursts — " + (foeHeld ? "held fast right now — it can't hit back" : waveDps > trickle ? "focused fire out-damages your healing, so the targeted hero drains" : "your healing covers this wave");
+      var waveAtkEff = tauntNowD ? waveAtk * (1 - Math.min(0.9, 0.10 + 0.02 * skillLevel(save.heroes[tauntNowD.id]))) : waveAtk;
+      return "Wave " + wave + " strikes the whole party for " + fmt(waveAtk) + "/s" + (tauntNowD ? " — 🛡 " + heroById(tauntNowD.id).name.split(" ")[0] + "'s taunt blunts every blow: the party takes " + Math.round(Math.min(0.9, 0.10 + 0.02 * skillLevel(save.heroes[tauntNowD.id])) * 100) + "% less damage while it lasts" : "") + " · 💚 your healers' trickle mends " + fmt(trickle) + "/s — " + (foeHeld ? "held fast right now — it can't hit back" : waveAtkEff > trickle ? "the wave out-damages your trickle, so the pool drains" : "your trickle covers this wave");
     }
     /* Live status badges for the run card — the same holds the dungeon
-       loop is applying this tick. Returns "" when nothing is up. */
+       loop is applying this tick, plus the taunt (damage reduction
+       while it lasts), Warlord's Roar, and Mari's Second Act ramp.
+       Returns "" when nothing is up. */
     function dungeonStatusBadges(fx) {
       var foeStunned = fx.clock < fx.cocoonUntil || fx.clock < fx.capStunUntil;
       var foeFrozen = fx.clock < fx.frostFrozenUntil || fx.clock < fx.nixFrozenUntil;
@@ -10403,9 +10617,19 @@
       var foeSwallowed = fx.clock < fx.swallowUntil;
       var foeTimestop = fx.clock < fx.capTimestopUntil;
       var hoarfrostPct = fx.hoarfrostStacks * 2;
-      if (!foeStunned && !foeFrozen && !foeRooted && !foeEclipsed && !foeSwallowed && !foeTimestop && hoarfrostPct <= 0) return "";
+      var tauntNowD = null;
+      if (dungeonBattle && dungeonBattle.fx && dungeonBattle.fx.taunts) {
+        var liveT = dungeonBattle.fx.taunts.filter(function (t) { return dungeonBattle.fx.clock < t.until && save.party.indexOf(t.id) >= 0; });
+        liveT.sort(function (a, b) { return b.startedAt - a.startedAt; });
+        if (liveT.length) tauntNowD = liveT[0];
+      }
+      var tauntPctD = tauntNowD ? Math.round(Math.min(0.9, 0.10 + 0.02 * skillLevel(save.heroes[tauntNowD.id])) * 100) : 0;
+      var roarNowD = fx.clock < fx.roarUntil;
+      var secondActPctD = Math.min(0.30, Math.floor(((fx.hitCounts && fx.hitCounts["mari"]) || 0) / 5) * 0.03);
+      if (!foeStunned && !foeFrozen && !foeRooted && !foeEclipsed && !foeSwallowed && !foeTimestop && hoarfrostPct <= 0 && !tauntNowD && !roarNowD && secondActPctD <= 0) return "";
       var pill = "display:inline-block;white-space:nowrap;border-radius:999px;border:2px solid;padding:0.125rem 0.625rem;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;";
       var b = "";
+      if (tauntNowD) b += '<span style="' + pill + 'border-color:#ffd94d;background:#3a2403;color:#ffd94d">🛡 Taunt — party damage taken −' + tauntPctD + '%</span>';
       if (foeStunned) b += '<span style="' + pill + 'border-color:#f0abfc;background:#4a044e;color:#fae8ff">🕸 Stunned</span>';
       if (foeFrozen) b += '<span style="' + pill + 'border-color:#7dd3fc;background:#082f49;color:#e0f2fe">❄ Frozen</span>';
       if (foeRooted) b += '<span style="' + pill + 'border-color:#4ade80;background:#052e16;color:#bbf7d0">🌿 Rooted</span>';
@@ -10413,6 +10637,8 @@
       if (foeSwallowed) b += '<span style="' + pill + 'border-color:#2dd4bf;background:#042f2e;color:#ccfbf1">🌊 Swallowed</span>';
       if (foeTimestop) b += '<span style="' + pill + 'border-color:#fbbf24;background:#451a03;color:#fde68a">⏳ Time Stop</span>';
       if (hoarfrostPct > 0) b += '<span style="' + pill + 'border-color:#bae6fd;background:#0c2d48;color:#e0f2fe">❄ Hoarfrost −' + hoarfrostPct + '% attack</span>';
+      if (roarNowD) b += '<span style="' + pill + 'border-color:#fbbf24;background:#451a03;color:#fef3c7">📯 Warlord\'s Roar +25% party damage</span>';
+      if (secondActPctD > 0) b += '<span style="' + pill + 'border-color:#f9a8d4;background:#500724;color:#fce7f3">🎭 Second Act +' + Math.round(secondActPctD * 100) + '% and building</span>';
       return b;
     }
     function startDungeonRun(dgId) {
@@ -10447,13 +10673,16 @@
       persist(chargedSave);
       writeSave();
       var diffDef = dungeonDifficultyDef(diff);
-      dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), heroHps: heroMaxHpList(save), heroShields: save.party.map(function () { return 0; }), unbreakableUsed: false, phoenixUsed: false, vigilUsed: false, status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
+      /* Pooled combat (Nov 21, 2026 revert): one shared party HP pool,
+         no per-hero HP, no fallen heroes, no revives — the tower's
+         split-HP state does not live on this object. */
+      dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), partyHp: partyMaxHp(save), shield: 0, status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
       lastDungeonReward = null;
       lastDungeonLuck = null;
       lastDungeonLost = null;
       renderMain();
       if (dungeonTimer) window.clearInterval(dungeonTimer);
-      dungeonTimer = window.setInterval(dungeonTick, 150);
+      dungeonTimer = window.setInterval(dungeonTick, 120);
     }
     /* Buy one extra run of a dungeon for gems: +1 to today's allowed runs
        for that dungeon only, capped at 3 extra per dungeon per day. The
@@ -10487,7 +10716,7 @@
     function dungeonTick() {
       if (!dungeonBattle || !save || dungeonBattle.status !== "fighting") { if (dungeonTimer) window.clearInterval(dungeonTimer); dungeonTimer = null; return; }
       var now = performance.now();
-      var dt = Math.min(1, (now - dungeonBattle.lastTick) / 1000);
+      var dt = Math.min(1.5, (now - dungeonBattle.lastTick) / 1000);
       dungeonBattle.lastTick = now;
       var dg = dungeonById(dungeonBattle.dungeonId);
       var s = save;
@@ -10496,23 +10725,17 @@
          multiplier (×1.5 per tier, decoupled from the foes) scales the
          material and gold payouts at the clear (see finishDungeonRun). */
       var diffMult = dungeonDifficultyDef(dungeonBattle.diff || "normal").mult;
-      /* ---- Split-HP state (Nov 20, 2026) — the dungeon mirror of the
-         tower's setup: each hero fights on their own HP; a hero who
-         falls stops attacking and lending auras, and stays down until
-         a revive lifts the whole party. Fallen heroes' HP is never
-         mended. */
-      var maxesD = heroMaxHpList(s);
-      if (dungeonBattle.heroHps.length !== s.party.length) dungeonBattle.heroHps = maxesD.slice();
-      if (dungeonBattle.heroShields.length !== s.party.length) dungeonBattle.heroShields = s.party.map(function () { return 0; });
-      var hpsD = dungeonBattle.heroHps;
-      var shieldsD = dungeonBattle.heroShields;
-      function heroAliveD(id) { var i = s.party.indexOf(id); return i >= 0 && (hpsD[i] || 0) > 0; }
-      var aliveAtStartD = s.party.map(function (id, i) { return (hpsD[i] || 0) > 0; });
-      var alivePartyD = s.party.filter(function (id, i) { return aliveAtStartD[i]; });
-      var aliveSaveD = alivePartyD.length === s.party.length ? s : Object.assign({}, s, { party: alivePartyD });
-      var mods = partyMods(aliveSaveD);
+      /* ---- Pooled-HP state (Nov 21, 2026) — the dungeon revert: the
+         run fights on ONE shared party HP pool (dungeonBattle.partyHp),
+         not per-hero HP. Nobody falls down here: "alive" is just party
+         membership, the whole party's damage, auras, and timed skills
+         stay live for the whole run, and the tower's split-HP rules
+         (targeting, fallen heroes, revives) do not apply. The pool
+         carries across waves; only the shield resets with a new wave. */
+      function heroAliveD(id) { return s.party.indexOf(id) >= 0; }
+      var mods = partyMods(s);
       var pooledMaxD = partyMaxHp(s);
-      var lastFallenIdxD = -1;
+      var trickleD = dungeonHealPerSec(s);
       /* ---- Party status effects, mirrored from the tower battle loop ----
          Every status the party's skills lay on the enemy in the tower
          works here too, on the same numbers: most timers run on fx.clock,
@@ -10580,14 +10803,10 @@
          like Orien's Star Chart, they stay tower-only. */
       function capFireD(id) { var lv = capstoneLv(s, id); return capstoneActive(s, id) && heroAliveD(id) && fx.clock >= (fx.capNext[id] || 0) ? lv : 0; }
       function capNextD(id, sec) { fx.capNext[id] = fx.clock + sec; }
-      /* Split-HP: heals land lowest-first with spillover; shields shield
-         each living hero for pct of THAT hero's own max HP. */
-      function capHealD(pct) { distributeHeal(hpsD, maxesD, pooledMaxD * pct); }
-      function capShieldD(pct) {
-        for (var si = 0; si < s.party.length; si++) {
-          if ((hpsD[si] || 0) > 0) shieldsD[si] = Math.max(shieldsD[si] || 0, (maxesD[si] || 0) * pct);
-        }
-      }
+      /* Pooled combat: heals pour into the shared pool (capped at its
+         max); shields shield the whole pool at once. */
+      function capHealD(pct) { dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + pooledMaxD * pct); }
+      function capShieldD(pct) { dungeonBattle.shield = Math.max(dungeonBattle.shield, pooledMaxD * pct); }
       function capVulnD(pct, dur) { if (fx.clock >= fx.capVulnUntil || pct >= fx.capVulnPct) { fx.capVulnPct = pct; fx.capVulnUntil = fx.clock + dur; } }
       function capSlowD(pct, dur) { if (fx.clock >= fx.capSlowUntil || pct >= fx.capSlowPct) { fx.capSlowPct = pct; fx.capSlowUntil = fx.clock + dur; } }
       function capWeakenD(pct, dur) { if (fx.clock >= fx.capWeakenUntil || pct >= fx.capWeakenPct) { fx.capWeakenPct = pct; fx.capWeakenUntil = fx.clock + dur; } }
@@ -10601,7 +10820,7 @@
       capLvD = capFireD("brynn");
       if (capLvD) { capShieldD(0.08 + 0.02 * capLvD); capNextD("brynn", 20); } // Iron Aegis
       capLvD = capFireD("durnan");
-      if (capLvD) { capShieldD(0.08 + 0.02 * capLvD); capNextD("durnan", 25); } // Bulwark of the Mountain
+      if (capLvD) { capShieldD(0.08 + 0.02 * capLvD); fx.taunts = fx.taunts.filter(function (t) { return t.until > fx.clock; }).concat([{ id: "durnan", until: fx.clock + 5, startedAt: fx.clock }]); capNextD("durnan", 25); } // Bulwark of the Mountain — shield plus Durnan's 5s taunt, as in the tower
       capLvD = capFireD("aaron");
       if (capLvD) { capShieldD(0.05 + 0.01 * capLvD); capNextD("aaron", 20); } // Shield Wall
       capLvD = capFireD("amara");
@@ -10617,9 +10836,9 @@
       capLvD = capFireD("greta");
       if (capLvD) { capVulnD(0.05 * capLvD, 5); capNextD("greta", 15); } // Seam Strike vulnerability (the burst rides dungeonDotDps)
       capLvD = capFireD("vesper");
-      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 2 + 0.3 * capLvD); capNextD("vesper", 25); } // Marionette's Masterpiece root
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + (2 + 0.3 * capLvD) * mods.ccMult); capNextD("vesper", 25); } // Marionette's Masterpiece root (×1.25 under the Golden Cradle)
       capLvD = capFireD("aurelia");
-      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 2 + 0.3 * capLvD); capVulnD(0.08 * capLvD, 2 + 0.3 * capLvD); capNextD("aurelia", 25); } // Widow's Embrace root + vulnerability
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + (2 + 0.3 * capLvD) * mods.ccMult); capVulnD(0.08 * capLvD, (2 + 0.3 * capLvD) * mods.ccMult); capNextD("aurelia", 25); } // Widow's Embrace root + vulnerability (both stretch with the wrap under the Golden Cradle)
       capLvD = capFireD("mari");
       if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 3); capHealD(0.02 + 0.005 * capLvD); capNextD("mari", 25); } // Curtain Call root + heal
       capLvD = capFireD("iris");
@@ -10631,8 +10850,8 @@
       capLvD = capFireD("pippa");
       if (capLvD) { capDmgWinD(0.02 * capLvD, 5); capNextD("pippa", 20); } // Skylark damage window (the stone rides dungeonDotDps)
       capLvD = capFireD("straw");
-      if (capLvD) { // Crow's Feast: the burst rides dungeonDotDps; the heal is its share of that averaged burst, lowest-HP first.
-        distributeHeal(hpsD, maxesD, capstoneAtk(s, "straw") * capLvD / 20 * (0.25 + 0.05 * capLvD));
+      if (capLvD) { // Crow's Feast: the burst rides dungeonDotDps; the heal is its share of that averaged burst, poured into the shared pool.
+        dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + capstoneAtk(s, "straw") * capLvD / 20 * (0.25 + 0.05 * capLvD));
         capNextD("straw", 20);
       }
       capLvD = capFireD("eamon");
@@ -10659,7 +10878,7 @@
       if (capLvD) { s.gold += 500 * capLvD; if (Math.random() < 0.10) s.gems += 5; dirty = true; renderHeader(); capNextD("marlo", 30); } // Legendary Catch
       capLvD = capFireD("milo");
       if (capLvD) { s.gold += 1000 * capLvD; s.gems += 2; dirty = true; renderHeader(); capNextD("milo", 30); } // Hidden Cache
-      if (capstoneActive(s, "bram") && heroAliveD("bram") && hpsD.reduce(function (a, b) { return a + b; }, 0) < pooledMaxD * 0.5 && fx.clock >= fx.capBramNext) {
+      if (capstoneActive(s, "bram") && heroAliveD("bram") && dungeonBattle.partyHp < pooledMaxD * 0.5 && fx.clock >= fx.capBramNext) {
         capHealD(0.05 + 0.01 * capstoneLv(s, "bram"));
         fx.capBramNext = fx.clock + 20;
       } // Flock's Rally
@@ -10667,30 +10886,22 @@
         fx.capStormRollAt += 1;
         if (Math.random() < 0.10 + 0.02 * capstoneLv(s, "morrigan")) fx.capMissUntil = fx.clock + 1;
       } // Crowstorm blind rolls
-      /* ---- Split-HP: Dain's Stand Fast and the wave foe's focus ----
-         Mirrors the tower: every 20s of wave time Dain taunts for 5s
-         (first proc pulled to ~3s by freshDungeonStatus, like the
-         capstones); while a taunt lasts the foe MUST hit the taunter,
-         the newest taunt wins, and Dain's taunt cuts all damage the
-         party takes by 20% + 5%/lv. Otherwise the foe re-picks every
-         5s, weighted toward the lowest-HP living hero. */
+      /* ---- Taunts in a dungeon (Nov 21, 2026 revert): there is no
+         single foe to aim, so a taunt works differently down here —
+         while any taunt lasts, the party takes 10% less damage + 2%
+         per the taunter's skill level (capped at 90%), and nothing is
+         redirected. Dain's Stand Fast still re-arms every 20s (first
+         proc pulled to ~3s by freshDungeonStatus, like the capstones);
+         the newest live taunt wins. */
       var dainOD = s.heroes["dain"];
       if (dainOD && heroAliveD("dain") && fx.clock >= fx.dainNext) {
         fx.taunts = fx.taunts.filter(function (t) { return t.until > fx.clock; }).concat([{ id: "dain", until: fx.clock + 5, startedAt: fx.clock }]);
         fx.dainNext = fx.clock + 20;
-        fx.targetNextPick = fx.clock + 5;
       }
       var liveTauntsD = fx.taunts.filter(function (t) { return t.until > fx.clock && heroAliveD(t.id); });
       liveTauntsD.sort(function (a, b) { return b.startedAt - a.startedAt; });
       var activeTauntD = liveTauntsD.length ? liveTauntsD[0] : null;
-      var tauntDrMultD = activeTauntD && activeTauntD.id === "dain" && dainOD ? 1 - Math.min(0.9, 0.20 + 0.05 * skillLevel(dainOD)) : 1;
-      if (activeTauntD) {
-        fx.targetIdx = s.party.indexOf(activeTauntD.id);
-      } else if (fx.clock >= fx.targetNextPick || fx.targetIdx < 0 || fx.targetIdx >= s.party.length || (hpsD[fx.targetIdx] || 0) <= 0) {
-        var pickD = pickWeightedTarget(hpsD, maxesD);
-        if (pickD >= 0) fx.targetIdx = pickD;
-        fx.targetNextPick = fx.clock + 5;
-      }
+      var tauntDrMultD = activeTauntD ? 1 - Math.min(0.9, 0.10 + 0.02 * skillLevel(s.heroes[activeTauntD.id])) : 1;
       // Live capstone slows / weakens, priced like the tower's: the active
       // slow window, plus Nyx's Numbing Venom while her poison holds
       // (persistent in a dungeon); Agatha's window, or Aurelia Frost's
@@ -10718,7 +10929,6 @@
           if (fx.hoarfrostStacks < 10) fx.hoarfrostStacks += 1;
         }
       }
-      var durnanSlow = durnanIn ? 0.85 : 1; /* Mountain's Weight — the foe attacks 15% less often */
       var hoarfrostMult = 1 - 0.02 * fx.hoarfrostStacks;
       /* Damage: hit DPS with the run's variance roll, plus the party's
          skill DoTs ticking on top — exactly as the tower folds them in.
@@ -10731,8 +10941,8 @@
          the DoTs below ride flat, untouched by the tempo, like the
          tower's timed damage (Tidal Edict, Cometfall, Cut Strings). */
       var secondActMult = mariIn ? 1 + Math.min(0.30, Math.floor(((fx.hitCounts && fx.hitCounts["mari"]) || 0) / 5) * 0.03) : 1;
-      var dotDps = dungeonDotDps(aliveSaveD);
-      var dmgPerSec = effectivePartyDps(aliveSaveD) * secondActMult * (0.9 + Math.random() * 0.2) + dotDps;
+      var dotDps = dungeonDotDps(s);
+      var dmgPerSec = effectivePartyDps(s) * secondActMult * (0.92 + Math.random() * 0.16) + dotDps;
       /* 👑 King's Levy: in the dungeon Aldric takes the same cut — 5% per
          skill level of the damage the rest of the party deals, his own
          hits (party-multiplied, Second Act included) and his Sovereign's
@@ -10787,34 +10997,26 @@
       if (!dungeonBattle.skillTimers) dungeonBattle.skillTimers = {};
       s.party.forEach(function (id) {
         if (!s.heroes[id]) return;
-        if (!heroAliveD(id)) { dungeonBattle.skillTimers[id] = 0; return; } /* a fallen hero does not attack — and stays fallen into the next wave */
         var period = 1 / heroById(id).atkSpeed;
         if (!(period > 0)) return;
         dungeonBattle.skillTimers[id] = (dungeonBattle.skillTimers[id] || 0) + dt;
         while ((dungeonBattle.skillTimers[id] || 0) >= period) {
           dungeonBattle.skillTimers[id] -= period;
           fx.hitCounts[id] = (fx.hitCounts[id] || 0) + 1;
-          /* ✚ Split-HP healing, dungeon mirror: on a healer's own every
-             3rd attack, a burst of healerProcAmount — 10% × (1 + their
-             own coefficient × skill level) × their OWN max HP — lands
-             lowest-HP first with spillover — the old per-second trickle
-             is gone here too, and a fallen healer procs nothing. (No
-             Deep Chill halving here: dungeons have no Frostmaw.) */
-          if (isHealerDef(heroById(id)) && fx.hitCounts[id] % 3 === 0) {
-            var hoD = s.heroes[id];
-            if (hoD) distributeHeal(hpsD, maxesD, healerProcAmount(id, hoD, maxesD[s.party.indexOf(id)] || 0));
-          }
+          /* Healing down here is the passive trickle alone (applied to
+             the pool below, every tick) — the tower's every-3rd-attack
+             healer procs do not fire in dungeons. */
           if (fx.hitCounts[id] % 5 === 0) {
-            /* 🕸 Silk Cocoon: every 5th Aurelia attack, her silk wraps the foe whole and STUNS it for 2s (+0.5s per skill level above 1). */
-            if (id === "aurelia" && aurIn) fx.cocoonUntil = fx.clock + silkCocoonDuration(skillLevel(aurO));
+            /* 🕸 Silk Cocoon: every 5th Aurelia attack, her silk wraps the foe whole and STUNS it for 2s (+0.5s per skill level above 1, ×1.25 under the Golden Cradle). */
+            if (id === "aurelia" && aurIn) fx.cocoonUntil = fx.clock + silkCocoonDuration(skillLevel(aurO)) * mods.ccMult;
             /* 🌿 Entangle: every 5th Ilya attack, his roots hold the foe for 2s. */
             if (id === "ilya" && ilyaIn) fx.entangleUntil = fx.clock + 2;
             /* 🌑 Eclipse: every 5th Orien attack, darkness falls for 4s. */
             if (id === "orien" && orienIn) fx.eclipseUntil = fx.clock + 4;
             /* 📯 Warlord's Roar: every 5th Durnan attack — party damage +25% for 5s, exactly as in the tower. */
             if (id === "durnan" && durnanIn) fx.roarUntil = fx.clock + 5;
-            /* ✨ Pearlescent Aegis: every 5th Amara attack — pearl light heals the party for 2% of max HP, lowest-HP first, exactly as in the tower. (Tidal Edict's wave itself rides dungeonDotDps.) */
-            if (id === "amara" && amaraIn) distributeHeal(hpsD, maxesD, pooledMaxD * 0.02);
+            /* ✨ Pearlescent Aegis: every 5th Amara attack — pearl light heals the shared pool for 2% of its max, exactly as in the tower. (Tidal Edict's wave itself rides dungeonDotDps.) */
+            if (id === "amara" && amaraIn) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + pooledMaxD * 0.02);
           }
         }
       });
@@ -10822,69 +11024,43 @@
          0.5%/lv of the damage dealt; Torin's Blood Pact returns 10% +
          5%/lv of his bleed (time-averaged, as in dungeonDotDps); Straw's
          Crow's Feast returns 25% + 5%/lv of his averaged burst. All of it
-         lands lowest-HP first, and only while its hero stands. */
+         pours into the shared pool, and only while its hero stands. */
       var lifeHeal = 0;
       if (capstoneActive(s, "lyra") && heroAliveD("lyra")) lifeHeal += dmgPerSec * dt * (0.02 + 0.005 * capstoneLv(s, "lyra"));
       if (capstoneActive(s, "velkist") && heroAliveD("velkist")) lifeHeal += capstoneAtk(s, "velkist") * 0.10 * capstoneLv(s, "velkist") * (0.10 + 0.05 * capstoneLv(s, "velkist")) * dt;
       if (capstoneActive(s, "straw") && heroAliveD("straw")) lifeHeal += capstoneAtk(s, "straw") * capstoneLv(s, "straw") / 20 * (0.25 + 0.05 * capstoneLv(s, "straw")) * dt;
-      if (lifeHeal > 0) distributeHeal(hpsD, maxesD, lifeHeal);
+      if (lifeHeal > 0) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + lifeHeal);
       /* The wave fights back only while it can move: a held foe deals
          nothing, and a free one is blunted by the party's enemy-attack
-         modifiers, the slows, Hoarfrost, the weaken, and Dain's taunt
-         reduction — the tower's own mAtk line. Split-HP prices the foe's
-         rate off the flat rule (25% of the party's AVERAGE max HP per
-         second) with the run's own scaling riding on top — the difficulty
-         multiplier and the per-wave growth, the two factors that escalate
-         a run itself. The dungeon's powerMult deliberately does NOT ride
-         along: it was solved on the old attack-stat scale, and the flat
-         base already scales with the party's own HP, so multiplying by
-         it again would double-count that growth and one-shot heroes.
-         The whole rate lands on the foe's one target, whose own shield
-         absorbs first. There is no healing term here anymore: the old
-         per-second trickle is gone, replaced by the healers'
-         every-3rd-attack procs in the attack loop above. */
-      var waveDmg = foeHeld ? 0 : splitEnemyDps(s) * diffMult * (1 + 0.25 * (dungeonBattle.wave - 1)) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult * tauntDrMultD;
-      var tiD = fx.targetIdx;
-      if (waveDmg > 0 && tiD >= 0 && tiD < s.party.length && (hpsD[tiD] || 0) > 0) {
+         modifiers, the slows, Hoarfrost, the weaken, and the taunt
+         damage reduction. The wave's attack is priced off the dungeon's
+         powerFloor (dungeonWaveAtk), growing +25% per wave, with the
+         run's difficulty multiplier and the dungeon's powerMult riding
+         along — the same pricing the Dungeon tab's card previews and
+         dungeonRecommendedBp read. The whole rate lands on the shared
+         pool, whose shield absorbs first. Before the wave's damage
+         lands, the healers' trickle mends the pool (dungeonHealPerSec),
+         so a wave the trickle covers never drains the pool. */
+      var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave, diffMult) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult * tauntDrMultD;
+      if (trickleD > 0) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + trickleD * dt);
+      if (waveDmg > 0) {
         var waveDmgTaken = waveDmg * dt;
-        var waveAbsorbed = Math.min(shieldsD[tiD] || 0, waveDmgTaken);
-        shieldsD[tiD] = (shieldsD[tiD] || 0) - waveAbsorbed;
+        var waveAbsorbed = Math.min(dungeonBattle.shield, waveDmgTaken);
+        dungeonBattle.shield -= waveAbsorbed;
         waveDmgTaken -= waveAbsorbed;
-        var wasAliveD = (hpsD[tiD] || 0) > 0;
-        hpsD[tiD] = Math.max(0, (hpsD[tiD] || 0) - waveDmgTaken);
-        if (wasAliveD && (hpsD[tiD] || 0) <= 0) lastFallenIdxD = tiD;
+        dungeonBattle.partyHp -= waveDmgTaken;
       }
-      if (hpsD.length > 0 && hpsD.every(function (h) { return h <= 0; })) {
-        /* Split-HP wipe in the depths: the saves fire in the tower's
-           order, each once per run — Unbreakable catches the last hero
-           at 1 HP, Undying Star catches Soren himself, and Luna's vigil
-           / Wren's tonic revive the whole party at 40% of each hero's
-           own max HP. Anything else ends the run. */
-        var hanIdxD = s.party.indexOf("han");
-        var wrenOD = s.heroes["wren"];
-        if (durnanIn && !dungeonBattle.unbreakableUsed) {
-          dungeonBattle.unbreakableUsed = true;
-          hpsD[lastFallenIdxD >= 0 ? lastFallenIdxD : 0] = 1;
-        } else if (capstoneActive(s, "han") && !fx.capSorenUsed && hanIdxD >= 0 && aliveAtStartD[hanIdxD]) {
-          /* ⭐ Undying Star, once per run: Soren refuses to fall — he
-             survives at 1 HP and his attacks burn brighter for 8s (above). */
-          fx.capSorenUsed = true;
-          fx.capSorenWinUntil = fx.clock + 8;
-          hpsD[hanIdxD] = 1;
-        } else if (s.heroes["luna"] && s.party.indexOf("luna") >= 0 && !dungeonBattle.vigilUsed) {
-          dungeonBattle.vigilUsed = true;
-          for (var viD = 0; viD < hpsD.length; viD++) hpsD[viD] = (maxesD[viD] || 0) * 0.4;
-        } else if (wrenOD && s.party.indexOf("wren") >= 0 && effRank(heroById("wren"), wrenOD) >= 7 && !dungeonBattle.phoenixUsed) {
-          dungeonBattle.phoenixUsed = true;
-          for (var piD = 0; piD < hpsD.length; piD++) hpsD[piD] = (maxesD[piD] || 0) * 0.4;
-        } else {
-          if (dungeonTimer) window.clearInterval(dungeonTimer);
-          dungeonTimer = null;
-          lastDungeonLost = dg.name;
-          dungeonBattle = null;
-          renderMain();
-          return;
-        }
+      if (dungeonBattle.partyHp <= 0) {
+        /* Pooled wipe: the pool is empty and the run ends — no saves or
+           revives down here (Unbreakable, Undying Star, Luna's vigil,
+           Wren's tonic are tower-only). The run still counts. */
+        dungeonBattle.partyHp = 0;
+        if (dungeonTimer) window.clearInterval(dungeonTimer);
+        dungeonTimer = null;
+        lastDungeonLost = dg.name;
+        dungeonBattle = null;
+        renderMain();
+        return;
       } else if (dungeonBattle.enemyHp <= 0) {
         /* Grave Tithe (Ossian, Floor 90): dungeon kills feed him too. */
         feedGraveTitheDungeon();
@@ -10893,7 +11069,7 @@
         dungeonBattle.enemyMax = dungeonWaveHp(dg, dungeonBattle.wave, diffMult);
         dungeonBattle.enemyHp = dungeonBattle.enemyMax;
         dungeonBattle.fx = freshDungeonStatus(); /* a new wave is a new foe — every status timer starts over */
-        dungeonBattle.heroShields = s.party.map(function () { return 0; }); /* shields fall with the wave, like the tower's per-fight pool — but hero HP (and the fallen) carry over */
+        dungeonBattle.shield = 0; /* the shield falls with the wave; the shared pool carries over */
         playHitSfx();
       }
       /* Visual only: on their own attack cadence (the same period the
@@ -10907,7 +11083,6 @@
         save.party.forEach(function (id) {
           var o = save.heroes[id]; if (!o) return;
           var def = heroById(id); if (!def) return;
-          if ((hpsD[save.party.indexOf(id)] || 0) <= 0) { dungeonBattle.atkTimers[id] = 0; return; } /* a fallen hero does not attack */
           dungeonBattle.atkTimers[id] = (dungeonBattle.atkTimers[id] || 0) + dt;
           var period = 1 / (def.atkSpeed || 1);
           var guard = 0;
@@ -11732,6 +11907,7 @@
       var amaraO = s.heroes["amara"]; var amaraIn = !!amaraO && heroAlive("amara");
       var durnanO = s.heroes["durnan"]; var durnanIn = !!durnanO && heroAlive("durnan");
       var orienO = s.heroes["orien"]; var orienIn = !!orienO && heroAlive("orien");
+      var vesperO = s.heroes["vesper"]; var vesperIn = !!vesperO && heroAlive("vesper");
       var aldricO = s.heroes["aldric"]; var aldricIn = !!aldricO && heroAlive("aldric");
       var timedDmg = 0;
       var aldricHitDmg = 0; // Aldric's hit damage this tick (before the party multiplier) — the Levy's basis excludes it
@@ -11817,9 +11993,11 @@
         capNextIn("brynn", 20); capFloat("🛡 IRON AEGIS!");
       }
       capLv = capFire("durnan");
-      if (capLv) { // ⛰️ Bulwark of the Mountain: shield 8% + 2%/lv of party max HP — every 25s.
+      if (capLv) { // ⛰️ Bulwark of the Mountain: shield 8% + 2%/lv of each hero's own max HP — every 25s — and a 5s TAUNT the moment it lands (Rachel, Nov 21): the foe turns to Durnan right as the shield rises. Same taunt rules as Dain's Stand Fast (newest wins, dies with the taunter, never redirects party-wide abilities) — but NO damage reduction rides on Durnan's taunt; that is Dain's alone.
         capShieldUp(0.08 + 0.02 * capLv);
-        capNextIn("durnan", 25); capFloat("⛰️ BULWARK OF THE MOUNTAIN!");
+        taunts = taunts.filter(function (t) { return t.until > bClock; }).concat([{ id: "durnan", until: bClock + 5, startedAt: bClock }]);
+        targetNextPick = bClock + 5; // re-pick the moment the taunt lapses
+        capNextIn("durnan", 25); capFloat("⛰️ BULWARK OF THE MOUNTAIN — Durnan taunts the foe!");
       }
       capLv = capFire("aaron");
       if (capLv) { // 🛡 Shield Wall: shield 5% + 1%/lv of party max HP — every 20s.
@@ -11887,15 +12065,15 @@
         capNextIn("ash", 20); capFloat("🐺 PACK HUNT!");
       }
       capLv = capFire("vesper");
-      if (capLv) { // 🎭 Marionette's Masterpiece: root 2s + 0.3s/lv + 100% ATK × lv — every 25s.
+      if (capLv) { // 🎭 Marionette's Masterpiece: root 2s + 0.3s/lv + 100% ATK × lv — every 25s. (The Golden Cradle stretches the root ×1.25 while Aurelia fights beside her.)
         timedDmg += capstoneAtk(s, "vesper") * capLv;
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + 2 + 0.3 * capLv);
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + (2 + 0.3 * capLv) * mods.ccMult);
         capNextIn("vesper", 25); capFloat("🎭 MARIONETTE'S MASTERPIECE!");
       }
       capLv = capFire("aurelia");
-      if (capLv) { // 🕸 Widow's Embrace: root 2s + 0.3s/lv + the wrapped enemy takes +8%/lv — every 25s.
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + 2 + 0.3 * capLv);
-        capVuln(0.08 * capLv, 2 + 0.3 * capLv);
+      if (capLv) { // 🕸 Widow's Embrace: root 2s + 0.3s/lv + the wrapped enemy takes +8%/lv — every 25s. (Root and wrap window both stretch ×1.25 under the Golden Cradle — the vulnerability lasts exactly as long as the wrap.)
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + (2 + 0.3 * capLv) * mods.ccMult);
+        capVuln(0.08 * capLv, (2 + 0.3 * capLv) * mods.ccMult);
         capNextIn("aurelia", 25); capFloat("🕸 WIDOW'S EMBRACE!");
       }
       capLv = capFire("mari");
@@ -12178,8 +12356,8 @@
              the window reads above were computed before this loop.) */
           if ((hitCounts[id] || 0) % 5 === 0) {
             if (id === "aurelia" && aureliaO) {
-              /* 🕸 Silk Cocoon: her silk wraps the enemy whole and STUNS it — it cannot attack until the cocoon's hold ends (1.5 + 0.5 × skill Lv seconds). */
-              var cocoonDur = silkCocoonDuration(skillLevel(aureliaO));
+              /* 🕸 Silk Cocoon: her silk wraps the enemy whole and STUNS it — it cannot attack until the cocoon's hold ends (1.5 + 0.5 × skill Lv seconds, ×1.25 under the Golden Cradle). */
+              var cocoonDur = silkCocoonDuration(skillLevel(aureliaO)) * mods.ccMult;
               stunUntil = performance.now() + cocoonDur * 1000;
               pendingFloats.push({ text: "🕸 SILK COCOON — STUNNED " + cocoonDur.toFixed(1) + "s!", big: true, x: 55 + Math.random() * 20 });
             }
@@ -12205,6 +12383,11 @@
               /* 🎭 Cut Strings: Mari yanks the enemy's strings — it strikes itself for 50% of its attack. */
               timedDmg += enemyAtkStat * hoarfrostMult * 0.5;
               pendingFloats.push({ text: "🎭 CUT STRINGS — it strikes itself!", big: true, x: 62 });
+            }
+            if (id === "vesper" && vesperIn) {
+              /* 🎭 Puppet Dance: a summoned puppet strikes for 150% of Vesper's attack per skill level. */
+              timedDmg += heroAtk(heroById("vesper"), vesperO, s) * 1.5 * skillLevel(vesperO);
+              pendingFloats.push({ text: "🎭 PUPPET DANCE!", big: true, x: 62 });
             }
             if (id === "amara" && amaraIn) {
               /* 🌊 Tidal Edict: a tidal wave crashes for 100% of Amara's attack per skill level. */
