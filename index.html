@@ -1409,6 +1409,8 @@
         redeemedCodes: [],
         redeemedGiftIds: [],
         floorMemory: {},
+        run: 1,
+        heirloom: null,
         graveKills: 0,
         quests: [],
         sorenV2: true
@@ -1451,6 +1453,22 @@
           }
         }
         merged.sorenV2 = true;
+        // Migration: older saves predate runs — they are on their first climb, with nothing sealed away.
+        merged.run = typeof merged.run === "number" && merged.run >= 1 ? Math.floor(merged.run) : 1;
+        var rawHeir = p.heirloom;
+        if (rawHeir && typeof rawHeir.uid === "string" && (rawHeir.slot === "weapon" || rawHeir.slot === "armor" || rawHeir.slot === "accessory") && typeof rawHeir.stars === "number" && rawHeir.stars >= 1 && rawHeir.stars <= 7) {
+          var heirPiece = { uid: rawHeir.uid, slot: rawHeir.slot, stars: Math.floor(rawHeir.stars) };
+          var heirRecipe = rawHeir.recipe;
+          if (heirRecipe === "dragon") heirRecipe = "scale";
+          else if (heirRecipe === "star") heirRecipe = "essence";
+          if (typeof heirRecipe === "string" && ["iron", "moon", "scale", "essence"].indexOf(heirRecipe) >= 0) heirPiece.recipe = heirRecipe;
+          if (typeof rawHeir.name === "string" && rawHeir.name.trim()) heirPiece.name = rawHeir.name.trim().slice(0, 40);
+          if (typeof rawHeir.attunedClass === "string" && rawHeir.attunedClass.trim()) heirPiece.attunedClass = remapLegacyAttunedClass(rawHeir.attunedClass.trim().slice(0, 30));
+          if (typeof rawHeir.fatedHero === "string" && HEROES.some(function (hd) { return hd.id === rawHeir.fatedHero; })) heirPiece.fatedHero = rawHeir.fatedHero;
+          merged.heirloom = heirPiece;
+        } else {
+          merged.heirloom = null;
+        }
         merged.party = p.party.filter(function (id) { return typeof id === "string" && heroes[id]; }).slice(0, MAX_PARTY);
         if (merged.party.length === 0) {
           var firstOwned = Object.keys(heroes)[0];
@@ -2660,6 +2678,18 @@
     function gearAtkBonus(stars) { return stars * 14; }
     function gearHpBonus(stars) { return stars * 90; }
     function gearCritBonus(stars) { return stars * 0.015; }
+    /* The raw size of a piece's stat bonus, for comparing pieces across slots (accessory crit is counted in percentage points). */
+    function gearBonusValue(p) { return p.slot === "weapon" ? gearAtkBonus(p.stars) : p.slot === "armor" ? gearHpBonus(p.stars) : gearCritBonus(p.stars) * 100; }
+    /* The single strongest piece in a collection: highest stars first, ties broken by the largest stat bonus. Null when the collection is empty. */
+    function strongestGearPiece(inv) {
+      var best = null;
+      (inv || []).forEach(function (p) {
+        if (!best || p.stars > best.stars || (p.stars === best.stars && gearBonusValue(p) > gearBonusValue(best))) best = p;
+      });
+      return best;
+    }
+    /* The sealed heirloom from the previous run opens when the new climb reaches this floor. The number is deliberately NEVER shown in the UI — the seal simply breaks when it breaks. */
+    var HEIRLOOM_UNLOCK_FLOOR = 50;
     /* Gear grows with its wearer: a weapon's ATK bonus and an armor's HP
        bonus multiply by (1 + wearer level / 100) — ×1.6 at Lv 60, ×2.2 at
        Lv 120 — so a piece keeps pace as its hero climbs instead of fading
@@ -2680,7 +2710,8 @@
     function gearDefaultName(g) { return GEAR_NAMES[g.slot][Math.max(1, Math.min(7, g.stars)) - 1] || "Forged Gear"; }
     /* The one-of-a-kind rule: a slot's 7★ can only ever exist once. */
     function gearSevenExists(inv, slot) { return (inv || []).some(function (g) { return g.slot === slot && g.stars >= 7; }); }
-    function slotHasSevenStar(s, slot) { return gearSevenExists(s ? s.gearInv : [], slot); }
+    /* The one-set rule spans runs: a 7★ sealed away as the heirloom still counts — its slot can never produce a second 7★. */
+    function slotHasSevenStar(s, slot) { return gearSevenExists(s ? s.gearInv : [], slot) || (!!s && !!s.heirloom && s.heirloom.slot === slot && s.heirloom.stars >= 7); }
     var MATERIALS = [
       { id: "iron", name: "Iron Shard", icon: "🔩" },
       { id: "moon", name: "Moonstone", icon: "🌙" },
@@ -4411,6 +4442,18 @@
        monsterMaxHp.) */
     function bossMaxHp(s, f) {
       return Math.round(monsterMaxHp(f) * memoryMults(s, f).hp * titheMult(s, f) * (isBossFloor(f) ? 2 : 1));
+    }
+    /* 👹 Boss enrage factor (Rachel, Nov 20 + Nov 21 escalation): 1 before
+       30 battle-seconds; ×1.5 from 30s; then ADDITIVE +0.3 of BASE for every
+       full 5 seconds past the enrage, uncapped — 35s ×1.8, 40s ×2.1, 45s
+       ×2.4, 60s ×3.3, and climbing. (On the boss's 35%-of-average-max-HP
+       stream that reads 52.5% → 63% → 73.5% → 84% → 115.5% at 60s.) The
+       tower loop prices damage with it and the battle view badges it, from
+       this one function, so the two can never drift. Boss floors only —
+       dungeons have no enrage. */
+    function bossEnrageMult(clock) {
+      if (clock < 30) return 1;
+      return 1.5 + 0.3 * Math.floor((clock - 30) / 5);
     }
     var MEMORY_HINTS_LOW = [
       "The walls feel familiar. Like they've seen you fall here before.",
@@ -6151,7 +6194,7 @@
           ? '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Open gem exchange — trade gems for gold">+</button>'
           : '<button type="button" class="cur-plus" id="exchange-plus" aria-label="Gem exchange locked — unlocks at Tower Floor ' + EXCHANGE_UNLOCK_FLOOR + ', you are on floor ' + save.floor + '" style="opacity:0.8;font-size:11px">🔒</button>') + "</span>" +
         '<span class="cur-pill cur-gems" aria-label="Gems: ' + save.gems + '">💎 ' + save.gems.toLocaleString("en-US") + "</span>" +
-        '<span class="cur-floor">' + "Floor " + save.floor + "</span>";
+        '<span class="cur-floor">' + "Floor " + save.floor + ((save.run || 1) >= 2 ? " · Run " + save.run : "") + "</span>";
       var exPlus = document.getElementById("exchange-plus");
       if (exPlus) exPlus.addEventListener("click", function () {
         var root = document.getElementById("modal-root");
@@ -6487,7 +6530,7 @@
       if (hasHealer) status += " · ✚ healers mend the lowest ally on every 3rd attack";
       if (liveTauntNow) status += " · 🎯 TAUNTED — the foe must attack " + heroById(liveTauntNow.id).name.split(" ")[0];
       else if (targetNameNow) status += " · 🎯 the foe is focused on " + targetNameNow;
-      if (bossEnragedNow) status += " · 😡 ENRAGED — the boss hits ×1.5 harder!";
+      if (bossEnragedNow) status += " · 😡 ENRAGED — the boss hits ×" + (Math.round(bossEnrageMult(battleElapsed) * 100) / 100) + " harder and climbing!";
       if (nowMs < burn.until && s.party.indexOf("draven") >= 0) status += " · 🔥 the monster is BURNING";
       if (nowMs < snare.until && s.party.indexOf("aurelia") >= 0) status += " · 🕸 the monster is SNARED in golden silk";
       var poisonStacksNow = poisonStacksAt(nowMs);
@@ -6548,7 +6591,7 @@
       var sib = document.getElementById("silence-badge");
       if (sib) sib.style.display = battleElapsed < capState.silenceUntil ? "inline-block" : "none";
       var enb = document.getElementById("enrage-badge");
-      if (enb) enb.style.display = bossEnragedNow ? "inline-block" : "none";
+      if (enb) { enb.style.display = bossEnragedNow ? "inline-block" : "none"; if (bossEnragedNow) enb.textContent = "😡 Enraged — damage ×" + (Math.round(bossEnrageMult(battleElapsed) * 100) / 100); }
       var tauntBadge = document.getElementById("taunt-badge");
       if (tauntBadge) { tauntBadge.style.display = liveTauntNow ? "inline-block" : "none"; if (liveTauntNow) tauntBadge.textContent = "🎯 TAUNTED — focused on " + heroById(liveTauntNow.id).name.split(" ")[0]; }
       /* 😡 Enraged aura: the boss glows red for as long as it rages —
@@ -6673,6 +6716,9 @@
       var h = '<div class="anime-card mt4 card-pad" aria-label="Gear inventory">';
       h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell: 1★ 🪙100 · 2★ 🪙250 · 3★ 🪙600 · 4★ 🪙1,500 · 5★ 🪙4,000 · 👑 7★ can never be sold</p></div>';
       h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
+      if (s.heirloom) {
+        h += '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;border-radius:16px;border:2px dashed rgba(167,139,250,0.55);background:rgba(167,139,250,0.08);padding:0.75rem" role="region" aria-label="Sealed relic — contents unknown"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:rgba(167,139,250,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#c4b5fd">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">Something from a climb half-remembered sleeps inside, sealed tight. It cannot be equipped, sold, or pried open — the tower will decide when, or whether, it wakes.</span></span><span style="font-size:1.5rem" aria-hidden="true">🗝️</span></div>';
+      }
       /* ---- Combine mode toggle + gear sort ---- */
       h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
       h += '<button type="button" class="' + (combineMode ? "btn-pill anime-btn-primary" : "btn-pill") + '" data-combine-toggle aria-pressed="' + combineMode + '" aria-label="' + (combineMode ? "Exit combine mode" : "Enter combine mode — fuse 3 matching gear pieces into 1 of the next star rank") + '" style="' + (combineMode ? "" : "border:2px solid #ff7eb6;background:rgba(255,126,182,0.1);color:#ff9ecf") + '">' + (combineMode ? "✕ Done combining" : "🔀 Combine gear") + "</button>";
@@ -12699,14 +12745,18 @@
          lands on ONE hero at a time (targetIdx). On boss floors the base
          is 35% (×1.4), and once the fight has lasted 30 battle-seconds
          the boss ENRAGES for the rest of the fight: ×1.5 on top (52.5%/s,
-         ~73% per lunge interval — still no one-shot). Regular floors keep
-         the plain 25% and never enrage. */
+         ~73% per lunge interval), and every full 5 seconds past the enrage
+         adds another +0.3 OF BASE (bossEnrageMult — additive, not
+         compounding; +10.5 points of the 35% stream per step, uncapped:
+         63%/s at 35s, 73.5% at 40s, 115.5% at 60s). Regular floors keep
+         the plain 25% and never enrage; the dungeon loop's separate
+         stream is untouched. */
       var bossEnraged = isBossFloor(f) && bClock >= 30;
       if (bossEnraged && !enrageAnnounced) {
         enrageAnnounced = true;
         if (tab === "battle") addFloat("😡 ENRAGED! The boss's blows hit ×1.5 harder!", true, 62);
       }
-      var bossDmgMult = isBossFloor(f) ? 1.4 * (bossEnraged ? 1.5 : 1) : 1;
+      var bossDmgMult = isBossFloor(f) ? 1.4 * bossEnrageMult(bClock) : 1;
       var mAtk = (enemyStunned() || enemyFrozen() || enemyRooted() || enemyEclipsed() || enemySwallowed() || capHeld || capEvaded || battleElapsed < cap.morriganMissUntil) ? 0 : splitEnemyDps(s) * bossDmgMult * mods.enemyAtkMult * capSlowMult * hoarfrostMult * capWeakenMult * mods.dmgTakenMult * tauntDrMult;
       // One hero takes the focused damage: their own shield absorbs
       // first, and whatever gets through is theirs alone.
@@ -12863,7 +12913,15 @@
           if (!afterWipe.floorMemory) afterWipe.floorMemory = {};
           afterWipe.floorMemory[String(f)] = { deaths: memBeforeW.deaths + 1, reClears: memBeforeW.reClears };
           heroHps = heroMaxHpList(afterWipe);
-          enemyHp = Math.max(bossMaxHp(afterWipe, f) * 0.6, enemyHp);
+          /* Wipe: the monster returns to FULL HP (Rachel, Nov 21: "fail
+             stage resets monster hp completely") — a failed stage restarts
+             the monster exactly like a fresh attempt. The old rule that let
+             it keep the damage (never below 60% of its max) is gone; this
+             one branch serves every floor, so boss and regular floors alike
+             now reset fully. Tower Memory still counts the fall — the death
+             is recorded in afterWipe above, and bossMaxHp prices the
+             memory's HP growth into the full bar, exactly as before. */
+          enemyHp = bossMaxHp(afterWipe, f);
           resetBattleTimers();
           persist(afterWipe);
           var wipeHint = memoryHintLine(afterWipe, f);
@@ -12897,8 +12955,43 @@
           playClearSfx();
           addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
         } else {
-          next.floor = f + 1;
-          next.fightFloor = f + 1;
+          /* Clearing Floor 100 ends the run — a FULL reset (Rachel, Nov 21:
+             "All of that should get reset. Otherwise there's nothing to
+             resetting."). The new climb starts exactly like a brand-new
+             account, so `next` is a fresh save, not the old one carried
+             over: the ENTIRE roster goes (levels, syntheses, dupes — back
+             to the lone starter hero), gold and gems return to the
+             starting amounts, materials and shards empty, the whole gear
+             inventory and every equipped piece vanish, both summon pity
+             counters zero, dungeon progress/unlocks and quest progress
+             wipe, Tower Memory forgets, and Ossian's Grave Tithe is 0
+             (a fresh save's value). The floor-100 clear's own gold/gems
+             are NOT banked — the reset swallows them like everything else.
+             Exactly three things carry over: the run counter (+1), the
+             run's single strongest gear piece sealed away as the heirloom
+             (it unseals at Floor 50 of the new climb, exactly as before),
+             and the account-level record of redeem/gift codes already
+             claimed (each code still works once, ever). No ending screen,
+             no choice — the climb simply begins again. */
+          var isRunEnd = f >= 100;
+          if (isRunEnd) {
+            var runHeir = strongestGearPiece(s.gearInv);
+            var freshRun = freshSave(Date.now());
+            freshRun.run = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1) + 1;
+            freshRun.heirloom = runHeir ? JSON.parse(JSON.stringify(runHeir)) : null;
+            freshRun.redeemedCodes = (s.redeemedCodes || []).slice();
+            freshRun.redeemedGiftIds = (s.redeemedGiftIds || []).slice();
+            next = freshRun;
+          } else {
+            next.floor = f + 1;
+            next.fightFloor = f + 1;
+            /* 🔓 The heirloom unseals the moment the climb reaches its floor —
+               quietly, in the same breath as the clear that got them there. */
+            if (next.heirloom && next.run >= 2 && next.floor >= HEIRLOOM_UNLOCK_FLOOR) {
+              next.gearInv = next.gearInv.concat([next.heirloom]);
+              next.heirloom = null;
+            }
+          }
           if (f === 25 && !next.heroes["luna"]) {
             next.heroes["luna"] = { level: 1, dupes: 0, asc: 0 };
             if (next.party.length < MAX_PARTY) next.party.push("luna");
@@ -12907,15 +13000,22 @@
           /* First reaching Floor 95: the Keeper's reveal scene plays
              before his boss fight begins (once per save). */
           if (f === 94 && !next.keeperSeen) keeperScene = true;
-          battleFloor = f + 1;
-          enemyHp = bossMaxHp(next, f + 1);
+          battleFloor = next.floor;
+          enemyHp = bossMaxHp(next, next.floor);
           phoenixUsed = false;
           resetBattleTimers();
           heroHps = heroMaxHpList(next); /* a clear restores the whole party to full HP before the next fight (matching the main game) */
           persist(next);
           if (tab === "battle") renderMain();
           playClearSfx();
-          addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
+          /* On the run-end clear there is no gold float: the reset swallows
+             the clear's reward, so flashing "+gold" would promise a payout
+             the player never keeps — the RUN float below says what happened. */
+          if (!isRunEnd) addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
+          if (isRunEnd) {
+            addFloat("🌅 RUN " + next.run + " — the climb begins again", true, 55);
+            setNotice("🌅 Floor 100 cleared — the run is complete, and the tower resets. Run " + next.run + " starts exactly like a brand-new climb: the starter hero alone, starting gold and gems, no gear, no materials — everything earned is gone. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
+          }
           maybeShowPendingModals();
         }
       }
@@ -12981,6 +13081,11 @@
         }
       }
       loaded.lastSeen = now;
+      /* 🔓 Belt and braces: a sealed heirloom whose climb is already past its floor unseals on load (the in-loop clear normally catches this first). */
+      if (loaded.run >= 2 && loaded.heirloom && loaded.floor >= HEIRLOOM_UNLOCK_FLOOR) {
+        loaded.gearInv = loaded.gearInv.concat([loaded.heirloom]);
+        loaded.heirloom = null;
+      }
       if (loaded.floor > 25 && !loaded.heroes["luna"]) {
         loaded.heroes["luna"] = { level: 1, dupes: 0, asc: 0 };
         if (loaded.party.length < MAX_PARTY) loaded.party.push("luna");
