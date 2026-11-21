@@ -12957,10 +12957,11 @@
         } else {
           /* Clearing Floor 100 ends the run — a FULL reset (Rachel, Nov 21:
              "All of that should get reset. Otherwise there's nothing to
-             resetting."). The new climb starts exactly like a brand-new
-             account, so `next` is a fresh save, not the old one carried
-             over: the ENTIRE roster goes (levels, syntheses, dupes — back
-             to the lone starter hero), gold and gems return to the
+             resetting."). The new climb starts from a fresh save, not the
+             old one carried over: the ENTIRE roster goes (levels,
+             syntheses, dupes — back to ONE RANDOM 3★ or 4★ hero at Lv1,
+             granted directly as the whole roster and party, no starter
+             selection scene), gold and gems return to the
              starting amounts, materials and shards empty, the whole gear
              inventory and every equipped piece vanish, both summon pity
              counters zero, dungeon progress/unlocks and quest progress
@@ -12974,9 +12975,28 @@
              claimed (each code still works once, ever). No ending screen,
              no choice — the climb simply begins again. */
           var isRunEnd = f >= 100;
+          var runStartHero = null;
           if (isRunEnd) {
             var runHeir = strongestGearPiece(s.gearInv);
             var freshRun = freshSave(Date.now());
+            /* 🌟 The new run's starting roster (Rachel, Nov 21, ported
+               from main): instead of the lone Lv1 starter a brand-new
+               account gets, a run-end reset grants ONE RANDOM 3★ or 4★
+               hero at Lv1 — the rank is picked 50/50, then the hero is
+               a uniform pick from that rank's regular summon pool
+               (rollHero — retired-from-summons heroes excluded, exactly
+               as summons draw). The hero is granted directly as the
+               whole roster and party: there is no starter selection
+               scene on a run-end reset (starterSeen is set true).
+               Brand-new accounts are untouched — freshSave still rolls
+               its normal starter. */
+            var startRank = Math.random() < 0.5 ? 3 : 4;
+            runStartHero = rollHero(startRank);
+            freshRun.heroes = {};
+            freshRun.heroes[runStartHero.id] = { level: 1, dupes: 0, asc: 0 };
+            freshRun.party = [runStartHero.id];
+            freshRun.starterId = runStartHero.id;
+            freshRun.starterSeen = true;
             freshRun.run = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1) + 1;
             freshRun.heirloom = runHeir ? JSON.parse(JSON.stringify(runHeir)) : null;
             freshRun.redeemedCodes = (s.redeemedCodes || []).slice();
@@ -13014,7 +13034,7 @@
           if (!isRunEnd) addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
           if (isRunEnd) {
             addFloat("🌅 RUN " + next.run + " — the climb begins again", true, 55);
-            setNotice("🌅 Floor 100 cleared — the run is complete, and the tower resets. Run " + next.run + " starts exactly like a brand-new climb: the starter hero alone, starting gold and gems, no gear, no materials — everything earned is gone. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
+            setNotice("🌅 Floor " + f + " cleared — the run is complete, and the tower resets. Run " + next.run + " begins with a lone " + runStartHero.stars + "★ hero — " + runStartHero.name + " at level 1, starting gold and gems, no gear, no materials — everything earned is gone. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
           }
           maybeShowPendingModals();
         }
