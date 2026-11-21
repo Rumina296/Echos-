@@ -252,7 +252,7 @@
       .upg-meta { font-size: 0.75rem; font-weight: 700; color: var(--dim); margin: 0.125rem 0 0; }
       .upg-actions { display: flex; flex-direction: column; gap: 0.375rem; flex: none; }
       .upg-actions .btn-pill { padding: 0.375rem 0.75rem; font-size: 0.8125rem; white-space: nowrap; }
-      @media (min-width: 640px) { .upg-actions { flex-direction: row; } }
+      @media (min-width: 640px) { .upg-actions { flex-direction: row; flex-wrap: wrap; } }
       /* narrow phones: stack each upgrade row instead of squeezing it
          onto one line — the portrait + name/meta line gets the full
          width (name wraps rather than being cut off, meta wraps in
@@ -387,6 +387,7 @@
       .deepchill-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #7cc4ea, #a5f3fc); color: #082f3d; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(124,196,234,0.6); }
       .remember-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #a8dcff, #c4b5fd); color: #1e1b4b; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(168,220,255,0.6); }
       .enrage-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #be123c, #f43f5e); color: #fff1f2; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,63,94,0.7); }
+      .tenacity-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #0f766e, #14b8a6); color: #ccfbf1; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(20,184,166,0.6); }
       .taunt-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #e0a92e, #ffd94d); color: #3a2403; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(255,217,77,0.65); }
       .chibi-taunt { position: absolute; top: -0.25rem; right: 0; z-index: 20; font-size: 0.875rem; }
       .chibi-fallen { margin: 0.125rem 0 0; font-size: 9px; font-weight: 900; line-height: 1.15; color: #fda4af; }
@@ -585,22 +586,10 @@
       .hidden { display: none !important; }
 
       /* ---------- daily login ---------- */
-      .daily-grid { margin-top: 1rem; display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.375rem; }
-      .daily-cell { position: relative; border-radius: 16px; border: 2px solid var(--border); background: var(--surface2); padding: 0.5rem 0.125rem 0.375rem; text-align: center; }
-      .daily-cell .d-day { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--dim); margin: 0; }
-      .daily-cell .d-icon { font-size: 1.25rem; line-height: 1.3; margin: 0.125rem 0 0; }
-      .daily-cell .d-amt { font-size: 10px; font-weight: 900; line-height: 1.2; margin: 0; }
-      .daily-cell.claimed { border-color: #2dd4bf88; background: rgba(45,212,191,0.14); }
-      .daily-cell.claimed .d-day { color: #5eead4; }
-      .daily-cell .d-check { position: absolute; top: -0.45rem; right: -0.3rem; display: flex; height: 1.15rem; width: 1.15rem; align-items: center; justify-content: center; border-radius: 999px; background: linear-gradient(135deg, #2dd4bf, #7dd3fc); color: #06283d; font-size: 10px; font-weight: 900; box-shadow: 0 2px 6px rgba(0,0,0,0.4); }
-      .daily-cell.today { border-color: #ffd94d; background: rgba(255,217,77,0.13); box-shadow: 0 0 14px rgba(255,217,77,0.45); }
-      .daily-cell.today .d-day { color: #ffd94d; }
-      .daily-cell.upcoming { opacity: 0.5; }
-      @media (max-width: 480px) {
-        .daily-grid { gap: 0.25rem; }
-        .daily-cell .d-icon { font-size: 1.05rem; }
-        .daily-cell .d-amt { font-size: 9px; }
-      }
+      .daily-reward { margin-top: 1rem; border-radius: 16px; border: 2px solid #ffd94d66; background: rgba(255,217,77,0.09); padding: 0.875rem; text-align: center; }
+      .daily-reward .d-icon { font-size: 2rem; line-height: 1.2; }
+      .daily-reward .d-amt { font-size: 1rem; font-weight: 900; line-height: 1.2; margin-top: 0.25rem; }
+      .daily-reward.claimed { border-color: #2dd4bf88; background: rgba(45,212,191,0.14); }
 
       /* ---------- materials / gear / dungeon / forge ---------- */
       .mat-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
@@ -986,7 +975,7 @@
         name: "Mana Overflow",
         desc: "Her own damage +12% per skill level. Control was never the point; volume is.",
         more: [
-          { name: "Frostbite", desc: "While she is in the party, her frost CHILLS the enemy — it takes frost damage every second equal to 10% of her attack per skill level. Each chill tick has a 10% chance to FREEZE the enemy solid: a frozen enemy cannot attack. The freeze lasts 2 seconds at skill Lv 1, +0.5 seconds per skill level (4s at Lv 5), and a fresh freeze while already frozen refreshes its duration. Her second skill, known from the start alongside Mana Overflow." },
+          { name: "Frostbite", desc: "While she is in the party, her frost CHILLS the enemy — it takes frost damage every second equal to 10% of her attack per skill level. Each chill tick has a 10% chance to FREEZE the enemy solid: a frozen enemy cannot attack. The freeze lasts 1.5 seconds at skill Lv 1, +0.5 seconds per skill level above 1 (3.5s at Lv 5), and a fresh freeze while already frozen refreshes its duration. Her second skill, known from the start alongside Mana Overflow." },
           { name: "Glacier", unlock: 7, desc: "While the enemy is chilled, it deals 3% + 1% per skill level less damage. At skill level 4: -7% enemy damage while chilled. Her frost bites deeper." }]
       },
       velkist: {
@@ -1017,7 +1006,7 @@
         ]},
       sella: { name: "Chain Lightning", desc: "Her own damage +15% per skill level. Aim is improving; enthusiasm is not." ,
         more: [
-          { name: "Storm Surge", unlock: 7, desc: "Every 15 seconds, lightning strikes: 120% of her attack x skill level damage, with a 25% chance to stun for 2s. At skill level 6: 720% attack, 25% stun chance." }
+          { name: "Storm Surge", unlock: 7, desc: "Every 15 seconds, lightning strikes: 120% of her attack x skill level damage, with a 25% chance to stun for 1.5s. At skill level 6: 720% attack, 25% stun chance." }
         ]},
       tomas: { name: "Underdog Spirit", desc: "His own damage +12% per skill level. Proof a 1-star can climb — Soren is the precedent." ,
         more: [
@@ -1066,7 +1055,7 @@
         desc: "Party damage +4% per skill level. When Faye calls, the sky answers — every friendly strike comes down carrying a little thunder borrowed from her storm.",
         more: [
           { name: "Static Charge", desc: "Party critical chance +3% per skill level. The air around her party crackles with gold static — blades spark, arrows hum, and blows keep finding the exact spot where the charge wants to land. Her second skill, known from the start alongside Stormcall." },
-          { name: "Thunderclap", unlock: 7, desc: "Every 20 seconds, a thunderclap deals 100% of her attack x skill level damage and silences the enemy for 2s + 0.2s per skill level (boss timed abilities paused while silenced). At skill level 3: 300% attack, 2.6s silence." }]
+          { name: "Thunderclap", unlock: 7, desc: "Every 20 seconds, a thunderclap deals 100% of her attack x skill level damage and silences the enemy for 1.5s + 0.2s per skill level (boss timed abilities paused while silenced). At skill level 3: 300% attack, 2.1s silence." }]
       },
       draven: {
         name: "Inferno Breath",
@@ -1094,12 +1083,12 @@
         name: "Thornmail",
         desc: "Whenever the enemy attacks, its own thorns bite back — it takes damage equal to 10% of its own attack per skill level, as every blow it throws comes home through the thorns. The garden wall was planted to guard the paradise; the thorns never learned the difference between a wall and a warning.",
         more: [
-          { name: "Entangle", desc: "On every 5th attack in battle, roots wrap the enemy whole and hold it fast — it cannot attack for 2 seconds. The paradise's last garden does not ask permission to grow, and it does not let go once it has hold of something." },
+          { name: "Entangle", desc: "On every 5th attack in battle, roots wrap the enemy whole and hold it fast — it cannot attack for 1.5 seconds. The paradise's last garden does not ask permission to grow, and it does not let go once it has hold of something." },
           { name: "Briar Thorns", unlock: 8, desc: "Whenever the enemy attacks, it takes damage equal to 25% of Ilya's attack x skill level. At skill level 4: 100% of Ilya's attack per enemy attack. Thorns that bite back on ILYA's attack, never the enemy's." }]
       },
       nix: {
         name: "Glacial Edge",
-        desc: "Each of her hits stacks a chill on the enemy — at 5 stacks, the cold closes and the enemy freezes solid for 3 seconds, unable to attack. Frostbite is a chance; Glacial Edge is a sentence, served one cut at a time.",
+        desc: "Each of her hits stacks a chill on the enemy — at 5 stacks, the cold closes and the enemy freezes solid for 1.5 seconds, unable to attack. Frostbite is a chance; Glacial Edge is a sentence, served one cut at a time.",
         more: [
           { name: "Hoarfrost", desc: "Frost creeps in with every blow the enemy throws: each time it attacks, its attack drops another 2%, stacking to \u221220% until the battle ends. The frost does not hurry. It does not need to — it is already winning by the time the enemy notices the cold." },
           { name: "Shatter", unlock: 7, desc: "Nix's attacks against a frozen enemy deal +30% damage + 10% per skill level. At skill level 3: +60% damage vs frozen." }]
@@ -1109,7 +1098,7 @@
         desc: "On every 5th attack in battle, Mari yanks the enemy's strings — it strikes itself for 50% of its attack. He was Vesper's finest puppet; he knows exactly where the strings are, and exactly how hard to pull.",
         more: [
           { name: "Second Act", desc: "His dance quickens as the fight goes on: party damage +3% for every 5 of Mari's attacks in the same battle, up to +30%. The first act is a performance. The second act is a promise — and the tempo only ever rises." },
-          { name: "Curtain Call", unlock: 7, desc: "Every 25 seconds, Mari forces the enemy to bow: it cannot attack for 3s and the party heals for 2% of max HP + 0.5% per skill level. At skill level 3: a 3s root, 3.5% max HP heal." }]
+          { name: "Curtain Call", unlock: 7, desc: "Every 25 seconds, Mari forces the enemy to bow: it cannot attack for 1.5s and the party heals for 2% of max HP + 0.5% per skill level. At skill level 3: a 1.5s root, 3.5% max HP heal." }]
       },
       amara: {
         name: "Tidal Edict",
@@ -1148,9 +1137,9 @@
         desc: "Enemy attack −5% per skill level — her silk binds every limb before the first blow even lands — and her golden threads keep working on whatever they touch, dealing damage over time (25% of her attack per second for 3s, refreshed with every weave). Nothing struggles out of a golden web; it only tires itself out for her spiders.",
         more: [
           { name: "Golden Web", desc: "Party critical chance +4% per skill level. The wider web is strung with threads only her spiders can see — every strand guides a friendly blade to the one soft place the silk has already found. Her second skill, known from the start alongside Golden Snare." },
-          { name: "Silk Cocoon", desc: "On every 5th attack in battle, her silk wraps the enemy whole and STUNS it — it cannot attack while stunned. The stun lasts 2 seconds + 0.5 seconds per skill level past the first (2s at skill Lv 1, up to 4s at Lv 5), and it works on normal monsters, gate bosses, and Floor Lords alike. Her third skill, known from the start alongside Golden Snare and Golden Web." },
+          { name: "Silk Cocoon", desc: "On every 5th attack in battle, her silk wraps the enemy whole and STUNS it — it cannot attack while stunned. The stun lasts 1.5 seconds + 0.5 seconds per skill level past the first (1.5s at skill Lv 1, up to 3.5s at Lv 5), and it works on normal monsters, gate bosses, and Floor Lords alike. Her third skill, known from the start alongside Golden Snare and Golden Web." },
           { name: "Widow's Feast", desc: "While the enemy is stunned by her Silk Cocoon, the whole party deals +10% damage per skill level — a wrapped enemy cannot dodge, parry, or even flinch away, so every blade lands true. The feast lasts exactly as long as the stun does. Her fourth skill, known from the start alongside Golden Snare, Golden Web, and Silk Cocoon." },
-          { name: "Widow's Embrace", unlock: 12, desc: "Every 25 seconds, Aurelia wraps the enemy in golden silk: rooted (cannot attack) for 2s + 0.3s per skill level, and while wrapped it takes +8% damage per skill level from all sources. At skill level 6: a 3.8s root and +48% damage taken while wrapped." }]
+          { name: "Widow's Embrace", unlock: 12, desc: "Every 25 seconds, Aurelia wraps the enemy in golden silk: rooted (cannot attack) for 1.5s + 0.3s per skill level, and while wrapped it takes +8% damage per skill level from all sources. At skill level 6: a 3.3s root and +48% damage taken while wrapped." }]
       },
       aldric: {
         name: "King's Edict",
@@ -1167,7 +1156,7 @@
         desc: "Party damage +3% per skill level, and enemy attack −2% per skill level — her puppet strikes on its own dancing strings, and every so often it tangles the enemy's limbs mid-swing, slowing their blows. Her waltz grows with her effective rank (base stars + synthesis ranks): four syntheses take the 4★ puppeteer all the way to 8★.",
         more: [
           { name: "Puppet Dance", desc: "On every 5th attack in battle, Vesper summons a puppet that strikes the enemy for 150% of her attack per skill level. It dances out on her golden strings — clicking joints, painted grin, a little bow — and then, at exactly the wrong moment for the enemy, it stops dancing and hits." },
-          { name: "Marionette's Masterpiece", unlock: 8, desc: "Every 25 seconds, Vesper weaves all her strings: the enemy is rooted (cannot attack) for 2s + 0.3s per skill level and takes 100% of her attack x skill level damage. At skill level 5: a 3.5s root, 500% attack." },
+          { name: "Marionette's Masterpiece", unlock: 8, desc: "Every 25 seconds, Vesper weaves all her strings: the enemy is rooted (cannot attack) for 1.5s + 0.3s per skill level above 1 and takes 100% of her attack x skill level damage. At skill level 5: a 2.7s root, 500% attack." },
           { name: "Curtain Call", desc: "Gold from clears +5% per skill level — tower clears, grind clears, and offline earnings alike. No performance ends without a collection, and Vesper's audiences have never once left without paying — the tower, it turns out, is an audience like any other. Her third skill, known from the start alongside Marionette Waltz and Puppet Dance." }
         ]
       },
@@ -2592,76 +2581,55 @@
     }
 
     /* ============================== DAILY LOGIN REWARDS ==============================
-       A 7-day gift cycle, one claim per calendar day (local time). The
-       streak lives in the save itself (dailyStreak = the day number the
-       NEXT claim will grant, dailyLastClaim = the local date string of
-       the last claim), so it autosaves with everything else and rides
-       along into cloud copies. Miss a day — last claim was not
-       yesterday — and the cycle restarts at Day 1. */
-    var DAILY_REWARDS = [
-      { type: "gems", amount: 50 },
-      { type: "gold", amount: 5000 },
-      { type: "gems", amount: 100 },
-      { type: "gold", amount: 10000 },
-      { type: "gems", amount: 150 },
-      { type: "gold", amount: 20000 },
-      { type: "gems", amount: 300 }
-    ];
+       Every daily login claim grants ONE FREE 10-PULL (10 summons),
+       identical to a paid 10-pull: same summon pools, same rates
+       (newbie rates for the first 100 summons, standard after), same
+       pity counting. One claim per calendar day (local midnight);
+       missing a day banks nothing — the claim is the same free 10-pull
+       every day. (Replaced the old 7-day gem/gold cycle on 2026-11-21.)
+       State lives in the save: dailyLastClaim holds the local date of
+       the last claim; dailyStreak is a legacy field kept only so older
+       saves still parse — nothing reads it anymore. */
     function dailyDateStr(d) {
       var m = d.getMonth() + 1, day = d.getDate();
       return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
     }
-    function dailyDayDiff(fromStr, toStr) {
-      var a = fromStr.split("-"), b = toStr.split("-");
-      var da = Date.UTC(+a[0], +a[1] - 1, +a[2]);
-      var db = Date.UTC(+b[0], +b[1] - 1, +b[2]);
-      return Math.round((db - da) / 86400000);
-    }
-    function dailyRewardLabel(r) {
-      return (r.type === "gems" ? "💎 " : "🪙 ") + r.amount.toLocaleString("en-US") + (r.type === "gems" ? " gems" : " gold");
-    }
-    /* Where the player stands right now:
-       - claimedToday: today's gift is already taken; todayDay is the day
-         number that was claimed today.
-       - claimable: todayDay is the day number today's claim will grant
-         (already reset to 1 if a day was missed). */
+    /* Where the player stands right now: claimedToday means today's
+       free 10-pull is already taken; claimable means it is waiting.
+       The only state is dailyLastClaim (the local date of the last
+       claim) — the old 7-day streak is gone (Rachel, Nov 21) and
+       dailyStreak stays in the save only so older saves still parse;
+       nothing reads it anymore. */
     function dailyStatus() {
-      var s = save;
       var today = dailyDateStr(new Date());
-      var last = s.dailyLastClaim;
-      var streak = (typeof s.dailyStreak === "number" && s.dailyStreak >= 1 && s.dailyStreak <= 7) ? Math.floor(s.dailyStreak) : 1;
-      if (last === today) {
-        return { claimable: false, claimedToday: true, todayDay: streak === 1 ? 7 : streak - 1, streak: streak };
-      }
-      if (!last || dailyDayDiff(last, today) !== 1) streak = 1;
-      return { claimable: true, claimedToday: false, todayDay: streak, streak: streak };
+      var claimed = !!save && save.dailyLastClaim === today;
+      return { claimable: !claimed, claimedToday: claimed };
     }
-    /* Fold a missed-day reset into the save itself at load time, so the
-       stored streak matches what the calendar shows. */
-    function normalizeDaily() {
-      if (!save) return;
-      var st = dailyStatus();
-      if (!st.claimedToday && save.dailyStreak !== st.streak) {
-        if (save.dailyLastClaim && dailyDayDiff(save.dailyLastClaim, dailyDateStr(new Date())) > 1) dailyResetNotice = true;
-        save.dailyStreak = st.streak;
-        dirty = true;
-      }
-    }
+    /* The old 7-day streak is gone — there is no missed-day reset to
+       fold in anymore. Kept as a no-op so the load/import call sites
+       don't change. */
+    function normalizeDaily() { return; }
+    /* The daily login claim: one FREE 10-pull, rolled through the exact
+       same path as a paid 10-pull (rollSummonBatch — same pools, rates,
+       and pity counting) and shown in the same results view. One claim
+       per local calendar day; the claim stamp is written into the same
+       save that carries the new heroes, so the two can never drift
+       apart. Missing a day banks nothing — tomorrow's pull is the same
+       free 10-pull. */
     function claimDaily() {
       var st = dailyStatus();
-      if (!st.claimable) return;
-      var reward = DAILY_REWARDS[st.todayDay - 1];
+      if (!st.claimable || pulls) return;
       var next = JSON.parse(JSON.stringify(save));
-      if (reward.type === "gems") next.gems += reward.amount;
-      else next.gold += reward.amount;
+      var results = rollSummonBatch(next, 10);
       next.dailyLastClaim = dailyDateStr(new Date());
-      next.dailyStreak = st.todayDay === 7 ? 1 : st.todayDay + 1;
       dailyScene = false;
-      dailyResetNotice = false;
+      pulls = results;
+      showAllPulls = false;
       persist(next);
       writeSave();
-      playClearSfx();
-      showDailyModal();
+      renderMain();
+      showPullsModal();
+      playSummonSfx();
     }
 
     /* ============================== EQUIPMENT & DUNGEONS ==============================
@@ -3976,7 +3944,7 @@
        unlocks, neither its +12%/level self-damage bonus nor the
        per-battle ramp applies anywhere (detail panel, DPS, battle). */
     function duelistUnlocked(o) { return !!o && effRank(heroById("han"), o) >= 4; }
-    function silkCocoonDuration(lv) { return 1.5 + 0.5 * lv; }
+    function silkCocoonDuration(lv) { return 1.5 + 0.5 * (lv - 1); }
     function enemyStunned() { return performance.now() < (stunUntil || 0); }
     function widowsFeastMult(s) {
       if (!enemyStunned() || !s || !s.heroes) return 1;
@@ -4017,7 +3985,7 @@
       if (!o || s.party.indexOf("eolka") < 0) return 0;
       return heroAtk(heroById("eolka"), o, s) * 0.10 * skillLevel(o);
     }
-    function frostFreezeDuration(lv) { return 2 + 0.5 * (lv - 1); }
+    function frostFreezeDuration(lv) { return 1.5 + 0.5 * (lv - 1); }
     /* ---- Ember burn (Draven) & silk snare (Aurelia Vey) ----
        Unlike the persistent DoTs above, burn and snare are applied
        by the battle tick on each of the hero's own hits and last
@@ -4222,7 +4190,8 @@
       var ratio = Math.max(0, Math.min(1, cur / max));
       return Math.min(0.50, (1 - ratio) * 0.50);
     }
-    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
+    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; tenacityState.stacks = 0; tenacityState.lastAt = Number.NEGATIVE_INFINITY; // a new boss starts with no tenacity
+    poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
     /* Party DPS as it actually lands in a tower battle: the Cantor
        Dirge on Floors 55/70 and the Keeper's Long Vigil on Floor 95
        shave party attack before it hits, Soren's
@@ -4454,6 +4423,53 @@
     function bossEnrageMult(clock) {
       if (clock < 30) return 1;
       return 1.5 + 0.3 * Math.floor((clock - 30) / 5);
+    }
+    /* 🛡 Boss tenacity (Rachel, Nov 21): BOSSES ONLY — regular monsters take
+       full CC and never build stacks. Every CC that lands on a boss (stun,
+       root, freeze, silence, Orien's Eclipse darkness, time stop, delay —
+       any CC source, in the tower or in a dungeon's boss wave) gives that
+       boss +1 tenacity stack, and each stack cuts the NEXT CC's duration by
+       25%: multiplier = max(0, 1 − 0.25 × stacks) — 0 stacks full duration,
+       1 → 75%, 2 → 50%, 3 → 25%, 4 → 0% — BUT the suffered duration has a
+       hard floor of 1 second: duration = max(1s, base × multiplier), so a
+       boss is never fully immune (for a 1.5s base: 1.5s → 1.125s → 1s →
+       1s → 1s). Stacks cap at 4 and reset after 15 seconds with no CC
+       landing on that boss. The Golden Cradle's +25% CC duration applies to
+       the base duration FIRST (it is folded into the base a caller passes
+       in); tenacity reduces the result. Base CC durations themselves are
+       unchanged — tenacity only ever shrinks what a boss actually suffers.
+       Both battle loops route every boss CC through applyBossCc, and the
+       battle views badge the live stack count, so the numbers can never
+       drift. */
+    var TENACITY_MAX_STACKS = 4;
+    var TENACITY_RESET_SEC = 15;
+    var TENACITY_MIN_DURATION = 1; // seconds — a boss CC never lands shorter than this
+    function bossTenacityMult(stacks) {
+      return Math.max(0, 1 - 0.25 * Math.min(TENACITY_MAX_STACKS, Math.max(0, stacks)));
+    }
+    /* The stack count still standing at `clock`: once 15 seconds have
+       passed with no CC landing, the boss has shaken them all off. */
+    function tenacityStacksAt(stacks, lastAt, clock) {
+      return stacks > 0 && clock - lastAt >= TENACITY_RESET_SEC ? 0 : stacks;
+    }
+    /* Land one CC on a boss: returns the duration the boss actually
+       suffers — the base duration (Golden Cradle already folded in by the
+       caller) cut by the stacks standing BEFORE this CC, floored at
+       TENACITY_MIN_DURATION (1s) so a boss is never fully immune — then
+       banks this CC as a fresh stack (capped at 4) and restarts the
+       15-second reset clock. Even a floor-pinned CC counts as landing: it
+       refreshes the reset clock, so chain-CC can never wait the stacks
+       out while spamming. Off a boss (isBoss false) the base duration
+       passes through untouched and nothing is banked. `state` is the
+       per-fight tenacity state (tower state / dungeon wave fx adapter),
+       `clock` the same battle-clock seconds that state runs on. */
+    function applyBossCc(state, isBoss, clock, baseDur) {
+      if (!isBoss) return baseDur;
+      state.stacks = tenacityStacksAt(state.stacks, state.lastAt, clock);
+      var dur = Math.max(TENACITY_MIN_DURATION, baseDur * bossTenacityMult(state.stacks));
+      state.stacks = Math.min(TENACITY_MAX_STACKS, state.stacks + 1);
+      state.lastAt = clock;
+      return dur;
     }
     var MEMORY_HINTS_LOW = [
       "The walls feel familiar. Like they've seen you fall here before.",
@@ -5844,7 +5860,6 @@
     var keeperScene = false;
     var starterScene = false;
     var dailyScene = false;
-    var dailyResetNotice = false;
     /* Redeem Code box drafts — kept in memory so a background battle
        re-render never wipes a code being typed or its result message. */
     var redeemDraft = "";
@@ -5994,6 +6009,7 @@
     var targetNextPick = 0;
     var standFastNext = 20;
     var enrageAnnounced = false;
+    var tenacityState = { stacks: 0, lastAt: Number.NEGATIVE_INFINITY }; // 🛡 Boss tenacity: this boss's CC stacks and the battle-clock second the last CC landed — built only on boss floors, reset with the fight (resetBattleTimers); see applyBossCc
     var atkTimers = {};
     var lungeAt = {};
     var monsterHitAt = 0;
@@ -6149,7 +6165,7 @@
             '<button type="button" class="tabbtn" data-tab="shop" aria-pressed="false">🛍️ Shop</button>' +
             '<button type="button" class="tabbtn" data-tab="save" aria-pressed="false">💾 Save</button>' +
           "</nav>" +
-          '<button type="button" class="daily-btn" id="daily-btn" aria-label="Daily login reward calendar">🎁 Daily</button>' +
+          '<button type="button" class="daily-btn" id="daily-btn" aria-label="Daily login reward — free 10-pull">🎁 Daily · Free 10-Pull</button>' +
           '<button type="button" class="mute-btn" id="mute-btn" aria-pressed="false" aria-label="Sound is on — tap to mute game sound" title="Mute sound">🔊</button>' +
         "</div></div>" +
         '<div id="notice-slot"></div>' +
@@ -6217,8 +6233,8 @@
         var claimable = dailyStatus().claimable;
         db.classList.toggle("ready", claimable);
         db.classList.toggle("anim-glow", claimable);
-        db.innerHTML = "🎁 Daily" + (claimable ? '<span class="daily-dot" aria-hidden="true">!</span>' : "");
-        db.setAttribute("aria-label", claimable ? "Daily login reward — today's gift is ready to claim" : "Daily login reward calendar — today's gift is claimed");
+        db.innerHTML = "🎁 Daily · Free 10-Pull" + (claimable ? '<span class="daily-dot" aria-hidden="true">!</span>' : "");
+        db.setAttribute("aria-label", claimable ? "Daily login reward — today's free 10-pull is ready to claim" : "Daily login reward — today's free 10-pull already claimed");
       }
       var qb = document.getElementById("quests-tab-badge");
       if (qb) {
@@ -6374,7 +6390,7 @@
         h += '<div class="monster-box"><div id="monster-wrap"><div class="anim-bob"><div class="monster-orb' + (isBossFloor(f) ? " anim-glow boss" : "") + '" id="monster-orb" aria-hidden="true">' + (f === 100 ? "💗" : isBossFloor(f) ? "👹" : "👾") + "</div></div></div>";
       }
       h += '<span id="spark-slot"></span><span id="floats-layer"></span>';
-      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p><p class="timestop-badge" id="timestop-badge" style="display:none">⏳ TIME STOP — cannot act</p><p class="silence-badge" id="silence-badge" style="display:none">🌩 SILENCED — boss abilities paused</p><p class="enrage-badge" id="enrage-badge" style="display:none">😡 ENRAGED — damage ×1.5</p><p class="taunt-badge" id="taunt-badge" style="display:none">🎯 TAUNTED</p><span class="wave-crash-span" id="wave-crash" style="display:none" aria-hidden="true">🌊🌊🌊</span></div>';
+      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p><p class="timestop-badge" id="timestop-badge" style="display:none">⏳ TIME STOP — cannot act</p><p class="silence-badge" id="silence-badge" style="display:none">🌩 SILENCED — boss abilities paused</p><p class="enrage-badge" id="enrage-badge" style="display:none">😡 ENRAGED — damage ×1.5</p><p class="tenacity-badge" id="tenacity-badge" style="display:none">🛡 Tenacity ×0 — next CC −0% (min 1s)</p><p class="taunt-badge" id="taunt-badge" style="display:none">🎯 TAUNTED</p><span class="wave-crash-span" id="wave-crash" style="display:none" aria-hidden="true">🌊🌊🌊</span></div>';
       h += "</div>";
       h += '<div style="margin-top:0.25rem;height:6px;border-radius:999px;background:rgba(0,0,0,0.5)" aria-hidden="true"></div>';
       h += "</div>"; /* battlefield */
@@ -6531,6 +6547,13 @@
       if (liveTauntNow) status += " · 🎯 TAUNTED — the foe must attack " + heroById(liveTauntNow.id).name.split(" ")[0];
       else if (targetNameNow) status += " · 🎯 the foe is focused on " + targetNameNow;
       if (bossEnragedNow) status += " · 😡 ENRAGED — the boss hits ×" + (Math.round(bossEnrageMult(battleElapsed) * 100) / 100) + " harder and climbing!";
+      /* 🛡 Boss tenacity, live: the stacks standing on this boss right now
+         (already shaken off if 15s have passed with no CC landing) and the
+         cut they will take out of the NEXT CC — read from the same state
+         and functions the battle loop prices with, badged on the boss below. */
+      var tenacityStacksNow = isBossFloor(f) ? tenacityStacksAt(tenacityState.stacks, tenacityState.lastAt, battleElapsed) : 0;
+      var tenacityCutPct = Math.round((1 - bossTenacityMult(tenacityStacksNow)) * 100);
+      if (tenacityStacksNow > 0) status += " · 🛡 TENACITY ×" + tenacityStacksNow + " — every CC this boss has eaten makes the next one " + tenacityCutPct + "% shorter (never under 1s)";
       if (nowMs < burn.until && s.party.indexOf("draven") >= 0) status += " · 🔥 the monster is BURNING";
       if (nowMs < snare.until && s.party.indexOf("aurelia") >= 0) status += " · 🕸 the monster is SNARED in golden silk";
       var poisonStacksNow = poisonStacksAt(nowMs);
@@ -6565,7 +6588,7 @@
         var rootLeft = Math.max(0, (entangleUntil - nowMs) / 1000);
         status += " · 🌿 ROOTED — the enemy cannot attack (" + rootLeft.toFixed(1) + "s left)";
       } else if (s.party.indexOf("ilya") >= 0) {
-        status += " · 🌿 Entangle — next roots in " + hitsUntilSkill("ilya") + " of Ilya's attacks (enemy cannot attack for 2s)";
+        status += " · 🌿 Entangle — next roots in " + hitsUntilSkill("ilya") + " of Ilya's attacks (enemy cannot attack for 1.5s)";
       }
       if (enemyEclipsed()) {
         var eclLeft = Math.max(0, (eclipseUntil - nowMs) / 1000);
@@ -6592,6 +6615,8 @@
       if (sib) sib.style.display = battleElapsed < capState.silenceUntil ? "inline-block" : "none";
       var enb = document.getElementById("enrage-badge");
       if (enb) { enb.style.display = bossEnragedNow ? "inline-block" : "none"; if (bossEnragedNow) enb.textContent = "😡 Enraged — damage ×" + (Math.round(bossEnrageMult(battleElapsed) * 100) / 100); }
+      var tnb = document.getElementById("tenacity-badge");
+      if (tnb) { tnb.style.display = tenacityStacksNow > 0 ? "inline-block" : "none"; if (tenacityStacksNow > 0) tnb.textContent = "🛡 Tenacity ×" + tenacityStacksNow + " — next CC −" + tenacityCutPct + "% (min 1s)"; }
       var tauntBadge = document.getElementById("taunt-badge");
       if (tauntBadge) { tauntBadge.style.display = liveTauntNow ? "inline-block" : "none"; if (liveTauntNow) tauntBadge.textContent = "🎯 TAUNTED — focused on " + heroById(liveTauntNow.id).name.split(" ")[0]; }
       /* 😡 Enraged aura: the boss glows red for as long as it rages —
@@ -7345,7 +7370,6 @@
       keeperScene = false;
       starterScene = false;
       dailyScene = false;
-      dailyResetNotice = false;
       if (imp.floor >= 95 && !imp.keeperSeen) keeperScene = true;
       if (dungeonTimer) { window.clearInterval(dungeonTimer); dungeonTimer = null; }
       if (forgeTimer) { window.clearInterval(forgeTimer); forgeTimer = null; }
@@ -7360,8 +7384,8 @@
       updateMuteBtn();
       renderHeader();
       renderMain();
-      /* The imported save's daily streak came with it — if its gift for
-         today is still unclaimed here, offer it right away. */
+      /* The imported save's daily claim stamp came with it — if today's
+         free 10-pull is still unclaimed here, offer it right away. */
       dailyScene = dailyStatus().claimable;
       maybeShowPendingModals();
     }
@@ -7777,8 +7801,12 @@
           (onQuest ? '<span class="upg-quest">📜 ON QUEST</span>' : "") +
           '<span class="upg-chev" aria-hidden="true">' + (open ? "▾" : "▸") + "</span></button>";
         h += '<span class="upg-actions">';
+        var mx = capped ? { levels: 0, cost: 0 } : maxAffordableLevels(def, o, s.gold);
         h += '<button type="button" class="btn-pill anime-btn-gold" data-upgrade="' + def.id + '" ' + (s.gold < cost || capped ? "disabled" : "") + ' aria-label="' + (capped ? esc(def.name) + " is at their level cap — synthesize to raise it" : "Level up " + esc(def.name) + " for " + fmt(cost) + " gold") + '">' +
           (capped ? "⬆ MAX LEVEL" : "⬆ Lv Up — 🪙 " + fmt(cost)) + "</button>";
+        if (!capped) {
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-maxlevel="' + def.id + '" ' + (mx.levels <= 0 ? "disabled" : "") + ' aria-label="' + (mx.levels <= 0 ? "Not enough gold — " + esc(def.name) + " needs " + fmt(cost) + " gold for the next level" : "Level up " + esc(def.name) + " as far as your gold allows: " + mx.levels + " levels to Lv " + (o.level + mx.levels) + " for " + fmt(mx.cost) + " gold") + '">' + (mx.levels <= 0 ? "⬆ Max" : "⬆ Max — 🪙 " + fmt(mx.cost)) + "</button>";
+        }
         if (o.asc >= maxAsc(def)) {
           h += '<button type="button" class="btn-pill anime-btn-primary" disabled aria-label="' + esc(def.name) + ' is at maximum synthesis rank">✦ MAX SYNTHESIS ✦</button>';
         } else {
@@ -7955,6 +7983,9 @@
       });
       main.querySelectorAll("[data-upgrade]").forEach(function (el) {
         el.addEventListener("click", function () { upgradeHero(el.getAttribute("data-upgrade")); });
+      });
+      main.querySelectorAll("[data-maxlevel]").forEach(function (el) {
+        el.addEventListener("click", function () { upgradeHeroMaxAffordable(el.getAttribute("data-maxlevel")); });
       });
       main.querySelectorAll("[data-synth]").forEach(function (el) {
         el.addEventListener("click", function () { synthesizeHero(el.getAttribute("data-synth")); });
@@ -8254,16 +8285,20 @@
 
     /* ============================== OFFLINE BOOST ==============================
        +50% offline gold AND +50% offline gems for 8 hours, bought on the
-       Tower screen for 5,000 💎, once per local calendar day (same
-       dailyDateStr() date stamp as the big exchange and the daily login,
-       resetting at local midnight). State lives in the save:
-       boostExpiresAt (epoch ms, 0 = inactive) + lastBoostBuy (date of
-       last purchase). The multiplier is applied at the two places offline
-       rates are computed — the load-time offline grant in init and the
-       Tower screen's live per-sec display — never inside the AFK rate
-       helpers themselves (idleGoldPerSec / idleGemsPerSec and the legacy
-       flat rates behind the Nov 20, 2026 switch), which keep their
-       dps <= 0 guard, so zero DPS still earns zero even with the boost. */
+       Tower screen for 5,000 💎. Buyable ANY time — including while a boost
+       is still running: each purchase adds 8 hours to the remaining time,
+       capped at 8 hours total remaining, so a top-up always lands the timer
+       at a full 8 hours and never beyond (the +50% itself never stacks —
+       only the duration extends). There is no once-per-day limit anymore
+       (removed 2026-11-21). State lives in the save: boostExpiresAt (epoch
+       ms, 0 = inactive) + lastBoostBuy (date of last purchase — kept as a
+       record only; nothing gates on it anymore). The multiplier is applied
+       at the two places offline rates are computed — the load-time offline
+       grant in init and the Tower screen's live per-sec display — never
+       inside the AFK rate helpers themselves (idleGoldPerSec /
+       idleGemsPerSec and the legacy flat rates behind the Nov 20, 2026
+       switch), which keep their dps <= 0 guard, so zero DPS still earns
+       zero even with the boost. */
     var OFFLINE_BOOST_COST = 5000;
     var OFFLINE_BOOST_DURATION_MS = 8 * 3600 * 1000;
     var OFFLINE_BOOST_MULT = 1.5;
@@ -8273,15 +8308,18 @@
     function boostMult(s, now) {
       return boostActive(s, now) ? OFFLINE_BOOST_MULT : 1;
     }
-    /** Pure purchase: null when blocked (already bought today, or not
-        enough gems), otherwise the save with exactly 5,000 💎 deducted and
-        the 8h expiry stamped from `now`. */
+    /** Pure purchase: null only when gems are short. Otherwise the save
+        with exactly 5,000 💎 deducted and the expiry topped up: the time
+        still remaining (0 when inactive) plus a fresh 8 hours, capped at
+        8 hours total remaining — so buying mid-boost refills the timer to
+        a full 8h from `now`, never more. */
     function applyOfflineBoostPurchase(s, now) {
-      if (s.lastBoostBuy === dailyDateStr(new Date(now))) return null;
       if (s.gems < OFFLINE_BOOST_COST) return null;
+      var remainingMs = boostActive(s, now) ? s.boostExpiresAt - now : 0;
+      var toppedMs = Math.min(remainingMs + OFFLINE_BOOST_DURATION_MS, OFFLINE_BOOST_DURATION_MS);
       var next = shopClone(s);
       next.gems = s.gems - OFFLINE_BOOST_COST;
-      next.boostExpiresAt = now + OFFLINE_BOOST_DURATION_MS;
+      next.boostExpiresAt = now + toppedMs;
       next.lastBoostBuy = dailyDateStr(new Date(now));
       return next;
     }
@@ -9294,24 +9332,22 @@
     function offlineBoostHTML() {
       var s = save;
       var now = Date.now();
+      var active = boostActive(s, now);
       var h = '<div class="anime-card mt4 card-pad" aria-label="Boost">';
-      h += '<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0.5rem"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚡ Boost</h3><p class="xs" style="margin:0;font-weight:800;color:var(--dim)">5,000 💎 · once a day</p></div>';
-      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 8 hours</span>. One purchase per day — it resets at local midnight.</p>';
-      if (boostActive(s, now)) {
+      h += '<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0.5rem"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚡ Boost</h3><p class="xs" style="margin:0;font-weight:800;color:var(--dim)">5,000 💎 · top up anytime</p></div>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 8 hours</span>. Buy it again any time — each purchase tops the remaining time back up to a full 8 hours.</p>';
+      if (active) {
         h += '<p class="small" style="margin-top:0.75rem;display:inline-block;border-radius:999px;border:1px solid rgba(255,217,77,0.55);background:rgba(255,217,77,0.15);padding:0.375rem 0.875rem;font-weight:900;color:#ffd94d">⚡ Boost active — ' + fmtClock(Math.max(0, (s.boostExpiresAt - now) / 1000)) + " left of +50% offline gold &amp; gems</p>";
-      } else if (s.lastBoostBuy === dailyDateStr(new Date())) {
-        h += '<button type="button" class="btn-pill btn-ghost" disabled style="margin-top:0.75rem" aria-label="Boost — already claimed today, back tomorrow">Already claimed today — back tomorrow</button>';
-      } else {
-        h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 8 hours") + '">⚡ Buy Boost — ' + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎</button>";
       }
+      h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems") : (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — refill the remaining time to a full 8 hours of plus 50 percent offline gold and gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 8 hours")) + '">' + (active ? "⚡ Top up to 8h — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎" : "⚡ Buy Boost — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎") + "</button>";
       h += "</div>";
       return h;
     }
 
     /* ============================== SHOP ACTIONS ============================== */
-    /* Offline Boost: bought on the Tower screen for 5,000 💎, once per
-       local calendar day. The pure helper refuses when already bought
-       today or gems are short. */
+    /* Offline Boost: bought on the Tower screen for 5,000 💎, any time —
+       including while one is still running, topping the timer back to
+       8h. The pure helper refuses only when gems are short. */
     function buyOfflineBoost() {
       var s = save;
       if (!s) return;
@@ -9638,21 +9674,16 @@
       memoryResetArmed = null;
     }
 
-    function doSummon(count) {
-      var s = save;
-      if (!s || pulls) return;
-      var cost = count === 100 ? SUMMON100_COST : count === 10 ? SUMMON10_COST : SUMMON_COST;
-      if (s.gems < cost) {
-        setNotice("Not enough gems — a " + (count === 100 ? "100-summon" : count === 10 ? "10-summon" : "summon") + " costs " + cost + " 💎. Boss floors and every 5th floor pay gems.");
-        return;
-      }
-      var next = JSON.parse(JSON.stringify(s));
-      next.gems -= cost;
+    /* Roll `count` summons into the cloned save `next` (same pools,
+       rates, and pity counting as a paid pull) and return the results
+       list. The caller decides the price: doSummon deducts gems first;
+       the daily free 10-pull pays nothing. */
+    function rollSummonBatch(next, count) {
       var results = [];
       var pity = next.pity;
       var pity4 = typeof next.pity4 === "number" ? next.pity4 : 0;
       for (var i = 0; i < count; i++) {
-        var stars = rollStars(pity, pity4, s.totalSummons + i);
+        var stars = rollStars(pity, pity4, next.totalSummons);
         pity = stars >= 5 ? 0 : pity + 1;
         pity4 = stars >= 4 ? 0 : pity4 + 1;
         var def = rollHero(stars);
@@ -9668,17 +9699,29 @@
           next.heroes[def.id] = o;
           results.push({ hero: def, isNew: false, dupeToAsc: false });
         }
+        next.totalSummons++;
       }
       next.pity = pity;
       next.pity4 = pity4;
-      next.totalSummons = s.totalSummons + count;
+      return results;
+    }
+    function doSummon(count) {
+      var s = save;
+      if (!s || pulls) return;
+      var cost = count === 100 ? SUMMON100_COST : count === 10 ? SUMMON10_COST : SUMMON_COST;
+      if (s.gems < cost) {
+        setNotice("Not enough gems — a " + (count === 100 ? "100-summon" : count === 10 ? "10-summon" : "summon") + " costs " + cost + " 💎. Boss floors and every 5th floor pay gems.");
+        return;
+      }
+      var next = JSON.parse(JSON.stringify(s));
+      next.gems -= cost;
+      var results = rollSummonBatch(next, count);
       pulls = results;
       showAllPulls = false;
       persist(next);
       renderMain();
       showPullsModal();
       playSummonSfx();
-      var five = results.filter(function (r) { return r.hero.stars >= 5; });
     }
     function upgradeHero(id) {
       var s = save;
@@ -9728,6 +9771,43 @@
       var next = JSON.parse(JSON.stringify(s));
       next.gold -= bc.cost;
       next.heroes[id] = { level: o.level + bc.levels, dupes: o.dupes, asc: o.asc };
+      persist(next);
+    }
+    /* Gold-limited Max (Rachel, Nov 21): "max as in how much you can
+       pay right now" — keep buying levels at the normal per-level cost
+       until the gold runs out or the level cap is reached, whichever
+       comes first. Unlike upgradeHeroBulk (all-or-nothing to the cap),
+       this always buys every level the player can afford, and it never
+       synthesizes. */
+    function maxAffordableLevels(def, o, gold) {
+      var levels = 0, cost = 0;
+      var cap = maxLevel(def, o);
+      while (o.level + levels < cap) {
+        var c = upgradeCost(def, { level: o.level + levels, dupes: o.dupes, asc: o.asc });
+        if (gold - cost < c) break;
+        cost += c;
+        levels++;
+      }
+      return { levels: levels, cost: cost };
+    }
+    function upgradeHeroMaxAffordable(id) {
+      var s = save;
+      if (!s || !id) return;
+      var o = s.heroes[id];
+      if (!o) return;
+      var def = heroById(id);
+      var m = maxAffordableLevels(def, o, s.gold);
+      if (m.levels <= 0) {
+        if (o.level >= maxLevel(def, o)) {
+          setNotice(def.name + " has hit the level cap for their star rank (Lv " + maxLevel(def, o) + "). Meet the synthesis requirements in their detail panel and tap Synthesize to raise their rank — and the cap.");
+        } else {
+          setNotice("Not enough gold — " + def.name + " needs " + fmt(upgradeCost(def, o)) + " gold for the next level.");
+        }
+        return;
+      }
+      var next = JSON.parse(JSON.stringify(s));
+      next.gold -= m.cost;
+      next.heroes[id] = { level: o.level + m.levels, dupes: o.dupes, asc: o.asc };
       persist(next);
     }
     /* Manual synthesis: spends banked copies, gems, and (from #3 on)
@@ -10479,14 +10559,14 @@
        (foeHeld there is the OR of these same timers):
          • Hit-based holds fire on their hero's every 5th attack, so a
            hold of duration D from a hero attacking A times per second
-           covers D × A ÷ 5 of the run: Aurelia's Silk Cocoon (2s, +0.5s
-           per skill level above 1), Ilya's Entangle (2s), Orien's
+           covers D × A ÷ 5 of the run: Aurelia's Silk Cocoon (1.5s, +0.5s
+           per skill level above 1), Ilya's Entangle (1.5s), Orien's
            Eclipse (4s).
-         • Nix's Glacial Edge freezes for 3s per 5 of her hits — the same
+         • Nix's Glacial Edge freezes for 1.5s per 5 of her hits — the same
            D × A ÷ 5 shape.
          • The per-second chance holds are time-averaged with the
            saturating 1 − e^(−rate × duration) form: Aurelia Frost's
-           Frostbite freeze (10% per second, for 2s + 0.5s per level
+           Frostbite freeze (10% per second, for 1.5s + 0.5s per level
            above 1) and Amara's Sunken Guard swallow (10% per skill
            level per second, for 1s).
        Holds stack multiplicatively — each covers its share of the time
@@ -10502,12 +10582,12 @@
         return o && s.party.indexOf(id) >= 0 ? o : null;
       };
       var aurelia = owned("aurelia");
-      if (aurelia) stack(((2 + 0.5 * (skillLevel(aurelia) - 1)) * partyMods(s).ccMult * heroById("aurelia").atkSpeed) / 5); /* Silk Cocoon (×1.25 under the Golden Cradle) */
-      if (owned("ilya")) stack((2 * heroById("ilya").atkSpeed) / 5); /* Entangle */
+      if (aurelia) stack(((1.5 + 0.5 * (skillLevel(aurelia) - 1)) * partyMods(s).ccMult * heroById("aurelia").atkSpeed) / 5); /* Silk Cocoon (×1.25 under the Golden Cradle) */
+      if (owned("ilya")) stack((1.5 * heroById("ilya").atkSpeed) / 5); /* Entangle */
       if (owned("orien")) stack((4 * heroById("orien").atkSpeed) / 5); /* Eclipse */
       var eolka = owned("eolka");
       if (eolka) stack(1 - Math.exp(-0.1 * frostFreezeDuration(skillLevel(eolka)))); /* Frostbite freeze */
-      if (owned("nix")) stack((3 * heroById("nix").atkSpeed) / 5); /* Glacial Edge freeze */
+      if (owned("nix")) stack((1.5 * heroById("nix").atkSpeed) / 5); /* Glacial Edge freeze */
       var amara = owned("amara");
       if (amara) stack(1 - Math.exp(-0.1 * skillLevel(amara))); /* Sunken Guard swallow */
       return 1 - free;
@@ -10612,7 +10692,13 @@
         capStormUntil: 0, capStormRollAt: 0, capMissUntil: 0,
         capSorenUsed: false, capSorenWinUntil: 0,
         taunts: [],
-        dainNext: 3
+        dainNext: 3,
+        /* 🛡 Boss tenacity (Nov 21, 2026): this wave's tenacity stacks and the
+           fx.clock second the last CC landed. Only the FINAL wave of a run is
+           a boss wave and builds stacks (the loop gates applyBossCc on it);
+           the state resets with each wave like every other status here,
+           because each wave is a fresh foe. */
+        tenacityStacks: 0, tenacityLastAt: Number.NEGATIVE_INFINITY
       };
       Object.keys(fx.capNext).forEach(function (id) { fx.capNext[id] = 3; });
       return fx;
@@ -10627,7 +10713,17 @@
     function dungeonStatusLine() {
       if (!dungeonBattle) return "";
       var dotDps = dungeonDotDps(save);
-      return "Delving… wave " + dungeonBattle.wave + " of " + dungeonBattle.waves + " · Party DPS " + fmt(effectivePartyDps(save) + dotDps) + (dotDps > 0 ? " (incl. " + fmt(dotDps) + "/s from DoTs)" : "");
+      var line = "Delving… wave " + dungeonBattle.wave + " of " + dungeonBattle.waves + " · Party DPS " + fmt(effectivePartyDps(save) + dotDps) + (dotDps > 0 ? " (incl. " + fmt(dotDps) + "/s from DoTs)" : "");
+      /* 🛡 Boss tenacity, live on the final wave: the stacks standing on
+         this wave's foe right now and the cut they will take out of the
+         NEXT CC — read from the same state and functions the dungeon
+         loop prices with. */
+      var dfx = dungeonBattle.fx;
+      if (dfx && dungeonBattle.wave >= dungeonBattle.waves) {
+        var tenStacksD = tenacityStacksAt(dfx.tenacityStacks || 0, dfx.tenacityLastAt, dfx.clock);
+        if (tenStacksD > 0) line += " · 🛡 TENACITY ×" + tenStacksD + " — next CC −" + Math.round((1 - bossTenacityMult(tenStacksD)) * 100) + "% (min 1s)";
+      }
+      return line;
     }
     /* The live wave line for the run card, shared by the initial render
        and the per-tick update: this wave's attack against the whole
@@ -10798,6 +10894,20 @@
          the hit-count loop below. */
       var fx = dungeonBattle.fx;
       fx.clock += dt;
+      /* 🛡 Boss tenacity gate for this wave: only the run's FINAL wave is
+         a boss wave and builds stacks (the loop gates applyBossCc on it);
+         every CC site below routes its duration through applyDungeonCc,
+         which is the same applyBossCc the tower loop uses (the fx fields
+         are adapted through tenacityFx below), and a regular wave's foe
+         takes every duration untouched. */
+      var dungeonBossWave = dungeonBattle.wave >= dungeonBattle.waves;
+      var tenacityFx = {
+        get stacks() { return fx.tenacityStacks; },
+        set stacks(v) { fx.tenacityStacks = v; },
+        get lastAt() { return fx.tenacityLastAt; },
+        set lastAt(v) { fx.tenacityLastAt = v; }
+      };
+      var applyDungeonCc = function (baseDur) { return applyBossCc(tenacityFx, dungeonBossWave, fx.clock, baseDur); };
       var aurO = s.heroes["aurelia"]; var aurIn = !!aurO && heroAliveD("aurelia");
       var eolkaO = s.heroes["eolka"]; var eolkaIn = !!eolkaO && heroAliveD("eolka");
       var nixIn = !!s.heroes["nix"] && heroAliveD("nix");
@@ -10809,15 +10919,17 @@
       var aldricO = s.heroes["aldric"]; var aldricIn = !!aldricO && heroAliveD("aldric");
       /* ❄ Frostbite's freeze: the chill already ticks as a DoT (below);
          each second it holds, it has a 10% chance to FREEZE the foe for
-         2s (+0.5s per skill level above 1), refreshing the hold. */
+         1.5s (+0.5s per skill level above 1), refreshing the hold. Boss-wave
+         tenacity cuts the freeze a boss-wave foe suffers, floored at 1s. */
       if (eolkaIn) {
         while (fx.clock >= fx.frostRollAt) {
           fx.frostRollAt += 1;
-          if (Math.random() < 0.10) fx.frostFrozenUntil = fx.clock + frostFreezeDuration(skillLevel(eolkaO));
+          if (Math.random() < 0.10) fx.frostFrozenUntil = fx.clock + applyDungeonCc(frostFreezeDuration(skillLevel(eolkaO)));
         }
       }
       /* ❄ Glacial Edge: each of Nix's strikes (on her real atkSpeed
-         cadence) stacks a chill — at 5 stacks the foe freezes for 3s. */
+         cadence) stacks a chill — at 5 stacks the foe freezes for 1.5s.
+         Boss-wave tenacity cuts the freeze, floored at 1s. */
       if (nixIn) {
         var nixPeriod = 1 / heroById("nix").atkSpeed;
         fx.nixHitAcc += dt;
@@ -10826,7 +10938,7 @@
           fx.nixStacks += 1;
           if (fx.nixStacks >= 5) {
             fx.nixStacks = 0;
-            fx.nixFrozenUntil = fx.clock + 3;
+            fx.nixFrozenUntil = fx.clock + applyDungeonCc(1.5);
           }
         }
       }
@@ -10874,21 +10986,21 @@
       capLvD = capFireD("morrigan");
       if (capLvD) { fx.capStormUntil = fx.clock + 5; fx.capStormRollAt = fx.clock + 1; capNextD("morrigan", 20); } // Crowstorm blind (the DoT rides dungeonDotDps)
       capLvD = capFireD("sella");
-      if (capLvD) { if (Math.random() < 0.25) fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + 2); capNextD("sella", 15); } // Storm Surge stun (the lightning rides dungeonDotDps)
+      if (capLvD) { if (Math.random() < 0.25) fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + applyDungeonCc(1.5)); capNextD("sella", 15); } // Storm Surge stun, 1.5s since the Nov 21 cut (the lightning rides dungeonDotDps)
       capLvD = capFireD("dun");
-      if (capLvD) { fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + 1 + 0.2 * capLvD); capNextD("dun", 15); } // Anvil's Ring stun
+      if (capLvD) { fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + applyDungeonCc(1 + 0.2 * capLvD)); capNextD("dun", 15); } // Anvil's Ring stun
       capLvD = capFireD("anselm");
-      if (capLvD) { fx.capDelayUntil = Math.max(fx.capDelayUntil, fx.clock + 2); capNextD("anselm", 15); } // Iron Palm delay
+      if (capLvD) { fx.capDelayUntil = Math.max(fx.capDelayUntil, fx.clock + applyDungeonCc(2)); capNextD("anselm", 15); } // Iron Palm delay — 2s base stays (deliberately not cut); boss-wave tenacity still applies
       capLvD = capFireD("greta");
       if (capLvD) { capVulnD(0.05 * capLvD, 5); capNextD("greta", 15); } // Seam Strike vulnerability (the burst rides dungeonDotDps)
       capLvD = capFireD("vesper");
-      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + (2 + 0.3 * capLvD) * mods.ccMult); capNextD("vesper", 25); } // Marionette's Masterpiece root (×1.25 under the Golden Cradle)
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + applyDungeonCc((1.5 + 0.3 * (capLvD - 1)) * mods.ccMult)); capNextD("vesper", 25); } // Marionette's Masterpiece root (×1.25 under the Golden Cradle, then boss-wave tenacity)
       capLvD = capFireD("aurelia");
-      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + (2 + 0.3 * capLvD) * mods.ccMult); capVulnD(0.08 * capLvD, (2 + 0.3 * capLvD) * mods.ccMult); capNextD("aurelia", 25); } // Widow's Embrace root + vulnerability (both stretch with the wrap under the Golden Cradle)
+      if (capLvD) { var wrapDurD = applyDungeonCc((1.5 + 0.3 * capLvD) * mods.ccMult); fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + wrapDurD); capVulnD(0.08 * capLvD, wrapDurD); capNextD("aurelia", 25); } // Widow's Embrace root + vulnerability — 1.5s base since the Nov 21 cut; both stretch with the wrap under the Golden Cradle, then boss-wave tenacity cuts the result
       capLvD = capFireD("mari");
-      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 3); capHealD(0.02 + 0.005 * capLvD); capNextD("mari", 25); } // Curtain Call root + heal
+      if (capLvD) { fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + applyDungeonCc(1.5)); capHealD(0.02 + 0.005 * capLvD); capNextD("mari", 25); } // Curtain Call root + heal (1.5s since the Nov 21 cut)
       capLvD = capFireD("iris");
-      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + 1 + 0.3 * capLvD); capNextD("iris", 20); } // Bloom Burst heal + root
+      if (capLvD) { capHealD(0.03 + 0.005 * capLvD); fx.capRootUntil = Math.max(fx.capRootUntil, fx.clock + applyDungeonCc(1 + 0.3 * capLvD)); capNextD("iris", 20); } // Bloom Burst heal + root
       capLvD = capFireD("ondine");
       if (capLvD) { capHealD(0.03 + 0.005 * capLvD); capNextD("ondine", 20); } // High Tide heal (the wave rides dungeonDotDps)
       capLvD = capFireD("nia");
@@ -10911,7 +11023,7 @@
       capLvD = capFireD("yara");
       if (capLvD) { fx.capEvadeUntil = Math.max(fx.capEvadeUntil, fx.clock + 1.4); capNextD("yara", 18 - capLvD); } // Foresight
       capLvD = capFireD("rook");
-      if (capLvD) { fx.capTimestopUntil = fx.clock + 2 + 0.3 * capLvD; fx.capTimestopPct = 0.10 * capLvD; capNextD("rook", 25); } // Sands of Time
+      if (capLvD) { fx.capTimestopUntil = fx.clock + applyDungeonCc(2 + 0.3 * capLvD); fx.capTimestopPct = 0.10 * capLvD; capNextD("rook", 25); } // Sands of Time — 2s + 0.3s/lv base stays (deliberately not cut); boss-wave tenacity still applies
       capLvD = capFireD("ruth");
       if (capLvD) { if (fx.clock >= fx.capAsWinUntil || 0.10 + 0.02 * capLvD >= fx.capAsWinPct) { fx.capAsWinPct = 0.10 + 0.02 * capLvD; fx.capAsWinUntil = fx.clock + 5; } capNextD("ruth", 20); } // Express Delivery
       capLvD = capFireD("draven");
@@ -11053,12 +11165,12 @@
              the pool below, every tick) — the tower's every-3rd-attack
              healer procs do not fire in dungeons. */
           if (fx.hitCounts[id] % 5 === 0) {
-            /* 🕸 Silk Cocoon: every 5th Aurelia attack, her silk wraps the foe whole and STUNS it for 2s (+0.5s per skill level above 1, ×1.25 under the Golden Cradle). */
-            if (id === "aurelia" && aurIn) fx.cocoonUntil = fx.clock + silkCocoonDuration(skillLevel(aurO)) * mods.ccMult;
-            /* 🌿 Entangle: every 5th Ilya attack, his roots hold the foe for 2s. */
-            if (id === "ilya" && ilyaIn) fx.entangleUntil = fx.clock + 2;
-            /* 🌑 Eclipse: every 5th Orien attack, darkness falls for 4s. */
-            if (id === "orien" && orienIn) fx.eclipseUntil = fx.clock + 4;
+            /* 🕸 Silk Cocoon: every 5th Aurelia attack, her silk wraps the foe whole and STUNS it for 1.5s (+0.5s per skill level above 1, ×1.25 under the Golden Cradle). Cradle ×ccMult folds into the base first; boss-wave tenacity cuts the result. */
+            if (id === "aurelia" && aurIn) fx.cocoonUntil = fx.clock + applyDungeonCc(silkCocoonDuration(skillLevel(aurO)) * mods.ccMult);
+            /* 🌿 Entangle: every 5th Ilya attack, his roots hold the foe for 1.5s (boss-wave tenacity applies). */
+            if (id === "ilya" && ilyaIn) fx.entangleUntil = fx.clock + applyDungeonCc(1.5);
+            /* 🌑 Eclipse: every 5th Orien attack, darkness falls for 4s (boss-wave tenacity applies). */
+            if (id === "orien" && orienIn) fx.eclipseUntil = fx.clock + applyDungeonCc(4);
             /* 📯 Warlord's Roar: every 5th Durnan attack — party damage +25% for 5s, exactly as in the tower. */
             if (id === "durnan" && durnanIn) fx.roarUntil = fx.clock + 5;
             /* ✨ Pearlescent Aegis: every 5th Amara attack — pearl light heals the shared pool for 2% of its max, exactly as in the tower. (Tidal Edict's wave itself rides dungeonDotDps.) */
@@ -11576,37 +11688,26 @@
     function showDailyModal() {
       var root = document.getElementById("modal-root");
       var st = dailyStatus();
-      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Daily login rewards">';
+      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Daily login reward">';
       h += '<div class="anime-card modal-card" style="max-width:30rem;border-color:#ffd94d;box-shadow:0 0 44px rgba(255,217,77,0.35)">';
       h += '<span aria-hidden="true" class="sparkle anim-twinkle" style="left:16px;top:12px;color:#ffd94d">✦</span>';
       h += '<span aria-hidden="true" class="sparkle anim-twinkle" style="right:16px;top:12px;color:#ff9ecf;animation-delay:0.9s">✦</span>';
       h += '<div class="center"><p style="font-size:2.5rem;margin:0" aria-hidden="true">🎁</p>';
-      h += '<h2 class="anime-title font-display" style="margin-top:0.25rem;font-size:1.5rem;font-weight:700">☆ DAILY LOGIN REWARDS ☆</h2>';
-      if (dailyResetNotice && st.claimable) {
-        h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ff9ecf">A day slipped by, so the streak restarts at Day 1 — no hard feelings, Master. The gifts keep coming! ♪</p>';
-      } else if (st.claimedToday) {
-        h += '<p class="small dim" style="margin-top:0.5rem;font-weight:600">Day ' + st.todayDay + ' claimed — nicely done! ' + (st.todayDay === 7 ? "The cycle restarts at Day 1 tomorrow." : "Come back tomorrow for Day " + (st.todayDay + 1) + ".") + "</p>";
+      h += '<h2 class="anime-title font-display" style="margin-top:0.25rem;font-size:1.5rem;font-weight:700">DAILY LOGIN REWARD</h2>';
+      if (st.claimedToday) {
+        h += '<p class="small dim" style="margin-top:0.5rem;font-weight:600">Today\'s free 10-pull is claimed, Master ♪ Come back tomorrow for another one!</p>';
       } else {
-        h += '<p class="small dim" style="margin-top:0.5rem;font-weight:600">The tower leaves a gift for every Master who checks in. Claim one a day, keep the streak alive — miss a day and the cycle restarts at Day 1.</p>';
+        h += '<p class="small dim" style="margin-top:0.5rem;font-weight:600">A gift from Echoria for showing up, Master ♪ Every day brings one free 10-pull — the same summons, rates, and pity as a paid 10-pull. Miss a day and nothing is lost; tomorrow\'s pull is waiting just the same.</p>';
       }
       h += "</div>";
-      h += '<div class="daily-grid" role="list" aria-label="Seven day reward calendar: ' + (st.claimedToday ? "day " + st.todayDay + " claimed today" : "day " + st.todayDay + " ready to claim") + '">';
-      for (var d = 1; d <= 7; d++) {
-        var r = DAILY_REWARDS[d - 1];
-        var state;
-        if (st.claimedToday) state = d <= st.todayDay ? "claimed" : "upcoming";
-        else state = d < st.todayDay ? "claimed" : d === st.todayDay ? "today" : "upcoming";
-        var stateLabel = state === "claimed" ? (st.claimedToday && d === st.todayDay ? "claimed today" : "claimed") : state === "today" ? "today — ready to claim" : "upcoming";
-        h += '<div class="daily-cell ' + state + '" role="listitem" aria-label="Day ' + d + ": " + dailyRewardLabel(r) + " — " + stateLabel + '">';
-        if (state === "claimed") h += '<span class="d-check" aria-hidden="true">✓</span>';
-        h += '<p class="d-day">' + (state === "today" ? "TODAY" : "DAY " + d) + "</p>";
-        h += '<p class="d-icon" aria-hidden="true">' + (r.type === "gems" ? "💎" : "🪙") + "</p>";
-        h += '<p class="d-amt">' + r.amount.toLocaleString("en-US") + "</p></div>";
-      }
+      h += '<div style="margin-top:1rem;border-radius:16px;border:2px solid ' + (st.claimedToday ? "#2dd4bf" : "#ffd94d") + ';background:' + (st.claimedToday ? "rgba(45,212,191,0.15)" : "rgba(255,217,77,0.18)") + ';padding:0.75rem 1rem;text-align:center">';
+      h += '<p class="xs bold dim" style="margin:0;letter-spacing:0.15em">TODAY\'S REWARD</p>';
+      h += '<p class="font-display" style="margin-top:0.25rem;font-size:1.25rem;font-weight:700">🎟️ FREE 10-PULL</p>';
+      h += '<p class="xs bold dim" style="margin-top:0.125rem">10 summons · no gems needed</p>';
+      if (st.claimedToday) h += '<p class="small" style="margin-top:0.25rem;font-weight:900;color:#5eead4">✓ CLAIMED</p>';
       h += "</div>";
       if (st.claimable) {
-        var todayReward = DAILY_REWARDS[st.todayDay - 1];
-        h += '<button type="button" class="btn-wide anime-btn-gold" id="daily-claim" aria-label="Claim day ' + st.todayDay + " reward: " + dailyRewardLabel(todayReward) + '">🎁 CLAIM DAY ' + st.todayDay + " — " + dailyRewardLabel(todayReward).toUpperCase() + "</button>";
+        h += '<button type="button" class="btn-wide anime-btn-gold" id="daily-claim" aria-label="Claim today\'s daily login reward: one free 10-pull (10 summons)">CLAIM FREE 10-PULL ♪</button>';
         h += '<button type="button" class="btn-ghost" id="daily-close" style="margin-top:0.5rem;width:100%;border-radius:999px">Later</button>';
       } else {
         h += '<button type="button" class="btn-wide anime-btn-gold" id="daily-close">✅ CLAIMED — SEE YOU TOMORROW ♪</button>';
@@ -11617,7 +11718,6 @@
       if (claimBtn) claimBtn.addEventListener("click", claimDaily);
       document.getElementById("daily-close").addEventListener("click", function () {
         dailyScene = false;
-        dailyResetNotice = false;
         root.innerHTML = "";
         maybeShowPendingModals();
       });
@@ -11899,8 +11999,8 @@
       }
       /* Silk Cocoon (Aurelia): on her every 5th attack (fired in the
          attack loop below), her silk wraps the enemy — stunned, it
-         cannot attack for 1.5 + 0.5 × skill Lv seconds (Lv 1 → 2s,
-         Lv 5 → 4s). Normal monsters, gate bosses and Floor Lords alike. */
+         cannot attack for 1.5s + 0.5s per skill level above 1 (Lv 1 → 1.5s,
+         Lv 5 → 3.5s). Normal monsters, gate bosses and Floor Lords alike. */
       var aureliaO = s.heroes["aurelia"];
       /* Zone-monster boss skills (Floors 5–50): each boss runs its
          own cycle on battle-seconds. Floats fire immediately (not
@@ -11994,6 +12094,11 @@
          still running). */
       var cap = capState;
       var bClock = battleElapsed;
+      /* 🛡 Boss tenacity gate for this tick: only a boss floor's foe
+         builds stacks and suffers shortened CC — every CC site below
+         routes its duration through applyBossCc with this flag, and a
+         regular monster's fight passes every duration through untouched. */
+      var bossFight = isBossFloor(f);
       var capNow = performance.now();
       function capFire(id) {
         var lv = capstoneLv(s, id);
@@ -12069,14 +12174,14 @@
         capNextIn("morrigan", 20); capFloat("🐦‍⬛ CROWSTORM!");
       }
       capLv = capFire("sella");
-      if (capLv) { // ⚡ Storm Surge: 120% ATK × lv, 25% chance to stun 2s — every 15s.
+      if (capLv) { // ⚡ Storm Surge: 120% ATK × lv, 25% chance to stun 1.5s — every 15s. (Stun cut 2s → 1.5s Nov 21, per the CC base-duration rule; on a boss the landed stun also banks a tenacity stack.)
         timedDmg += capstoneAtk(s, "sella") * 1.2 * capLv;
-        if (Math.random() < 0.25) cap.stunUntil = Math.max(cap.stunUntil, bClock + 2);
+        if (Math.random() < 0.25) cap.stunUntil = Math.max(cap.stunUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1.5));
         capNextIn("sella", 15); capFloat("⚡ STORM SURGE!");
       }
       capLv = capFire("faye");
-      if (capLv) { // 🌩 Thunderclap: 100% ATK × lv + silence 2s + 0.2s/lv — every 20s. Silence pauses boss timed abilities: their cycle timers are pushed back by the silence.
-        var silenceDur = 2 + 0.2 * capLv;
+      if (capLv) { // 🌩 Thunderclap: 100% ATK × lv + silence 1.5s + 0.2s/lv — every 20s. Silence pauses boss timed abilities: their cycle timers are pushed back by the silence (by the tenacity-cut duration a boss actually suffers).
+        var silenceDur = applyBossCc(tenacityState, bossFight, bClock, 1.5 + 0.2 * capLv);
         timedDmg += capstoneAtk(s, "faye") * capLv;
         cap.silenceUntil = bClock + silenceDur;
         stickyTimer = Math.max(0, stickyTimer - silenceDur); tollTimer = Math.max(0, tollTimer - silenceDur); thornTimer = Math.max(0, thornTimer - silenceDur); rememberTimer = Math.max(0, rememberTimer - silenceDur);
@@ -12085,13 +12190,13 @@
       capLv = capFire("dun");
       if (capLv) { // 🔨 Anvil's Ring: 120% ATK × lv + stun 1s + 0.2s/lv — every 15s.
         timedDmg += capstoneAtk(s, "dun") * 1.2 * capLv;
-        cap.stunUntil = Math.max(cap.stunUntil, bClock + 1 + 0.2 * capLv);
+        cap.stunUntil = Math.max(cap.stunUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1 + 0.2 * capLv));
         capNextIn("dun", 15); capFloat("🔨 ANVIL'S RING!");
       }
       capLv = capFire("anselm");
       if (capLv) { // 🖐 Iron Palm: 100% ATK × lv + the enemy's next attack delayed 2s — every 15s. (In this loop the enemy's damage is continuous, so the delay is a 2s pause on its incoming damage.)
         timedDmg += capstoneAtk(s, "anselm") * capLv;
-        cap.delayUntil = Math.max(cap.delayUntil, bClock + 2);
+        cap.delayUntil = Math.max(cap.delayUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 2));
         capNextIn("anselm", 15); capFloat("🖐 IRON PALM!");
       }
       capLv = capFire("joss");
@@ -12111,27 +12216,28 @@
         capNextIn("ash", 20); capFloat("🐺 PACK HUNT!");
       }
       capLv = capFire("vesper");
-      if (capLv) { // 🎭 Marionette's Masterpiece: root 2s + 0.3s/lv + 100% ATK × lv — every 25s. (The Golden Cradle stretches the root ×1.25 while Aurelia fights beside her.)
+      if (capLv) { // 🎭 Marionette's Masterpiece: root 1.5s + 0.3s/lv above 1 + 100% ATK × lv — every 25s. (The Golden Cradle stretches the root ×1.25 while Aurelia fights beside her — applied to the base first; boss tenacity then cuts the result.)
         timedDmg += capstoneAtk(s, "vesper") * capLv;
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + (2 + 0.3 * capLv) * mods.ccMult);
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, (1.5 + 0.3 * (capLv - 1)) * mods.ccMult));
         capNextIn("vesper", 25); capFloat("🎭 MARIONETTE'S MASTERPIECE!");
       }
       capLv = capFire("aurelia");
-      if (capLv) { // 🕸 Widow's Embrace: root 2s + 0.3s/lv + the wrapped enemy takes +8%/lv — every 25s. (Root and wrap window both stretch ×1.25 under the Golden Cradle — the vulnerability lasts exactly as long as the wrap.)
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + (2 + 0.3 * capLv) * mods.ccMult);
-        capVuln(0.08 * capLv, (2 + 0.3 * capLv) * mods.ccMult);
+      if (capLv) { // 🕸 Widow's Embrace: root 1.5s + 0.3s/lv + the wrapped enemy takes +8%/lv — every 25s. (Root and wrap window both stretch ×1.25 under the Golden Cradle — the vulnerability lasts exactly as long as the wrap — and boss tenacity cuts the wrapped result for both.)
+        var wrapDur = applyBossCc(tenacityState, bossFight, bClock, (1.5 + 0.3 * capLv) * mods.ccMult);
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + wrapDur);
+        capVuln(0.08 * capLv, wrapDur);
         capNextIn("aurelia", 25); capFloat("🕸 WIDOW'S EMBRACE!");
       }
       capLv = capFire("mari");
-      if (capLv) { // 🎭 Curtain Call: the enemy bows — cannot attack for 3s — and the party heals 2% + 0.5%/lv — every 25s.
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + 3);
+      if (capLv) { // 🎭 Curtain Call: the enemy bows — cannot attack for 1.5s — and the party heals 2% + 0.5%/lv — every 25s. (Root cut 3s → 1.5s Nov 21, per the CC base-duration rule; on a boss the landed root also banks a tenacity stack.)
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1.5));
         capHeal(0.02 + 0.005 * capLv);
         capNextIn("mari", 25); capFloat("🎭 CURTAIN CALL!");
       }
       capLv = capFire("iris");
       if (capLv) { // 🌸 Bloom Burst: heal 3% + 0.5%/lv + root 1s + 0.3s/lv — every 20s.
         capHeal(0.03 + 0.005 * capLv);
-        cap.rootUntil = Math.max(cap.rootUntil, bClock + 1 + 0.3 * capLv);
+        cap.rootUntil = Math.max(cap.rootUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1 + 0.3 * capLv));
         capNextIn("iris", 20); capFloat("🌸 BLOOM BURST!");
       }
       capLv = capFire("ondine");
@@ -12203,7 +12309,7 @@
       }
       capLv = capFire("rook");
       if (capLv) { // ⏳ Sands of Time: time stops 2s + 0.3s/lv — the enemy cannot act, party attacks +10%/lv — every 25s.
-        cap.timestopUntil = bClock + 2 + 0.3 * capLv;
+        cap.timestopUntil = bClock + applyBossCc(tenacityState, bossFight, bClock, 2 + 0.3 * capLv);
         cap.timestopPct = 0.10 * capLv;
         capNextIn("rook", 25); capFloat("⏳ SANDS OF TIME!");
       }
@@ -12402,19 +12508,19 @@
              the window reads above were computed before this loop.) */
           if ((hitCounts[id] || 0) % 5 === 0) {
             if (id === "aurelia" && aureliaO) {
-              /* 🕸 Silk Cocoon: her silk wraps the enemy whole and STUNS it — it cannot attack until the cocoon's hold ends (1.5 + 0.5 × skill Lv seconds, ×1.25 under the Golden Cradle). */
-              var cocoonDur = silkCocoonDuration(skillLevel(aureliaO)) * mods.ccMult;
+              /* 🕸 Silk Cocoon: her silk wraps the enemy whole and STUNS it — it cannot attack until the cocoon's hold ends (1.5s + 0.5s per skill level above 1, ×1.25 under the Golden Cradle). The Golden Cradle's ×ccMult is folded into the base first; on a boss, tenacity cuts the result and the landed cocoon banks a stack. */
+              var cocoonDur = applyBossCc(tenacityState, bossFight, bClock, silkCocoonDuration(skillLevel(aureliaO)) * mods.ccMult);
               stunUntil = performance.now() + cocoonDur * 1000;
               pendingFloats.push({ text: "🕸 SILK COCOON — STUNNED " + cocoonDur.toFixed(1) + "s!", big: true, x: 55 + Math.random() * 20 });
             }
             if (id === "ilya" && ilyaIn) {
-              /* 🌿 Entangle: roots hold the enemy — it cannot attack for 2s. */
-              entangleUntil = performance.now() + 2000;
+              /* 🌿 Entangle: roots hold the enemy — it cannot attack for 1.5s (boss tenacity cuts a boss's root and banks a stack). */
+              entangleUntil = performance.now() + applyBossCc(tenacityState, bossFight, bClock, 1.5) * 1000;
               pendingFloats.push({ text: "🌿 ENTANGLE — ROOTED!", big: true, x: 30 });
             }
             if (id === "orien" && orienIn) {
-              /* 🌑 Eclipse: darkness falls for 4s — the enemy cannot attack, and the party hits +20% harder. */
-              eclipseUntil = performance.now() + 4000;
+              /* 🌑 Eclipse: darkness falls for 4s — the enemy cannot attack, and the party hits +20% harder. The darkness is CC: on a boss, tenacity cuts it and the landed eclipse banks a stack. */
+              eclipseUntil = performance.now() + applyBossCc(tenacityState, bossFight, bClock, 4) * 1000;
               pendingFloats.push({ text: "🌑 ECLIPSE — darkness falls!", big: true, x: 30 });
               /* ☄️ Cometfall: a comet strikes for 150% of Orien's attack per skill level. */
               timedDmg += heroAtk(heroById("orien"), orienO, s) * 1.5 * skillLevel(orienO);
@@ -12496,13 +12602,14 @@
           if (id === "nix") {
             /* ❄ Glacial Edge: each of her hits stacks a chill on the
                enemy — at 5 stacks the cold closes and the enemy freezes
-               solid for 3 seconds, unable to attack. The freeze lands
+               solid for 1.5 seconds, unable to attack. The freeze lands
                mid-tick, like Frostbite's, so enemyFrozen() reads it
-               fresh at the mAtk line below. */
+               fresh at the mAtk line below. Boss tenacity cuts the freeze
+               a boss suffers, floored at 1s. */
             nixStacks += 1;
             if (nixStacks >= 5) {
               nixStacks = 0;
-              frozenUntil = performance.now() + 3000;
+              frozenUntil = performance.now() + applyBossCc(tenacityState, bossFight, bClock, 1.5) * 1000;
               pendingFloats.push({ text: "❄ GLACIAL FREEZE!", big: true, x: 62 + Math.random() * 22 });
             }
           }
@@ -12610,8 +12717,9 @@
       }
       /* ❄ Chill ticks: Aurelia Frost's cold keeps biting between her casts —
          and each second the chill holds, it has a 10% chance to FREEZE the
-         enemy solid: frozen, it cannot attack for 2s (+0.5s per skill level
-         above 1, so 4s at level 5), and a fresh freeze refreshes the hold. */
+         enemy solid: frozen, it cannot attack for 1.5s (+0.5s per skill level
+         above 1, so 3.5s at level 5), and a fresh freeze refreshes the hold.
+         Boss tenacity cuts the freeze a boss suffers, floored at 1s. */
       if (nowMs2 < chill.until && chill.dps > 0 && !(partySnared() && mbSkillId === "gravevine")) {
         var chillDmg = chill.dps * dt;
         dmgThisTick += chillDmg;
@@ -12624,7 +12732,7 @@
           frostTickAcc -= 1;
           var eolO = s.heroes["eolka"];
           if (eolO && Math.random() < 0.10) {
-            frozenUntil = nowMs2 + frostFreezeDuration(skillLevel(eolO)) * 1000;
+            frozenUntil = nowMs2 + applyBossCc(tenacityState, bossFight, bClock, frostFreezeDuration(skillLevel(eolO))) * 1000;
             pendingFloats.push({ text: "❄️ FROZEN!", big: true, x: 62 + Math.random() * 22 });
           }
         }
@@ -12968,11 +13076,13 @@
              wipe, Tower Memory forgets, and Ossian's Grave Tithe is 0
              (a fresh save's value). The floor-100 clear's own gold/gems
              are NOT banked — the reset swallows them like everything else.
-             Exactly three things carry over: the run counter (+1), the
+             Exactly four things carry over: the run counter (+1), the
              run's single strongest gear piece sealed away as the heirloom
              (it unseals at Floor 50 of the new climb, exactly as before),
-             and the account-level record of redeem/gift codes already
-             claimed (each code still works once, ever). No ending screen,
+             the account-level record of redeem/gift codes already claimed
+             (each code still works once, ever), and today's daily-login
+             claim stamp, so the daily free 10-pull stays on its normal
+             once-per-calendar-day rule across the reset. No ending screen,
              no choice — the climb simply begins again. */
           var isRunEnd = f >= 100;
           var runStartHero = null;
@@ -13001,6 +13111,10 @@
             freshRun.heirloom = runHeir ? JSON.parse(JSON.stringify(runHeir)) : null;
             freshRun.redeemedCodes = (s.redeemedCodes || []).slice();
             freshRun.redeemedGiftIds = (s.redeemedGiftIds || []).slice();
+            /* The daily claim keeps its normal once-per-day rule across
+               the reset: today's stamp carries over, so a run that ends
+               after claiming doesn't hand out a second free 10-pull. */
+            freshRun.dailyLastClaim = s.dailyLastClaim;
             next = freshRun;
           } else {
             next.floor = f + 1;
