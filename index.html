@@ -3458,6 +3458,46 @@
       });
     }
 
+    /** The largest single bonus percentage a synergy offers, at its
+        Bold-scaled value — the Synergy tab's within-tier sort key (Nov 21,
+        2026). The bond is priced the way it would pay out once its link is
+        complete: the live scale for an active bond, and for an inactive one
+        the scale its full link would earn — every member for a plain bond,
+        the highest-star `anyOf` members for a pick-N bond, and for Moonlit
+        Bond Luna beside the strongest other hero owned (or in the party).
+        Signs are ignored, so an enemy-attack reduction of 5% counts as 5.
+        The Golden Cradle's CC half is exempt: it is flat by design and a
+        duration, not a stat percentage, so only its crit half counts —
+        mirroring synergyBonusText. Values round to 1 decimal exactly as
+        the card text does, so near-ties fall through to the owned-count
+        tiebreak instead of float dust. Display and activation never read
+        this — it only orders the list. */
+    function synergyTopBonus(syn, party, heroes) {
+      var link, i;
+      if (synergyActive(syn, party)) {
+        link = party;
+      } else if (syn.lunaBond) {
+        var pool = [];
+        var seen = {};
+        party.concat(Object.keys(heroes)).forEach(function (id) {
+          if (id !== "luna" && !seen[id]) { seen[id] = true; pool.push(id); }
+        });
+        pool.sort(function (a, b) { return heroById(b).stars - heroById(a).stars; });
+        link = pool.length ? ["luna", pool[0]] : ["luna"];
+      } else if (syn.anyOf) {
+        link = syn.members.slice().sort(function (a, b) { return heroById(b).stars - heroById(a).stars; }).slice(0, syn.anyOf);
+      } else {
+        link = syn.members;
+      }
+      var m = synergyScale(syn, link);
+      if (syn.id === "golden-cradle") return Math.round(5 * m * 10) / 10;
+      var nums = [];
+      var re = /(\d+(?:\.\d+)?)%/g;
+      var match;
+      while ((match = re.exec(syn.bonus)) !== null) nums.push(Math.round(parseFloat(match[1] || "0") * m * 10) / 10);
+      return nums.length > 0 ? Math.max.apply(null, nums) : 0;
+    }
+
     /** Per-hero damage multiplier from synergies (Dragon Rivals). Applied in
         partyDps (so idle/offline estimates match) and in the battle loop's
         per-attack damage, so the bonus is real in the fight itself. The
@@ -7726,12 +7766,26 @@
       h += '<div class="anime-card mt4 card-pad" aria-label="All party synergies"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">✨ Party Synergies</h3>';
       h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:600">When these heroes fight in the party together, their bond ignites — the bonus is live in battle, idle gold, and offline earnings. A live bond\'s bonus scales up with its members\' rarity and the size of the link, so an active card shows the exact numbers your current party gets.</p>';
       h += '<ul class="syn-list">';
-      SYNERGIES.forEach(function (syn) {
-        var active = synergyActive(syn, s.party);
-        var ownedCount = syn.members.filter(function (m) { return s.heroes[m]; }).length;
+      /* Tiered order: (1) active bonds, (2) fully owned but not in
+          the party, (3) partially owned, (4) nothing owned. Inside
+          a tier, the bond whose largest single Bold-scaled bonus
+          is biggest comes first (synergyTopBonus); ties fall back
+          to most owned members first, then the default SYNERGIES
+          order via the original index. "Owned" reads the
+          collection (s.heroes), never just the party. */
+      SYNERGIES.map(function (syn, idx) {
+        return { syn: syn, idx: idx, owned: syn.members.filter(function (m) { return s.heroes[m]; }).length, act: synergyActive(syn, s.party), top: synergyTopBonus(syn, s.party, s.heroes) };
+      }).sort(function (a, b) {
+        var tierOf = function (x) { return x.act ? 0 : x.owned >= x.syn.members.length ? 1 : x.owned > 0 ? 2 : 3; };
+        return tierOf(a) - tierOf(b) || b.top - a.top || b.owned - a.owned || a.idx - b.idx;
+      }).forEach(function (row) {
+        var syn = row.syn;
+        var active = row.act;
+        var ownedCount = row.owned;
         var need = syn.anyOf || syn.members.length;
         var collected = ownedCount >= need;
-        h += '<li class="syn-item' + (active ? " active" : "") + '"><div class="syn-top"><p class="syn-name">' + esc(syn.name) + ' <span class="kind">· ' + esc(syn.kind) + "</span></p>";
+        h += '<li class="syn-item' + (active ? " active" : "") + '"><div class="syn-top"><p class="syn-name">' + esc(syn.name) + ' <span class="kind">· ' + esc(syn.kind) + "</span> " +
+          '<span class="status-pill status-none" style="vertical-align:middle">' + ownedCount + "/" + syn.members.length + " owned</span></p>";
         if (active) h += '<span class="status-pill status-active">✨ ACTIVE</span>';
         else if (collected) h += '<span class="status-pill status-owned">OWNED — add them to the party</span>';
         else h += '<span class="status-pill status-none">' + ownedCount + "/" + need + " collected</span>";
