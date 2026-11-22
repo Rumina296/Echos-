@@ -8279,13 +8279,17 @@
       h += '<div class="halftone" aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:6rem;opacity:0.4"></div>';
       h += '<div style="position:relative;padding:1.25rem 1rem 1rem;background:linear-gradient(to bottom,rgba(76,52,140,0.4),transparent)">';
       h += '<div class="battle-head">';
+      h += '<div style="min-width:0;flex:1">';
+      h += '<p class="floor-kicker">★ FLOOR ' + f + (isLordFloor(f) ? " — FLOOR LORD 👑" : isGateFloor(f) ? " — GATE BOSS" : "") + " · " + esc(zone.name.toUpperCase()) + "</p>";
+      h += '<h2 class="monster-name">' + esc(monsterName(f)) + "</h2>";
+      h += "</div>";
+      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(afkGoldPerSec(dps, f, Date.now(), highest) * partyMods(s).goldMult * boostMult(s, Date.now())) + '</p><p>💎/sec ≈ ' + fmt(afkGemsPerSec(dps, f, Date.now(), highest) * boostMult(s, Date.now())) + "</p></div>";
+      h += "</div>";
+      h += "<div>";
       if (mb) h += '<img class="boss-art" src="' + mb.art + '" alt="' + esc(mb.alt) + '" style="border-color:' + mb.color + ';object-position:' + mb.pos + '" />';
       if (ob) h += '<img class="boss-art" src="' + ob.portrait + '" alt="' + esc(ob.portraitAlt) + '" style="border-color:' + ob.color + ';object-position:center 18%" />';
       var bp = bossPortrait(f);
       if (bp && !ob) h += '<img class="boss-art" src="' + bp + '" alt="' + esc(monsterName(f)) + ' portrait" style="border-color:#a78bfa;object-position:center 14%" />';
-      h += "<div>";
-      h += '<p class="floor-kicker">★ FLOOR ' + f + (isLordFloor(f) ? " — FLOOR LORD 👑" : isGateFloor(f) ? " — GATE BOSS" : "") + " · " + esc(zone.name.toUpperCase()) + "</p>";
-      h += '<h2 class="monster-name">' + esc(monsterName(f)) + "</h2>";
       if (f === 100) {
         h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:700;color:#fda4af">💗 The sealed heart of the goddess Seraphina, still beating at the top of Echoria — the final boss of the tower.</p>';
       }
@@ -8336,8 +8340,6 @@
           h += "</div>";
         }
       }
-      h += "</div>";
-      h += '<div class="dps-box"><p>Party DPS <span class="val">' + fmt(dps) + "</span></p>" + (dotDpsShown >= 1 ? '<p>incl. ' + fmt(dotDpsShown) + "/s from DoTs</p>" : "") + "<p>" + (eta === Infinity ? "—" : "~" + fmtClock(eta) + " to clear") + '</p><p style="margin-top:0.25rem">🪙/sec ≈ ' + fmt(afkGoldPerSec(dps, f, Date.now(), highest) * partyMods(s).goldMult * boostMult(s, Date.now())) + '</p><p>💎/sec ≈ ' + fmt(afkGemsPerSec(dps, f, Date.now(), highest) * boostMult(s, Date.now())) + "</p></div>";
       h += "</div>";
       /* 🎵 The Music Hall concert (Phase 2): begun by hand, mid-fight,
          from here — cleanse, heal 75%, +50% damage for 10s. */
