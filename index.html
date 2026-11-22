@@ -13164,7 +13164,21 @@
           var afterWipe = JSON.parse(JSON.stringify(s));
           if (!afterWipe.floorMemory) afterWipe.floorMemory = {};
           afterWipe.floorMemory[String(f)] = { deaths: memBeforeW.deaths + 1, reClears: memBeforeW.reClears };
+          /* DROP-A-FLOOR (Rachel, Nov 21): losing a stage knocks the
+             party DOWN one floor, automatically — no prompt, no choice.
+             Only fightFloor moves: the frontier (s.floor, the highest
+             floor reached) is untouched, Tower Memory stacks stay on
+             the floors where they were earned, and the failed floor's
+             monster still resets to full (below) for the next attempt.
+             Floor 1 is the bottom — a wipe there stays on Floor 1.
+             Tower only: dungeon wipes end their run in the dungeon loop
+             and never reach this branch. The party regroups at full HP
+             (as every wipe already does) and immediately fights the
+             floor below at that floor's full-HP monster. */
+          var dropFloor = Math.max(1, f - 1);
+          afterWipe.fightFloor = dropFloor;
           heroHps = heroMaxHpList(afterWipe);
+          battleFloor = dropFloor;
           /* Wipe: the monster returns to FULL HP (Rachel, Nov 21: "fail
              stage resets monster hp completely") — a failed stage restarts
              the monster exactly like a fresh attempt. The old rule that let
@@ -13173,9 +13187,11 @@
              now reset fully. Tower Memory still counts the fall — the death
              is recorded in afterWipe above, and bossMaxHp prices the
              memory's HP growth into the full bar, exactly as before. */
-          enemyHp = bossMaxHp(afterWipe, f);
+          enemyHp = bossMaxHp(afterWipe, dropFloor);
+          atkTimers = {};
           resetBattleTimers();
           persist(afterWipe);
+          if (dropFloor < f) addFloat("💥 Wipe! The tower knocks you down to Floor " + dropFloor, true, 30);
           var wipeHint = memoryHintLine(afterWipe, f);
           if (wipeHint && memBeforeW.deaths + 1 >= 2 && (memBeforeW.deaths + 1) % 2 === 0) setNotice(wipeHint);
         }
