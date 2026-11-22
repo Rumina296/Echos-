@@ -1577,7 +1577,7 @@
         bossFates: {}, bossKind: {}, dialogueLog: [], kindChoices: 0,
         legacyBonus: {},
         unmakingShards: 0, unmakingDamage: 0, protectEndings: 0,
-        firstEchoCompanion: false, pendingEnding: "", bossRageFloor: 0,
+        firstEchoCompanion: false, pendingEnding: "", storyComplete: false, bossRageFloor: 0,
         keeperSceneSeen: false, ariaSceneSeen: false, ossianSceneSeen: false,
         /* ---- Paradise (run 2, Phase 2) — see freshParadise ---- */
         paradise: freshParadise(),
@@ -1656,6 +1656,9 @@
         merged.protectEndings = typeof merged.protectEndings === "number" && merged.protectEndings > 0 ? Math.floor(merged.protectEndings) : 0;
         merged.firstEchoCompanion = merged.firstEchoCompanion === true;
         if (merged.pendingEnding !== "tragedy" && merged.pendingEnding !== "choice" && merged.pendingEnding !== "enter" && merged.pendingEnding !== "unmaking") merged.pendingEnding = "";
+        // 🌅 THE END survives only as a true boolean — older saves have
+        // never finished the story.
+        merged.storyComplete = merged.storyComplete === true;
         merged.bossRageFloor = typeof merged.bossRageFloor === "number" && merged.bossRageFloor > 0 ? Math.floor(merged.bossRageFloor) : 0;
         merged.keeperSceneSeen = merged.keeperSceneSeen === true;
         merged.ariaSceneSeen = merged.ariaSceneSeen === true;
@@ -7550,6 +7553,7 @@
     var saveScene = null; /* run-2 boss id whose SAVE/KILL scene is open, or null */
     var saveRefused = false; /* an unmatched line in the save scene blocks SAVE for this opening */
     var tragedyStep = 0; /* run-1 tragedy modal: 0 = the reveal, 1 = the shard */
+    var theEndDismissed = false; /* 🌅 THE END page: shown whenever the story is complete until the player steps past it into their world; the Tower tab can re-open it. Session-only — the save's storyComplete flag is what persists */
     var unwindingQueue = []; /* heroes waiting to step in, strongest first */
     var unwindingWave = 1;
     var unmakingDmg = 0; /* 🌀 damage dealt to the Unmaking in the current destroy-ending fight — banked into the save (unmakingDamage) when the fight ends, win or lose; NOT reset between waves, only when a fresh Unmaking fight begins (chooseDestroy) or after it is banked */
@@ -8272,6 +8276,16 @@
       }
       if (battleElapsed < concertUntil) {
         h += '<p style="margin-top:0.5rem;font-size:0.75rem;font-weight:800;color:#ffd94d">🎵 THE CONCERT RINGS — the party deals +50% damage while the song lasts!</p>';
+      }
+      /* 🌅 THE END stands: the story is complete and the climb is over —
+         no battle runs here anymore. The page itself can be re-read
+         from here. */
+      if (s.storyComplete) {
+        h += '<div style="margin-top:0.5rem;border:2px solid #ffd94d66;border-radius:1rem;background:var(--surface2);padding:0.75rem 1rem">';
+        h += '<p class="font-display" style="margin:0;font-size:0.875rem;font-weight:700;color:#ffd94d">🌅 THE STORY IS COMPLETE</p>';
+        h += '<p class="small dim" style="margin:0.25rem 0 0;font-weight:600">The Unmaking has fallen for the last time, and no new climb begins. Your Paradise and your heroes remain — wander them as long as you like.</p>';
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="view-the-end-btn" style="margin-top:0.5rem" aria-label="View The End page again">🌅 View The End</button>';
+        h += '</div>';
       }
       if (titheStarted(s)) {
         h += '<p class="tithe-chip" role="status">⚰️ Grave Tithe ×' + titheStacks(s) + " — Ossian has kept " + graveKillsOf(s) + " of your dead (+" + tithePct(s) + "% ATK &amp; HP waiting at Floor 90" + (titheStacks(s) >= 25 ? " — the tithe is full" : " · next stack in " + titheKillsToNext(s) + " kills") + ")</p>";
@@ -10876,6 +10890,8 @@
       if (fkBtn) fkBtn.addEventListener("click", strikeHammer);
       var ccBtn = document.getElementById("concert-btn");
       if (ccBtn) ccBtn.addEventListener("click", beginConcert);
+      var teBtn = document.getElementById("view-the-end-btn");
+      if (teBtn) teBtn.addEventListener("click", function () { theEndDismissed = false; showTheEndModal(); });
       var msBtn = document.getElementById("mystery-stone-btn");
       if (msBtn) msBtn.addEventListener("click", buyMysteryStone);
       var dealBtn = document.getElementById("shop-deal");
@@ -14703,6 +14719,41 @@
     /* Run 1 ending — the tragedy. Two steps: the reveal, then the shard.
        Completing it resets the run with a shard (the Unmaking 20%
        weaker from now on) and opens run 2. */
+    /* ================= THE END — THE STORY COMPLETE =================
+       Shown once the final Unwinding victory stands (storyComplete:
+       the win that brought the lifetime shard count to 4). Luna's
+       victory message heads the page; after it, the story is simply
+       over — no new run begins behind this page, ever. Stepping past
+       it leaves the completed world on screen: Paradise and the
+       roster remain viewable, and the Tower tab can re-open this
+       page whenever the player wants to read it again. */
+    function showTheEndModal() {
+      var root = document.getElementById("modal-root");
+      var s = save;
+      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="The End — the story is complete">';
+      h += '<div class="anime-card modal-card center" style="max-width:28rem;border-color:#ffd94d;box-shadow:0 0 64px rgba(255,217,77,0.45)">';
+      h += '<p class="font-display" style="font-size:11px;font-weight:600;letter-spacing:0.3em;color:#ffd94d;margin:0">☆ THE UNWINDING, WON · ' + (s.unmakingShards || 0) + ' SHARDS BORNE ☆</p>';
+      h += '<div class="small dim" style="margin-top:1rem;text-align:left;display:flex;flex-direction:column;gap:0.5rem">';
+      h += '<p style="margin:0">🌙 <span style="font-weight:700;color:var(--text)">Luna:</span> “You did it, Master. The hunger is over — the dark is gone, and the light is ours again. Every memory it tried to eat is still here, because you carried them. The world is yours to create.”</p>';
+      h += '</div>';
+      h += '<p class="anim-twinkle" style="font-size:2.25rem;margin:1.25rem 0 0" aria-hidden="true">✦ 🌅 ✦</p>';
+      h += '<h2 class="font-display" style="margin-top:0.5rem;font-size:3rem;font-weight:700">THE END</h2>';
+      h += '<div class="small dim" style="margin-top:1rem;text-align:left;display:flex;flex-direction:column;gap:0.5rem">';
+      h += '<p style="margin:0">The Unmaking has fallen — and this time there is no next climb waiting behind it. Four shards borne, every hall of Paradise standing open, the dark gone and the light yours again: <span style="color:var(--text)">the story of Echoria is complete</span>.</p>';
+      h += '<p style="margin:0">Your heroes keep their names, your town keeps its light, and the World Tree keeps growing in the quiet at the top of everything. None of it is taken away. It is simply — yours, now, with nothing left to threaten it.</p>';
+      h += '</div>';
+      h += '<p style="margin:1rem 0 0;border:1px solid var(--border);border-radius:1rem;background:var(--surface2);padding:0.5rem 0.75rem;font-size:0.75rem;font-weight:700;color:var(--dim)">🏯 Runs climbed: ' + (s.run || 1) + ' · 🌀 Shards borne: ' + (s.unmakingShards || 0) + ' · 💗 Damage remembered: ' + fmt(s.unmakingDamage || 0) + ' · 🗝 Protect endings: ' + (s.protectEndings || 0) + '</p>';
+      h += '<button type="button" class="btn-wide anime-btn-gold" id="the-end-return" style="margin-top:1rem" aria-label="Return to your world — view your Paradise and heroes">🌳 RETURN TO YOUR WORLD</button>';
+      h += '<p class="xs bold dim" style="margin-top:0.5rem">The game is complete: no new run begins, and the Unmaking will not be faced again on this save. Paradise, your roster, and everything you built remain yours to visit — and The End waits on the Tower tab whenever you want to read it again.</p>';
+      h += "</div></div>";
+      root.innerHTML = h;
+      document.getElementById("the-end-return").addEventListener("click", function () {
+        theEndDismissed = true;
+        root.innerHTML = "";
+        renderMain();
+        maybeShowPendingModals();
+      });
+    }
     function showTragedyModal() {
       var root = document.getElementById("modal-root");
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="The Unmaking">';
@@ -14880,6 +14931,7 @@
       if (pulls) { showPullsModal(); return; }
       if (starterScene) { showStarterModal(); return; }
       if (offlineReport && !offlineDismissed) { showOfflineModal(); return; }
+      if (save && save.storyComplete && !theEndDismissed) { showTheEndModal(); return; }
       if (lunaScene) { showLunaModal(); return; }
       if (keeperScene) { showKeeperModal(); return; }
       if (ariaScene) { showAriaModal(); return; }
@@ -15070,7 +15122,11 @@
          starting gold, gems and floor match the game behind it. The
          Keeper's Floor 95 reveal works the same way: his boss fight
          does not begin until the scene is dismissed. */
-      if (starterScene || keeperScene || ariaScene || ossianScene || saveScene || s.pendingEnding === "tragedy" || s.pendingEnding === "choice" || s.pendingEnding === "enter") { lastTick = performance.now(); return; }
+      /* 🌅 THE END: the story is complete — the battle holds for good.
+         No new run ever starts and no fight (the Unwinding included)
+         is ever fought again on this save; Paradise and the roster
+         remain on screen for viewing. */
+      if (starterScene || keeperScene || ariaScene || ossianScene || saveScene || s.pendingEnding === "tragedy" || s.pendingEnding === "choice" || s.pendingEnding === "enter" || s.storyComplete) { lastTick = performance.now(); return; }
       inBattleTick = true;
       var now = performance.now();
       var dt = Math.min(1.5, (now - lastTick) / 1000);
@@ -16945,18 +17001,53 @@
              no choice — the climb simply begins again. */
           var isRunEnd = f >= 100;
           var runEnded = false; /* true only when a reset actually happened this clear */
+          var finalVictory = false; /* true only when the Unwinding win ends the story for good (4+ shards) — no reset, no run float, no gold float */
           var runStartHero = null;
           if (isRunEnd && s.pendingEnding === "unmaking") {
-            /* 🌅 THE UNMAKING FALLS — the destroy ending, won: the round
-               ends with a shard AND the damage banked (the whole Unmaking
-               HP — every point of it was dealt this round). */
+            /* 🌅 THE END (Rachel, Nov 22): an Unwinding win that brings
+               the lifetime shard count to 4 or more — the shard earned
+               by THIS win included; 4 shards = every Paradise building
+               unlocked (World Tree 1, Training Hall 2, Enchantment
+               Hall 3, Music Hall 4) — is the FINAL victory. No run
+               reset follows it: the story is complete, storyComplete
+               stands forever, and The End page takes the stage. The
+               roster, the climb, and Paradise stay exactly as they
+               stood — viewable, never looped again. Below 4 shards the
+               win loops to a new run exactly as it always has. */
             var dmgBanked = unmakingMaxHp(s);
-            next = doRunReset(s, { shard: true, bonusDamage: dmgBanked, unmakingKilled: true });
-            runStartHero = { id: next.party[0], stars: heroById(next.party[0]).stars, name: heroById(next.party[0]).name };
-            runEnded = true;
-            beginRun(next);
-            addFloat("🌅 THE UNMAKING FALLS — RUN " + next.run + " — the climb begins again", true, 55);
-            setNotice("🌅 The Unmaking falls. A shard of its undoing joins the climb — it is 20% weaker already, and the " + fmt(dmgBanked) + " damage dealt this round stays dealt, carried into the next run. Run " + next.run + " begins with a lone " + runStartHero.stars + "★ hero — " + runStartHero.name + " at level 1, starting gold and gems, no gear, no materials — everything earned is gone. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
+            finalVictory = (s.unmakingShards || 0) + 1 >= 4;
+            if (finalVictory) {
+              next = Object.assign({}, s, {
+                pendingEnding: "",
+                storyComplete: true,
+                unmakingShards: (s.unmakingShards || 0) + 1,
+                unmakingDamage: (s.unmakingDamage || 0) + dmgBanked,
+                // The Unmaking's death pays its fragments into the
+                // town, exactly as a looping win does (doRunReset's
+                // unmakingKilled term) — Paradise persists either way.
+                paradise: Object.assign({}, s.paradise, { fragments: ((s.paradise && s.paradise.fragments) || 0) + 5 })
+              });
+              unmakingDmg = 0;
+              unwindingQueue = []; unwindingWave = 1; // the Unwinding is over — it fell, for the last time
+              // No beginRun: no new climb begins. The completed save
+              // persists exactly as it stands, and The End opens over
+              // it through maybeShowPendingModals below.
+              persist(next);
+              addFloat("🌅 THE UNMAKING FALLS — THE END", true, 55);
+              setNotice("🌙 Luna: \"You did it, Master. The hunger is over — the dark is gone, and the light is ours again. Every memory it tried to eat is still here, because you carried them. The world is yours to create.\" 🌅 You destroyed the Heart, faced the Unmaking — and it FELL, for the last time. The final shard drops from it: four shards borne, and every hall of Paradise stands open. No new climb begins — the story is complete. Your heroes and your Paradise remain, yours to keep and to wander, for as long as you like.");
+            } else {
+              /* 🌀 THE DESTROY ENDING, WON (run 2+, Phase 1): the
+                 Unmaking fell. A shard drops, the damage dealt stays
+                 dealt, and the climb loops through the same full reset
+                 as every ending — doRunReset carries the run-2
+                 records (shards, damage, log, kindness) across. */
+              next = doRunReset(s, { shard: true, bonusDamage: dmgBanked, unmakingKilled: true });
+              runStartHero = { id: next.party[0], stars: heroById(next.party[0]).stars, name: heroById(next.party[0]).name };
+              runEnded = true;
+              beginRun(next);
+              addFloat("🌅 THE UNMAKING FALLS — RUN " + next.run + " — the climb begins again", true, 55);
+              setNotice("🌙 Luna: \"You did it, Master. The hunger is over — the dark is gone, and the light is ours again. Every memory it tried to eat is still here, because you carried them. The world is yours to create.\" 🌅 You destroyed the Heart, faced the Unmaking — and it FELL. A shard drops from it, weakening it by 20% for every future run, and every point of damage you dealt stays dealt. The tower resets: Run " + next.run + " begins with a lone " + runStartHero.stars + "★ hero — " + runStartHero.name + " at level 1" + (next.run >= 2 ? " and Luna waiting at Floor 1 — she remembers" : "") + ", starting gold and gems, no gear, no materials. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
+            }
           } else if (isRunEnd) {
             /* 💗 The Heart, reached: the run does NOT reset yet. Run 1
                ends in the tragedy; run 2+ offers the choice — destroy
@@ -17018,7 +17109,7 @@
           /* On the run-end clear there is no gold float: the reset swallows
              the clear's reward, so flashing "+gold" would promise a payout
              the player never keeps — the RUN float below says what happened. */
-          if (!runEnded) addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
+          if (!runEnded && !finalVictory) addFloat("+" + fmt(gold) + " gold · +" + gems + " 💎", true, 40);
           if (runEnded) {
             addFloat("🌅 RUN " + next.run + " — the climb begins again", true, 55);
           }
