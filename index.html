@@ -1739,6 +1739,48 @@
             merged.paradise = goddessSave.paradise;
           }
         })();
+        /* Migration (boss-save run gate, Nov 22, 2026): boss saving is a
+           RUN 2+ system — the SAVE-or-KILL scene only opens on run 2 or
+           later (the battle loop's trigger checks run >= 2). A build
+           missing that gate let the scene fire on run 1, and a verdict
+           taken there was real in every way: the boss joined the roster
+           carrying the stat-lock's taken power as their bonus, every other
+           hero's `lock` fraction went up, the verdict stood in bossFates,
+           and the boss entered paradise's lifetime redemption ledger
+           (redeemedEver). Rachel's call: a run-1 verdict does not stand —
+           the choice must be offered fresh in run 2. So a save still ON
+           run 1 that carries a "saved" verdict has that verdict reversed
+           here, in full: the verdict is cleared from bossFates, the boss
+           leaves the lifetime ledger, and every hero's lock is released —
+           on a first climb the stat-lock has no other possible source, so
+           releasing it restores exactly the power the save took. The boss
+           themself leaves the roster via the run-2 strip just below, which
+           keeps a run-2 hero only while their fate reads "saved" (party,
+           equipment, and quest runs are cleaned there too; the party is
+           re-filtered against the stripped roster further below). A save on
+           run 2 or later is NOT touched: its verdicts were earned on a
+           climb where saving is allowed, and its locks stand. "killed" /
+           "failed" verdicts carry no roster, lock, or ledger effects and
+           reset with the run as always, so they are left as recorded. */
+        if (merged.run < 2) {
+          var run1Saved = Object.keys(merged.bossFates).filter(function (id) { return merged.bossFates[id] === "saved"; });
+          if (run1Saved.length > 0) {
+            var fates = {};
+            for (var fk2 in merged.bossFates) fates[fk2] = merged.bossFates[fk2];
+            run1Saved.forEach(function (id) { delete fates[id]; });
+            merged.bossFates = fates;
+            merged.paradise = Object.assign({}, merged.paradise, { redeemedEver: (merged.paradise.redeemedEver || []).filter(function (id) { return run1Saved.indexOf(id) < 0; }) });
+            for (var hid2 in merged.heroes) {
+              var ho = merged.heroes[hid2];
+              if (ho && typeof ho.lock === "number" && ho.lock > 0) {
+                var released = {};
+                for (var rk in ho) if (rk !== "lock") released[rk] = ho[rk];
+                merged.heroes[hid2] = released;
+                heroes[hid2] = released;
+              }
+            }
+          }
+        }
         /* A run-2 hero stays in the roster only when this run's bossFates
            records them as saved — every other run-2 hero is stripped from
            owned heroes, equipment, party and quests, so nothing leaks into
@@ -2115,6 +2157,11 @@
           });
         } catch (e) { /* see above — unfilled runs keep the legacy fallback */ }
         merged.quests = qs;
+        /* The run-2 strip above ran before the quest runs were rebuilt
+           from the raw save — re-apply its quest cleaning here, so a
+           stripped boss cannot survive in a quest run (in main the strip
+           is the last quest mutation; here the rebuild is). */
+        merged.quests = merged.quests.map(function (r) { return Object.assign({}, r, { heroIds: (r.heroIds || []).filter(function (id) { return lockedIds.indexOf(id) < 0; }) }); }).filter(function (r) { return r.heroIds.length > 0; });
         return merged;
       } catch (e) {
         return null;
@@ -17143,7 +17190,7 @@
              the choice is SAVE or KILL, and it is made in the save
              scene, not here. One chance per boss per round: the scene
              opens only while this run has no verdict for them yet. */
-          if (!isRunEnd && SAVEABLE_BOSSES[f] && (s.bossFates[SAVEABLE_BOSSES[f]] || "") === "" && !next.heroes[SAVEABLE_BOSSES[f]]) saveScene = SAVEABLE_BOSSES[f];
+          if (!isRunEnd && next.run >= 2 && SAVEABLE_BOSSES[f] && (s.bossFates[SAVEABLE_BOSSES[f]] || "") === "" && !next.heroes[SAVEABLE_BOSSES[f]]) saveScene = SAVEABLE_BOSSES[f];
           if (tab === "battle") renderMain();
           playClearSfx();
           /* On the run-end clear there is no gold float: the reset swallows
