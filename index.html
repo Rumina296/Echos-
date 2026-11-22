@@ -3347,6 +3347,24 @@
       var state = gearAttuneState(heroId, p);
       return state === "fated" ? 2 : state === "attuned" ? 1.5 : 1;
     }
+    /* The hero order for a piece's equip-to list (Rachel, Nov 21, 2026):
+       the piece's fated hero first, then every hero whose battle class
+       matches the piece's attunement (heroAttunesTo — either battle class
+       counts), then the rest. Inside each group, stars highest first —
+       effective rank, the same star count the hero cards show — with ties
+       keeping the default roster order. Owned heroes only: a piece can
+       only be equipped to a hero the player has. */
+    function equipHeroOrder(p) {
+      var groupOf = function (hd) {
+        return p.fatedHero === hd.id ? 0 : p.attunedClass && heroAttunesTo(hd, p.attunedClass) ? 1 : 2;
+      };
+      return HEROES.filter(function (hd) { return save.heroes[hd.id]; }).sort(function (a, b) {
+        var g = groupOf(a) - groupOf(b);
+        if (g !== 0) return g;
+        var ao = save.heroes[a.id], bo = save.heroes[b.id];
+        return (bo ? effRank(b, bo) : b.stars) - (ao ? effRank(a, ao) : a.stars);
+      });
+    }
     /* The full effective multiplier on one equipped piece's bonuses for
        one hero: recipe set synergy × attunement. */
     function gearPieceMult(heroId, p, ctx) {
@@ -13178,13 +13196,18 @@
       var g = gearByUid(uid);
       if (!g) return;
       var root = document.getElementById("modal-root");
-      var owned = HEROES.filter(function (hd) { return save.heroes[hd.id]; });
+      var owned = equipHeroOrder(g);
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Choose a hero"><div class="anime-card modal-card" style="max-width:26rem">';
       h += '<h2 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0">' + GEAR_SLOT_ICON[g.slot] + " " + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></h2><p class="small dim" style="margin-top:0.25rem">' + gearBonusText(g) + " — who should wear it? (Replaces whatever they have in that slot.)</p>";
       h += '<ul class="picker-list">';
       owned.forEach(function (hd) {
         var cur = equippedGear(hd.id, g.slot);
-        h += '<li class="gear-item"><span class="chip-face" aria-hidden="true">' + chibiSVG(hd, 17) + '</span><span class="gi-main"><p class="gi-name">' + esc(hd.name) + '</p><p class="gi-meta">Lv' + save.heroes[hd.id].level + (cur ? " · currently: " + esc(gearName(cur)) + " " + cur.stars + "★" : " · slot empty") + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-hero="' + hd.id + '">Equip</button></span></li>';
+        var o = save.heroes[hd.id];
+        var fated = g.fatedHero === hd.id;
+        var attuned = !fated && !!g.attunedClass && heroAttunesTo(hd, g.attunedClass);
+        var badge = fated ? ' <span style="font-weight:900;color:#ffd94d">🌟 FATED — bonuses ×2</span>' : attuned ? ' <span style="font-weight:900;color:#5eead4">✨ Attuned class — +50%</span>' : "";
+        var aria = "Equip " + gearName(g) + " on " + hd.name + (fated ? " — the fated hero for this piece, bonuses doubled" : attuned ? " — their class matches this piece's attunement, bonuses plus 50 percent" : "") + (cur ? " — swaps out their " + gearName(cur) : "");
+        h += '<li class="gear-item"><span class="chip-face" aria-hidden="true">' + chibiSVG(hd, 17) + '</span><span class="gi-main"><p class="gi-name">' + esc(hd.name) + ' <span style="' + starTextStyle(effRank(hd, o)) + '">' + starsStr(effRank(hd, o)) + '</span>' + badge + '</p><p class="gi-meta">Lv' + o.level + " · " + esc(heroClasses(hd).join(" · ")) + (cur ? " · currently: " + esc(gearName(cur)) + " " + cur.stars + "★ — will swap" : " · slot empty") + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-hero="' + hd.id + '" aria-label="' + esc(aria) + '">Equip</button></span></li>';
       });
       h += '</ul><button type="button" class="btn-ghost" id="picker-close" style="margin-top:1rem;width:100%;border-radius:999px">Cancel</button></div></div>';
       root.innerHTML = h;
