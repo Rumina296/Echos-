@@ -162,6 +162,33 @@
       .anim-spark { animation: spark-pop 0.3s ease-out forwards; }
       .anim-twinkle { animation: twinkle 2.4s ease-in-out infinite; }
       .anim-wiggle { animation: wiggle 1.8s ease-in-out infinite; }
+      /* The Unmaking (the Unwinding's full-screen boss) — all motion kept
+         slight and slow on purpose: a soft breathing pulse at idle, a small
+         forward lean when it strikes, a faint flinch when a blow lands, and
+         the stolen gold light drifting around it (mirrors main theme.css). */
+      @keyframes unmaking-breathe {
+        0%, 100% { transform: scale(1) translateY(0); }
+        50% { transform: scale(1.02) translateY(-3px); }
+      }
+      @keyframes unmaking-lean {
+        0% { transform: translateY(0) scale(1); }
+        40% { transform: translateY(9px) scale(1.03); }
+        100% { transform: translateY(0) scale(1); }
+      }
+      @keyframes unmaking-flinch {
+        0% { transform: translate(0, 0); }
+        30% { transform: translate(-3px, 1px); }
+        60% { transform: translate(2px, 0); }
+        100% { transform: translate(0, 0); }
+      }
+      @keyframes ribbon-drift {
+        0%, 100% { transform: translate(0, 0) rotate(-5deg); opacity: 0.3; }
+        50% { transform: translate(9px, -13px) rotate(6deg); opacity: 0.85; }
+      }
+      .anim-unmaking-breathe { animation: unmaking-breathe 6s ease-in-out infinite; }
+      .anim-unmaking-lean { animation: unmaking-lean 0.45s ease-out; }
+      .anim-unmaking-flinch { animation: unmaking-flinch 0.3s ease-in-out; }
+      .anim-ribbon-drift { animation: ribbon-drift 8s ease-in-out infinite; }
       /* Projectile + casting FX (purely visual): a ranged hero's shot
          rises from its own slot up to the boss and fades on impact —
          --pdx / --pdy are the pixel offsets from hero to boss, set per
@@ -201,7 +228,7 @@
       .timestop-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f59e0b, #fbbf24); color: #451a03; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(251,191,36,0.65); }
       .silence-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f472b6, #ec4899); color: #500724; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,114,182,0.65); }
       @media (prefers-reduced-motion: reduce) {
-        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl, .anim-wave-crash { animation: none; }
+        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl, .anim-wave-crash, .anim-unmaking-breathe, .anim-unmaking-lean, .anim-unmaking-flinch, .anim-ribbon-drift { animation: none; }
       }
 
       /* ---------- layout ---------- */
@@ -1488,6 +1515,7 @@
         heirloom: null,
         /* ---- Run 2 system, Phase 1 (ported from main) ---- */
         bossFates: {}, bossKind: {}, dialogueLog: [], kindChoices: 0,
+        legacyBonus: {},
         unmakingShards: 0, unmakingDamage: 0, protectEndings: 0,
         firstEchoCompanion: false, pendingEnding: "", bossRageFloor: 0,
         keeperSceneSeen: false, ariaSceneSeen: false, ossianSceneSeen: false,
@@ -1582,6 +1610,30 @@
         var lockedIds = RUN2_HEROES.map(function (h) { return h.id; }).filter(function (id) { return merged.bossFates[id] !== "saved"; });
         lockedIds.forEach(function (bid) { if (heroes[bid]) delete heroes[bid]; if (merged.equipped && typeof merged.equipped === "object") delete merged.equipped[bid]; });
         merged.quests = (merged.quests || []).map(function (r) { return Object.assign({}, r, { heroIds: (r.heroIds || []).filter(function (id) { return lockedIds.indexOf(id) < 0; }) }); }).filter(function (r) { return r.heroIds.length > 0; });
+        /* Migration (run legacy): the per-hero legacy ledger. Older saves
+           have none — it starts empty here and the mirror below credits
+           every owned hero the runs already completed, the level a fresh
+           grant would start at. Entries survive only as whole positive
+           counts for real heroes (HEROES + the run-2 heroes). */
+        if (!merged.legacyBonus || typeof merged.legacyBonus !== "object") merged.legacyBonus = {};
+        else { var cleanLegacy = {}; for (var lk in merged.legacyBonus) { if ((HEROES.some(function (h) { return h.id === lk; }) || RUN2_HEROES.some(function (h) { return h.id === lk; })) && typeof merged.legacyBonus[lk] === "number" && merged.legacyBonus[lk] > 0) cleanLegacy[lk] = Math.floor(merged.legacyBonus[lk]); } merged.legacyBonus = cleanLegacy; }
+        /* Run legacy mirror: the ledger is the truth; the hero record's
+           legacy count is its reflection for the stat functions. A hero
+           with no ledger entry yet keeps the count their own record
+           carries, or is credited the runs already completed (run − 1),
+           and is written into the ledger so the count is theirs from
+           here on. */
+        (function () {
+          var completed = Math.max(0, (typeof merged.run === "number" ? Math.floor(merged.run) : 1) - 1);
+          for (var hid in merged.heroes) {
+            var o = merged.heroes[hid];
+            if (!o) continue;
+            var fromRecord = typeof o.legacy === "number" && o.legacy > 0 ? Math.floor(o.legacy) : 0;
+            var lv = typeof merged.legacyBonus[hid] === "number" ? merged.legacyBonus[hid] : (fromRecord > 0 ? fromRecord : completed);
+            if (lv > 0) merged.legacyBonus[hid] = lv;
+            merged.heroes[hid] = Object.assign({}, o, { legacy: lv });
+          }
+        })();
         merged.party = p.party.filter(function (id) { return typeof id === "string" && heroes[id]; }).slice(0, MAX_PARTY);
         if (merged.party.length === 0) {
           var firstOwned = Object.keys(heroes)[0];
@@ -3444,6 +3496,56 @@
     }
 
     /* ============================== GAME MATH ============================== */
+    /* ------- Run legacy -------
+       Each completed run (a floor-100 clear and its reset) MULTIPLIES
+       the hero's FINAL ATK and HP by ×1.03, COMPOUNDING across runs
+       (entering run 2: ×1.03; run 3: ×1.0609; run 4: ×1.0927). The
+       multiplier is priced HERE, at the very END of heroAtk/heroHp — on
+       the full computed stat, AFTER the level multiplier, the synthesis
+       multiplier, the stat-lock/bonus/gear sum — so the bonus is 3% of
+       whatever the hero's stats are at that moment: a Lv 1 Aldric gains
+       +5.7 attack (3% of 190), and a maxed 12★ Lv 120 Aldric gains
+       ~+150. (Rachel, Nov 22: MULTIPLIER is the decision — the flat
+       +3%-of-base version is removed entirely.) The rate is the same
+       ×1.03 per completed run for every hero, whatever rank they ended
+       the previous run at. The count is tracked PER HERO in the save's
+       legacyBonus ledger, which doRunReset carries across the reset
+       (the roster is wiped; the ledger is not) and increments by one
+       completed run at each reset; parseSave mirrors it onto the hero
+       record. Because the bonus lands inside heroAtk/heroHp, every
+       system that reads stats through these two functions (tower
+       combat, dungeons, idle/AFK, hero power, cards) inherits it from
+       the one place. */
+    var LEGACY_MULT_PER_RUN = 1.03;
+    function legacyRuns(o) {
+      return typeof o.legacy === "number" && o.legacy > 0 ? Math.floor(o.legacy) : 0;
+    }
+    /* The run legacy multiplier a hero carries: ×1.03 per credited
+       completed run, compounding — 1.03^n on the hero's FINAL computed
+       ATK and HP (after level and synthesis multipliers and gear). A
+       hero with no completed runs carries ×1 (no bonus). */
+    function legacyMult(o) {
+      return Math.pow(LEGACY_MULT_PER_RUN, legacyRuns(o));
+    }
+    /* The hero card/detail's plain legacy line ("Legacy +6.1%"), or null
+       when the hero carries no completed runs yet. The percentage is the
+       TOTAL compounded bonus: 1.03^n − 1 — run 2 shows "Legacy +3%",
+       run 3 "Legacy +6.1%", run 4 "Legacy +9.3%". */
+    function legacyLabel(o) {
+      var n = legacyRuns(o);
+      if (n <= 0) return null;
+      var pct = (Math.pow(LEGACY_MULT_PER_RUN, n) - 1) * 100;
+      return "Legacy +" + pct.toFixed(1).replace(/\.0$/, "") + "%";
+    }
+    /* A brand-new hero record for a hero granted in save `s` — summons,
+       tickets, the Dupe Exchange, Luna's arrivals, saved bosses. Their
+       run legacy starts at the CURRENT bonus level: their ledger count
+       if they carry one, otherwise the runs already completed
+       (run − 1) — a hero who joins in a later run never starts at 0%. */
+    function freshOwnedHero(s, heroId) {
+      var lv = (s.legacyBonus && typeof s.legacyBonus[heroId] === "number") ? s.legacyBonus[heroId] : Math.max(0, (typeof s.run === "number" ? Math.floor(s.run) : 1) - 1);
+      return { level: 1, dupes: 0, asc: 0, legacy: lv };
+    }
     function heroAtk(def, o, ctx) {
       /* Stat-lock (run 2, main heroAtk): the lock shaves only the GROWN part —
          the base stat is protected and can never be taken. A saved boss's
@@ -3451,13 +3553,18 @@
       var grownAtk = def.baseAtk * (1 + 0.09 * (o.level - 1)) * (1 + 0.25 * o.asc) - def.baseAtk;
       var base = def.baseAtk + grownAtk * (1 - (o.lock || 0)) + (o.bonusAtk || 0);
       var g = equippedGear(def.id, "weapon", ctx);
-      return base + (g ? gearAtkBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0);
+      /* Run legacy lands LAST of all, as a MULTIPLIER on the final number:
+         ×1.03 per credited completed run, compounding — 3% of the hero's
+         final attack, whatever level, rank, and gear have grown it to. */
+      return (base + (g ? gearAtkBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * legacyMult(o);
     }
     function heroHp(def, o, ctx) {
       var grownHp = def.baseHp * (1 + 0.11 * (o.level - 1)) * (1 + 0.25 * o.asc) - def.baseHp;
       var base = def.baseHp + grownHp * (1 - (o.lock || 0)) + (o.bonusHp || 0);
       var g = equippedGear(def.id, "armor", ctx);
-      return base + (g ? gearHpBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0);
+      /* Run legacy: the same multiplier as heroAtk — ×1.03 per credited
+         completed run, compounding, on the hero's final HP. */
+      return (base + (g ? gearHpBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * legacyMult(o);
     }
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * (def.stars + o.asc); }
@@ -4028,7 +4135,7 @@
     var BOSS_SKILL_LISTS = {
       55: [
         { name: "Elegy for the Fallen", icon: "🎻", desc: "when one of your heroes falls, his song strengthens him — attack +10% per fall (max +50%), and the Dirge deepens +5% per fall" },
-        { name: "The Last Dirge", icon: "🎵", desc: "capstone — every 30s, a massive final verse strikes every hero for 80% of his attack" }
+        { name: "The Last Dirge", icon: "🎵", desc: "capstone — every 30s, a massive final verse strikes every hero for 45% of the party's average max HP" }
       ],
       60: [
         { name: "The Amulet", icon: "🟣", desc: "passive — once per battle, at 20% HP, the Amulet wakes: Mara takes 30% less damage and gains a shield of 15% of her max HP" },
@@ -4036,18 +4143,18 @@
         { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, she heals 15% of her max HP and the goddess sings with her: her damage +20% for 10s" }
       ],
       65: [
-        { name: "Phantom Army", icon: "⚔", desc: "every 12s, illusionary soldiers strike every hero for 35% of his attack — he can conjure soldiers, but he cannot heal, shield, or buff" },
+        { name: "Phantom Army", icon: "⚔", desc: "every 12s, illusionary soldiers strike every hero for 25% of the party's average max HP — he can conjure soldiers, but he cannot heal, shield, or buff" },
         { name: "Veil of Bells", icon: "🔔", desc: "passive — his illusionary veil confuses the party: 15% of attacks strike a phantom instead of him" },
         { name: "Nightmare", icon: "😱", desc: "every 15s, his bells seed nightmares — every hero is feared for 1.5s and cannot act" },
         { name: "The Final Dream", icon: "💤", desc: "capstone — every 30s, a blissful dream puts every hero to sleep for 1.5s" }
       ],
       70: [
-        { name: "Beautiful View + Warmth", icon: "🌅", desc: "every 12s he shows the party a beautiful view — light damage (30% of his attack) to every hero, and a 20% chance each hero is dazzled and cannot act for 1.2s" },
+        { name: "Beautiful View + Warmth", icon: "🌅", desc: "every 12s he shows the party a beautiful view — light damage (25% of the party's average max HP) to every hero, and a 20% chance each hero is dazzled and cannot act for 1.2s" },
         { name: "Wanderer's Luck", icon: "🍀", desc: "passive — a wanderer's luck: 20% of attacks simply miss him" },
         { name: "The Strongest Being", icon: "⭐", desc: "capstone — every 30s, for 6s he becomes the strongest being: his damage doubles and his attack speed surges — his Beautiful View falls twice as often while it lasts" }
       ],
       75: [
-        { name: "Cracking Note", icon: "🎶", desc: "every 12s, her voice cracks mid-song — 35% of her attack to every hero, and a 20% chance each hero is disoriented and cannot act for 1.5s" },
+        { name: "Cracking Note", icon: "🎶", desc: "every 12s, her voice cracks mid-song — 25% of the party's average max HP to every hero, and a 20% chance each hero is disoriented and cannot act for 1.5s" },
         { name: "Unbroken Hymn", icon: "🎵", desc: "passive — her song persists, and it mends whoever hears it: every hero slowly regains 0.5% of their max HP every second" },
         { name: "The Song That Remains", icon: "🌟", desc: "capstone — every 30s, the song swells: every hero is healed for 15% of their max HP, and her hope holds — her whole party's damage +20% for 10s (she sings alone on this floor, so here the song lifts only her)" }
       ],
@@ -4057,20 +4164,20 @@
         { name: "Unbreakable Wall", icon: "🧱", desc: "capstone — every 30s he becomes an unbreakable wall: a shield of 25% of his max HP" }
       ],
       85: [
-        { name: "Echo of the Beginning", icon: "🔆", desc: "every 12s, an echo of the first memory strikes every hero for 50% of its attack" },
+        { name: "Echo of the Beginning", icon: "🔆", desc: "every 12s, an echo of the first memory strikes every hero for 25% of the party's average max HP" },
         { name: "Echo's Memory", icon: "🕰", desc: "passive — the longer the battle runs, the less damage the party deals: −2% every 10s, down to −30%" },
         { name: "Wisdom's Light", icon: "💡", desc: "passive — it reveals your weaknesses: the party takes 20% more damage from it" },
-        { name: "The Echo That Remembers", icon: "🌟", desc: "capstone — every 30s, massive damage to every hero (120% of its attack), and its own might surges +50% for 3s" }
+        { name: "The Echo That Remembers", icon: "🌟", desc: "capstone — every 30s, massive damage to every hero (45% of the party's average max HP), and its own might surges +50% for 3s" }
       ],
       90: [
         { name: "Death's Embrace + Soul Harvest", icon: "💀", desc: "passive — every hero who falls feeds him a soul: he heals 5% of his max HP, and the Final Count grows by a soul" },
-        { name: "The Last Rite", icon: "⚰", desc: "every 12s, the Last Rite deals 60% of his attack to every hero" },
-        { name: "The Final Count", icon: "🔢", desc: "capstone — every 30s, massive damage to every hero: 100% of his attack + 20% per soul counted this battle" }
+        { name: "The Last Rite", icon: "⚰", desc: "every 12s, the Last Rite deals 25% of the party's average max HP to every hero" },
+        { name: "The Final Count", icon: "🔢", desc: "capstone — every 30s, massive damage to every hero: 45% of the party's average max HP + 5% per soul counted this battle" }
       ],
       100: [
-        { name: "Pulse of Memory", icon: "💗", desc: "every 12s, its beat stirs the memories it hoards — 40% of its attack to every hero, in flashes of paradise: a 20% chance each hero is disoriented and cannot act for 1.5s" },
+        { name: "Pulse of Memory", icon: "💗", desc: "every 12s, its beat stirs the memories it hoards — 25% of the party's average max HP to every hero, in flashes of paradise: a 20% chance each hero is disoriented and cannot act for 1.5s" },
         { name: "Hoard of Memories", icon: "💖", desc: "passive — it draws on the memories it saved, slowly healing itself: 0.5% of its max HP every second" },
-        { name: "The Last Beat", icon: "🫀", desc: "when its HP falls below 20%, the heart beats one final, massive time — 150% of its attack to every hero (once per battle)" }
+        { name: "The Last Beat", icon: "🫀", desc: "when its HP falls below 20%, the heart beats one final, massive time — 60% of the party's average max HP to every hero (once per battle)" }
       ]
     };
     /* ================= THE KEEPER (Floor 95 gate boss) =================
@@ -4932,12 +5039,33 @@
       var freshRun = freshSave(Date.now());
       var startRank = Math.random() < 0.5 ? 3 : 4;
       var runStartHero = rollHero(startRank);
+      /* RUN LEGACY: the run just finished completes for every hero in
+         the ledger — each entry gains one completed run (a FLAT +3% of
+         their original base ATK/HP each, additive across runs). A hero
+         owned in the finished run but missing an entry (granted before
+         the ledger existed) enters at their record's count + 1. The
+         ledger is carried across the reset below; the roster itself is
+         wiped, exactly as always — gold, gems, materials, gear,
+         Tower Memory, and boss fates all keep their existing reset terms. */
+      var legacyBonus = {};
+      var _lb = s.legacyBonus || {};
+      for (var _hid in _lb) { if (typeof _lb[_hid] === "number" && _lb[_hid] > 0) legacyBonus[_hid] = Math.floor(_lb[_hid]) + 1; }
+      for (var _hid2 in s.heroes) {
+        if (!(_hid2 in legacyBonus)) {
+          var _ho = s.heroes[_hid2];
+          legacyBonus[_hid2] = (typeof _ho.legacy === "number" && _ho.legacy > 0 ? Math.floor(_ho.legacy) : Math.max(0, (typeof s.run === "number" ? Math.floor(s.run) : 1) - 1)) + 1;
+        }
+      }
+      /* The new run's starter is granted fresh: they start at the new
+         current bonus level — the runs now completed (s.run of them). */
+      if (!(runStartHero.id in legacyBonus)) legacyBonus[runStartHero.id] = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1);
       freshRun.heroes = {};
-      freshRun.heroes[runStartHero.id] = { level: 1, dupes: 0, asc: 0 };
+      freshRun.heroes[runStartHero.id] = { level: 1, dupes: 0, asc: 0, legacy: legacyBonus[runStartHero.id] };
       freshRun.party = [runStartHero.id];
       freshRun.starterId = runStartHero.id;
       freshRun.starterSeen = true;
       freshRun.run = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1) + 1;
+      freshRun.legacyBonus = legacyBonus;
       freshRun.heirloom = runHeir ? JSON.parse(JSON.stringify(runHeir)) : null;
       freshRun.redeemedCodes = (s.redeemedCodes || []).slice();
       freshRun.redeemedGiftIds = (s.redeemedGiftIds || []).slice();
@@ -4950,7 +5078,11 @@
       freshRun.firstEchoCompanion = !!s.firstEchoCompanion;
       freshRun.paradise = { redeemedEver: ((s.paradise && s.paradise.redeemedEver) || []).slice() };
       if (freshRun.run >= 2 && !freshRun.heroes["luna"]) {
-        freshRun.heroes["luna"] = { level: 1, dupes: 0, asc: 0 };
+        /* Luna is granted fresh in the new run too — she starts at the
+           new current legacy level, like the starter (freshOwnedHero's
+           rule, read off the new run's ledger). */
+        if (!("luna" in freshRun.legacyBonus)) freshRun.legacyBonus["luna"] = Math.max(0, freshRun.run - 1);
+        freshRun.heroes["luna"] = { level: 1, dupes: 0, asc: 0, legacy: freshRun.legacyBonus["luna"] };
         if (freshRun.party.length < MAX_PARTY) freshRun.party.push("luna");
       }
       return freshRun;
@@ -4995,7 +5127,7 @@
       var locked = applyStatLock(next, bossId);
       var taken = locked.taken;
       next = locked.next;
-      next.heroes[bossId] = { level: 1, dupes: 0, asc: 0, bonusAtk: Math.round(taken * 0.5), bonusHp: Math.round(taken * 10) };
+      next.heroes[bossId] = Object.assign(freshOwnedHero(next, bossId), { bonusAtk: Math.round(taken * 0.5), bonusHp: Math.round(taken * 10) });
       next.bossFates[bossId] = "saved";
       if (!next.paradise) next.paradise = { redeemedEver: [] };
       if (next.paradise.redeemedEver.indexOf(bossId) < 0) next.paradise.redeemedEver.push(bossId);
@@ -6869,6 +7001,8 @@
     var lungeAt = {};
     var monsterHitAt = 0;
     var monsterLungeAt = 0;
+    var lastUnmakingLungeShown = 0; /* 🌀 lean/flinch restarts for the full-screen Unmaking portrait */
+    var lastUnmakingHitShown = 0;
     var partyHurtAt = 0;
     var monsterAtkTimer = 0;
     var vigilUsed = false; // Luna's Full Moon Vigil: once per battle (per monster faced) — was a 60-second cooldown until Nov 21, 2026
@@ -7187,6 +7321,86 @@
       if (tab === "battle") renderBattleDynamic();
       if (tab === "dungeon") renderDungeonDynamic();
     }
+    /* ================= THE UNWINDING — FULL-SCREEN FINAL BATTLE =================
+       (mirrors main: while the destroy ending's fight is live, the battle
+       takes over the WHOLE screen — a fixed overlay above every other
+       layer, with deliberately NO exit, close, or retreat control. The
+       Unmaking fights as its approved PORTRAIT, large — never a chibi —
+       breathing slowly, leaning in when it strikes, flinching when a blow
+       lands, its stolen gold light drifting around it. The battle's own
+       readouts stay inside the overlay: the Unmaking's HP bar, the pooled
+       party bar, and each hero's own HP bar directly below their chibi.
+       The overlay reuses the normal battle's live-update ids (#enemy-bar,
+       #party-bar, #party-row, #floats-layer, #spark-slot, #monster-wrap,
+       #monster-orb, badges), so renderBattleDynamic and the battle tick
+       keep every number ticking exactly as they do elsewhere.
+       Presentation only — battle rules are untouched. The Music Hall
+       concert button is NOT here: shared has no concert mechanic.) */
+    function unwindingHTML() {
+      var s = save;
+      var f = s.fightFloor;
+      var dps = towerBattleDps(s, f);
+      var eMax = bossMaxHp(s, f);
+      var netDps = dps - keeperRegenPerSec(f);
+      var eta = keeperBoss(f) ? (netDps > 0 ? (Math.max(0, enemyHp) / netDps) : Infinity) : (dps > 0 ? (Math.max(0, enemyHp) / dps) : Infinity);
+      var unmakingPortrait = AVATARS["boss-unmaking"] || BOSS_PORTRAITS[100];
+      var unmakingScaleVal = unmakingScale(s);
+      var h = "";
+      h += '<div id="unwinding-overlay" role="dialog" aria-modal="true" aria-label="The Unwinding — the final battle with the Unmaking" style="position:fixed;inset:0;z-index:60;overflow-y:auto;background-color:#05020e;background-image:radial-gradient(circle, rgba(255,255,255,0.85) 1px, transparent 1.4px), radial-gradient(circle, rgba(199,181,255,0.65) 1px, transparent 1.3px), radial-gradient(circle, rgba(255,217,77,0.5) 1.2px, transparent 1.6px), radial-gradient(ellipse 90% 55% at 50% -10%, rgba(88,60,180,0.35), transparent 65%), linear-gradient(180deg, #05020e 0%, #0a0618 55%, #06030f 100%);background-size:140px 140px, 210px 210px, 320px 320px, 100% 100%, 100% 100%;background-position:0 0, 60px 90px, 130px 40px, 0 0, 0 0">';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;left:12%;top:4rem;font-size:0.875rem;color:#fff;pointer-events:none">✦</span>';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;right:16%;top:7rem;font-size:0.75rem;color:#ffd94d;animation-delay:0.8s;pointer-events:none">★</span>';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;left:24%;top:46%;font-size:10px;color:#c4b5fd;animation-delay:1.5s;pointer-events:none">✦</span>';
+      h += '<span aria-hidden="true" class="anim-twinkle" style="position:absolute;right:9%;top:58%;font-size:0.75rem;color:#fff;animation-delay:2.1s;pointer-events:none">✦</span>';
+      h += '<div style="position:relative;margin:0 auto;display:flex;min-height:100%;width:100%;max-width:42rem;flex-direction:column;align-items:center;padding:1.5rem 1rem">';
+      h += '<p style="margin:0;font-size:11px;font-weight:600;letter-spacing:0.3em;color:#b8a8e8">☆ FLOOR 100 · THE UNWINDING ☆</p>';
+      h += '<h2 class="font-display" style="margin:0.25rem 0 0;text-align:center;font-size:2.25rem;font-weight:700;letter-spacing:0.05em;color:#efe8ff;text-shadow:0 0 26px rgba(126,114,173,0.8), 0 2px 0 rgba(10,4,32,0.9)">THE UNMAKING</h2>';
+      h += '<p style="margin:0.25rem 0 0;max-width:28rem;text-align:center;font-size:0.75rem;font-weight:600;color:#a793d8">The thing behind the Heart — no face it did not steal, no name the tower can hold. It does not roar. It simply unmakes.</p>';
+      h += '<p style="margin:0.5rem 0 0;text-align:center;font-size:0.75rem;font-weight:700;color:#7dd3fc">🌊 Wave ' + unwindingWave + ' on the field' + (unwindingQueue.length > 0 ? ' · ' + unwindingQueue.length + ' hero' + (unwindingQueue.length === 1 ? '' : 'es') + ' waiting to step in when it falls' : ' · the last wave — no one waits behind them') + '. The whole roster fights this one.</p>';
+      h += '<div id="unwinding-notice" style="width:100%;max-width:28rem">' + (noticeText ? '<div class="notice" style="margin-top:0.75rem"><p>💬 ' + esc(noticeText) + '</p></div>' : '') + '</div>';
+      h += '<div class="battlefield" id="battlefield" style="width:100%;margin-top:1.25rem;overflow:visible;border:none;background:transparent;box-shadow:none;padding:0">';
+      h += '<div class="shots-layer"></div>';
+      h += '<div style="position:relative;margin:0 auto;max-width:30rem;text-align:center">';
+      h += '<div aria-hidden="true" class="anim-unmaking-breathe" style="position:absolute;left:50%;top:50%;height:70%;width:85%;transform:translate(-50%,-50%);border-radius:999px;background:radial-gradient(circle, rgba(255,217,77,0.16) 0%, rgba(126,114,173,0.22) 45%, transparent 70%);filter:blur(18px);pointer-events:none"></div>';
+      h += '<span aria-hidden="true" class="anim-ribbon-drift" style="position:absolute;left:-1.75rem;top:16%;z-index:10;height:6px;width:4rem;border-radius:999px;background:linear-gradient(90deg, transparent, rgba(255,217,77,0.75), transparent);filter:blur(1px);pointer-events:none"></span>';
+      h += '<span aria-hidden="true" class="anim-ribbon-drift" style="position:absolute;right:-2rem;top:34%;z-index:10;height:6px;width:5rem;border-radius:999px;background:linear-gradient(90deg, transparent, rgba(255,233,168,0.65), transparent);filter:blur(1px);animation-delay:2.4s;animation-duration:9.5s;pointer-events:none"></span>';
+      h += '<span aria-hidden="true" class="anim-ribbon-drift" style="position:absolute;left:-1rem;top:62%;z-index:10;height:4px;width:3rem;border-radius:999px;background:linear-gradient(90deg, transparent, rgba(255,217,77,0.55), transparent);filter:blur(1px);animation-delay:4.6s;animation-duration:7.2s;pointer-events:none"></span>';
+      h += '<span aria-hidden="true" class="anim-ribbon-drift" style="position:absolute;right:6%;top:8%;z-index:10;font-size:0.875rem;color:#ffd94d;animation-delay:1.2s;pointer-events:none">✦</span>';
+      h += '<span aria-hidden="true" class="anim-ribbon-drift" style="position:absolute;left:4%;top:78%;z-index:10;font-size:0.75rem;color:#ffe9a8;animation-delay:3.4s;animation-duration:9s;pointer-events:none">✦</span>';
+      h += '<div id="monster-wrap"><div id="unmaking-motion"><div class="anim-unmaking-breathe">';
+      if (unmakingPortrait) h += '<img id="monster-orb" class="monster-orb" src="' + unmakingPortrait + '" alt="The Unmaking — a formless dark mass behind a taotie mask" style="display:block;height:42vh;max-height:540px;width:auto;max-width:88vw;margin:0 auto;border-radius:2rem;border:3px solid #6d5aa8;object-fit:cover;background:none;font-size:0;box-shadow:0 18px 50px rgba(0,0,0,0.75), 0 0 44px 6px rgba(109,90,168,0.4)" />';
+      h += '</div></div></div>';
+      h += '<span id="spark-slot" style="position:absolute;inset:0;pointer-events:none"></span><span id="floats-layer" style="position:absolute;inset:0;pointer-events:none"></span>';
+      h += '<div style="position:absolute;left:50%;bottom:-0.75rem;transform:translateX(-50%);z-index:20;display:flex;gap:0.25rem"><span class="enrage-badge" id="enrage-badge" style="display:none;margin:0">😡 ENRAGED — damage ×1.5</span><span class="ccimmune-badge" id="ccimmune-badge" style="display:none;margin:0">⛔ CC Immune</span></div>';
+      h += '</div>';
+      h += '<div class="bf-row" style="margin-top:1.5rem"><ul class="party-row" id="party-row" aria-label="Your party, as mini chibis">';
+      s.party.forEach(function (id, idx) {
+        var def = heroById(id);
+        var o = s.heroes[id];
+        if (!o) return;
+        var lx = Math.round(((s.party.length - 1) / 2 - idx) * 11);
+        var lr = (lx * 0.15).toFixed(1);
+        var maxes0 = heroMaxHpList(s);
+        var hmx0 = maxes0[idx] || 0;
+        var hcur0 = (heroHps.length === s.party.length ? (heroHps[idx] || 0) : hmx0);
+        var hfallen0 = hcur0 <= 0;
+        h += '<li class="chibi-slot"><div class="anim-bob" data-chibi="' + id + '" style="animation-delay:' + (idx * 0.35) + 's;--lx:' + lx + 'px;--lr:' + lr + 'deg">' + chibiSVG(def, 46) + '</div><span class="chibi-taunt" data-chibi-taunt="' + id + '" style="display:none" aria-hidden="true">🛡</span><p class="chibi-fallen" data-chibi-fallen="' + id + '" style="display:none">💫 FALLEN</p><p class="nm">' + esc(def.name.split(" ")[0]) + '</p><p class="lv">Lv' + o.level + ' · ' + fmt(heroDps(def, o) * synergySelfMult(def, s.party)) + ' dps</p><div style="margin-top:0.25rem;height:0.5rem;overflow:hidden;border-radius:999px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.6)"><div data-chibi-hp="' + id + '" style="display:block;height:100%;border-radius:999px;transition:width 0.15s;width:' + (hmx0 > 0 ? (Math.max(0, hcur0) / hmx0) * 100 : 0) + '%;background:' + (hfallen0 ? '#64748b' : def.color) + '"></div></div><p style="margin:0.125rem 0 0;font-size:9px;font-weight:700;line-height:1.15;color:#cdbcf2" data-chibi-hp-text="' + id + '">' + (hfallen0 ? '💫 FALLEN' : fmt(Math.max(0, hcur0)) + ' / ' + fmt(hmx0)) + '</p></li>';
+      });
+      h += '</ul></div>';
+      h += '</div>';
+      h += '<div style="width:100%;max-width:28rem;margin-top:1.5rem"><div class="bar-outer bar-enemy" role="progressbar" aria-label="The Unmaking health" id="enemy-bar-outer" style="height:1.25rem;max-width:none;margin:0"><div class="bar-inner" id="enemy-bar"></div></div>';
+      h += '<p class="bar-label" id="enemy-hp-text" style="color:#e8defc"></p>';
+      h += '<p class="bar-label" style="margin-top:0.125rem">it stands at ×' + unmakingScaleVal.toFixed(2) + ' strength (' + (s.unmakingShards || 0) + ' shard' + ((s.unmakingShards || 0) === 1 ? '' : 's') + ' borne against it)</p></div>';
+      h += '<div style="width:100%;max-width:28rem;margin-top:1rem"><div class="bar-outer bar-party" role="progressbar" aria-label="Party health" id="party-bar-outer"><div class="bar-inner" id="party-bar"></div></div>';
+      h += '<p class="party-status" id="party-status" style="color:#cdbcf2"></p>';
+      h += '<p class="bar-label" style="margin-top:0.125rem">Party DPS ' + fmt(dps) + (eta === Infinity ? '' : ' · ~' + fmtClock(eta) + ' to fell it') + '</p>';
+      h += '<button type="button" class="expander-btn" id="battle-details-btn" data-battle-details aria-expanded="' + battleDetailsOpen + '" aria-label="' + (battleDetailsOpen ? 'Hide battle details' : 'Show battle details') + '">' + (battleDetailsOpen ? '▾ Battle details' : '▸ Battle details') + '</button></div>';
+      h += '<p style="margin:1rem 0 0.5rem;padding-bottom:0.5rem;text-align:center;font-size:0.75rem;font-weight:700;color:#a793d8">🌀 One attempt — there is no way back from the Unwinding. This ends when it falls, or when the last hero does.</p>';
+      h += '</div>';
+      h += '</div>';
+      return h;
+    }
+
+
     function battleHTML() {
       var s = save;
       var f = s.fightFloor;
@@ -7205,26 +7419,7 @@
       var eta = keeperBoss(f) ? (netDps > 0 ? (Math.max(0, enemyHp) / netDps) : Infinity) : (dps > 0 ? (Math.max(0, enemyHp) / dps) : Infinity);
       var hasHealer = s.party.some(function (id) { return isHealerDef(heroById(id)); });
       var h = "";
-      if (s.pendingEnding === "unmaking") {
-        /* 🌀 THE UNMAKING — the full-screen fight. The portrait stands
-           large and centered over a void, the whole roster fights in
-           waves of five beneath it, and there is no way back: no exit,
-           no retreat, no floor switch while it stands. The battle below
-           (same enemy-bar / party-bar ids) keeps every live update, so
-           the fight's numbers still tick exactly as they do elsewhere.
-           NOTE: the Unmaking portrait now exists in the portraits bundle
-           (boss-unmaking key) — the Heart's portrait stands in only if
-           it is ever missing. */
-        var unmakingPortrait = AVATARS["boss-unmaking"] || BOSS_PORTRAITS[100];
-        var unmakingScaleVal = unmakingScale(s);
-        h += '<section aria-label="The Unmaking" style="margin-bottom:1rem;border-radius:24px;border:3px solid #7e72ad;background:radial-gradient(ellipse at 50% 0%, #2a1e52 0%, #0a0618 70%);padding:1.25rem 1rem;text-align:center;box-shadow:0 0 54px rgba(90,70,160,0.55)">';
-        h += '<h2 class="font-display" style="margin:0;font-size:2rem;font-weight:700;letter-spacing:0.2em;color:#efe8ff">THE UNMAKING</h2>';
-        h += '<p class="xs bold dim" style="margin:0.25rem 0 0">×' + unmakingScaleVal.toFixed(2) + ' strength · ' + (s.unmakingShards || 0) + ' shard' + ((s.unmakingShards || 0) === 1 ? '' : 's') + ' borne · ' + fmt(s.unmakingDamage || 0) + ' remembered damage</p>';
-        if (unmakingPortrait) h += '<div style="margin:0.75rem auto 0;width:11rem;overflow:hidden;border-radius:24px;border:3px solid #7e72ad"><img src="' + unmakingPortrait + '" alt="The Unmaking — a formless dark mass behind a taotie mask" style="height:14rem;width:100%;object-fit:cover;object-position:center 14%" /></div>';
-        h += '<p class="small" style="margin:0.75rem 0 0;font-weight:700;color:#b8a8e8">🌀 WAVE ' + unwindingWave + ' — ' + unwindingQueue.length + ' hero' + (unwindingQueue.length === 1 ? '' : 'es') + ' wait' + (unwindingQueue.length === 1 ? 's' : '') + ' behind this wave · the Unmaking keeps every wound between waves</p>';
-        h += '<p class="small" style="margin:0.5rem 0 0;font-weight:700">🌀 One attempt — there is no way back from the Unwinding. This ends when it falls, or when the last hero does.</p>';
-        h += '</section>';
-      }
+      if (s.pendingEnding === "unmaking") return unwindingHTML();
       h += '<section aria-label="Tower battle">';
       h += '<div class="anime-card mt4" style="position:relative;overflow:hidden">';
       h += '<div class="halftone" aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:6rem;opacity:0.4"></div>';
@@ -7596,6 +7791,23 @@
          re-applied every tick so nothing else can clear it. */
       var orb = document.getElementById("monster-orb");
       if (orb) orb.style.filter = bossEnragedNow ? "drop-shadow(0 0 18px rgba(244,63,94,0.9))" : "";
+      /* 🌀 The Unmaking's lean/flinch (full-screen fight only): the
+         portrait leans in when it strikes and flinches when a blow
+         lands — restarted from the same lunge/hit timestamps the
+         normal battle uses. */
+      var umMotion = document.getElementById("unmaking-motion");
+      if (umMotion) {
+        if (monsterLungeAt > lastUnmakingLungeShown) {
+          lastUnmakingLungeShown = monsterLungeAt;
+          umMotion.classList.remove("anim-unmaking-flinch");
+          restartAnim(umMotion, "anim-unmaking-lean");
+        }
+        if (monsterHitAt > lastUnmakingHitShown) {
+          lastUnmakingHitShown = monsterHitAt;
+          umMotion.classList.remove("anim-unmaking-lean");
+          restartAnim(umMotion, "anim-unmaking-flinch");
+        }
+      }
       var wv = document.getElementById("wave-crash");
       if (wv) {
         if (lastWaveAt > 0 && nowMs - lastWaveAt < 900) {
@@ -7698,9 +7910,19 @@
         if (tm) tm.style.display = (liveTauntNow && liveTauntNow.id === hid) ? "inline" : "none";
         var fl = slot.querySelector("[data-chibi-fallen]");
         if (fl) fl.style.display = hfallenS ? "block" : "none";
+        var hpf = slot.querySelector("[data-chibi-hp]");
+        if (hpf) {
+          var hmxS = (heroMaxesNow[hi] || 0);
+          hpf.style.width = (hmxS > 0 ? (Math.max(0, hcurS) / hmxS) * 100 : 0) + "%";
+          hpf.style.background = hfallenS ? "#64748b" : heroById(hid).color;
+        }
+        var hpt = slot.querySelector("[data-chibi-hp-text]");
+        if (hpt) hpt.textContent = hfallenS ? "💫 FALLEN" : fmt(Math.max(0, hcurS)) + " / " + fmt(heroMaxesNow[hi] || 0);
       });
       var ps = document.getElementById("party-status");
       if (ps) ps.textContent = battleDetailsOpen ? status : "Party HP " + fmt(pHp) + " / " + fmt(maxHp);
+      var unwNotice = document.getElementById("unwinding-notice");
+      if (unwNotice) unwNotice.innerHTML = noticeText ? '<div class="notice" style="margin-top:0.75rem"><p>💬 ' + esc(noticeText) + "</p></div>" : "";
       var bdb = document.getElementById("battle-details-btn");
       if (bdb) { bdb.textContent = battleDetailsOpen ? "▾ Battle details" : "▸ Battle details"; bdb.setAttribute("aria-expanded", battleDetailsOpen ? "true" : "false"); bdb.setAttribute("aria-label", battleDetailsOpen ? "Hide battle details" : "Show battle details"); }
     }
@@ -8629,6 +8851,7 @@
         h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
         h += "</div>";
+        var legLineC = legacyLabel(o); if (legLineC) h += '<p class="small dim" style="margin-top:0.25rem;font-weight:700">' + legLineC + '</p>';
       } else {
         h += '<div class="stat-grid">';
         h += '<div class="stat-cell"><p class="v">' + fmt(def.baseHp) + '</p><p class="l">BASE HP</p></div>';
@@ -8872,6 +9095,7 @@
         if (o) {
           h += '<span class="eff-line" style="' + starTextStyle(effRank(hd, o)) + '">Effective ★' + effRank(hd, o) + (o.asc > 0 ? ' <span class="eff-base">' + hd.stars + "★ base + " + o.asc + " Syn</span>" : "") + "</span>";
           h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps" + heroDotLineHTML(s, hd.id) + "</span>";
+          var legLine = legacyLabel(o); if (legLine) h += '<span class="hmeta" style="font-weight:700">' + legLine + '</span>';
           var gearBits = [];
           GEAR_SLOTS.forEach(function (sl) { var gg = equippedGear(hd.id, sl); if (gg) gearBits.push(GEAR_SLOT_ICON[sl] + " " + gg.stars + "★"); });
           if (gearBits.length) h += '<span class="hero-gear-line" aria-label="Equipped gear">' + gearBits.join(" · ") + "</span>";
@@ -8994,6 +9218,7 @@
         h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
         h += "</div>";
+        var legLineD = legacyLabel(o); if (legLineD) h += '<p class="small dim" style="margin-top:0.25rem;font-weight:700">' + legLineD + '</p>';
         /* Equipment slots */
         h += '<p class="small bold" style="margin-top:0.75rem">🎽 Equipment — tap an empty slot to equip, tap equipped gear to unequip</p><div class="gear-slots">';
         GEAR_SLOTS.forEach(function (sl) {
@@ -9517,7 +9742,7 @@
       var next = shopClone(s);
       var owned = next.heroes[heroId];
       if (!owned) {
-        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        next.heroes[heroId] = freshOwnedHero(next, heroId);
         if (next.party.length < MAX_PARTY) next.party.push(heroId);
       } else {
         next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
@@ -9586,7 +9811,7 @@
       var next = shopClone(s);
       var owned = next.heroes[heroId];
       if (!owned) {
-        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        next.heroes[heroId] = freshOwnedHero(next, heroId);
         if (next.party.length < MAX_PARTY) next.party.push(heroId);
       } else {
         next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
@@ -10063,7 +10288,7 @@
       var next = shopClone(s);
       var owned = next.heroes[heroId];
       if (!owned) {
-        next.heroes[heroId] = { level: 1, dupes: 0, asc: 0 };
+        next.heroes[heroId] = freshOwnedHero(next, heroId);
         if (next.party.length < MAX_PARTY) next.party.push(heroId);
       } else {
         owned.dupes = owned.dupes + 1;
@@ -10854,7 +11079,7 @@
         var def = rollHero(stars);
         var owned = next.heroes[def.id];
         if (!owned) {
-          next.heroes[def.id] = { level: 1, dupes: 0, asc: 0 };
+          next.heroes[def.id] = freshOwnedHero(next, def.id);
           results.push({ hero: def, isNew: true, dupeToAsc: false });
           if (next.party.length < MAX_PARTY) next.party.push(def.id);
         } else {
@@ -13029,7 +13254,7 @@
         h += '<p style="margin:0' + (li === ariaLine ? ';color:var(--text)' : '') + '">“' + dialogueLineHTML(line) + '”</p>';
       });
       h += '</div>';
-      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(201,184,255,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">🎵 Aria bars Floor 75 — gate boss of Floor 75 — 💎 ' + clearGems(75) + ' on first clear.</p>';
+      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(201,184,255,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">🎵 Aria bars Floor 75 — <span style="color:#ddd6fe">Cracking Note</span> strikes every hero for 25% of the party\'s average max HP and may disorient them (20% chance, 1.5s); her <span style="color:#ddd6fe">Unbroken Hymn</span> slowly mends your party while she sings; and every 30s <span style="color:#ddd6fe">The Song That Remains</span> heals your party for 15% of max HP while her whole party\'s damage rises 20% for 10s — she sings alone here, so the song lifts her alone. Standard gate-boss reward, scaled to Floor 75: 💎 ' + clearGems(75) + ' on first clear.</p>';
       if (ariaLine >= ARIA_LINES.length - 1) h += dialogueChoicesHTML();
       if (ariaLine < ARIA_LINES.length - 1) {
         h += '<button type="button" class="btn-wide" id="aria-listen" style="background:linear-gradient(to right,#c9b8ff,#ff9ecf);color:#241547;border:none;box-shadow:0 4px 0 #6d5aa8" aria-label="Hear Aria&#39;s next line">♪ LISTEN…</button>';
@@ -13069,7 +13294,7 @@
         h += '<p style="margin:0' + (li === ossianLine ? ';color:var(--text)' : '') + '">“' + esc(line) + '”</p>';
       });
       h += '</div>';
-      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(127,232,154,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">⚰️ Ossian bars Floor 90 — Floor Lord of Floor 90 — 💎 ' + clearGems(90) + ' on first clear.</p>';
+      h += '<p class="xs" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(127,232,154,0.33);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700">⚰️ Ossian bars Floor 90 — his <span style="color:#bbf7d0">Grave Tithe</span> has fattened him on the dead (attack &amp; HP +' + tithePct(save) + '% from ' + titheStacks(save) + ' stacks); <span style="color:#bbf7d0">Death\'s Embrace + Soul Harvest</span> heals him 5% of his max HP for every hero who falls and feeds a soul to <span style="color:#bbf7d0">The Final Count</span> (every 30s: 45% of the party\'s average max HP + 5% per soul, to every hero); and <span style="color:#bbf7d0">The Last Rite</span> strikes every hero for 25% of the party\'s average max HP every 12s. Standard Floor Lord reward, scaled to Floor 90: 💎 ' + clearGems(90) + ' on first clear.</p>';
       if (ossianLine >= OSSIAN_LINES.length - 1) h += dialogueChoicesHTML();
       if (ossianLine < OSSIAN_LINES.length - 1) {
         h += '<button type="button" class="btn-wide" id="ossian-listen" style="background:linear-gradient(to right,#7fe89a,#c9b8ff);color:#0c2416;border:none;box-shadow:0 4px 0 #3a6b4f" aria-label="Hear Ossian&#39;s next line">⚰️ LISTEN…</button>';
@@ -14173,7 +14398,7 @@
          on the boss still standing. Floats fire immediately, like the
          monster skills above — never via pendingFloats, which only
          flushes when the party deals damage. bossStrikeAll prices a
-         boss strike off the enemy's own attack stat, the kit's power
+         boss strike off the party's average max HP, the kit's power
          multiplier, and the Dain taunt reduction, and lands it on every
          living hero through their shields; bossHold parks heroes out of
          the attack loop until the battle-second it names. */
@@ -14194,11 +14419,12 @@
         for (var k = idxs.length - 1; k > 0; k--) { var j = Math.floor(Math.random() * (k + 1)); var t = idxs[k]; idxs[k] = idxs[j]; idxs[j] = t; }
         return idxs.slice(0, n);
       }
+      var avgPartyMaxHp = s.party.length > 0 ? pooledMax / s.party.length : 0;
       function bossStrikeAll(frac) {
         var before = hps.map(function (h) { return h > 0; });
         for (var si = 0; si < hps.length; si++) {
           if ((hps[si] || 0) <= 0) continue;
-          var amt = enemyAtkStat * frac * bossPowerMult * tauntDrMult;
+          var amt = avgPartyMaxHp * frac * bossPowerMult * tauntDrMult;
           var absorbed = Math.min(shields[si] || 0, amt);
           shields[si] = (shields[si] || 0) - absorbed;
           hps[si] = Math.max(0, (hps[si] || 0) - (amt - absorbed));
@@ -14225,10 +14451,10 @@
           }
         }
         /* 🎵 The Last Dirge (Silas, Floor 55): every 30s, a massive
-           final verse strikes every hero for 80% of his attack. */
+           final verse strikes every hero for 45% of the party's average max HP. */
         if (f === 55 && bClock >= bossKit.lastDirgeNext) {
           bossKit.lastDirgeNext += 30;
-          bossStrikeAll(0.8);
+          bossStrikeAll(0.45);
           if (tab === "battle") addFloat("🎵 THE LAST DIRGE — a final verse strikes every hero!", true, 30);
         }
         /* 🟣 The Amulet (Mara, Floor 60): once per battle, at 20% HP,
@@ -14260,10 +14486,10 @@
           if (tab === "battle") addFloat("🎼 SERAPHINA'S ACCOMPANIMENT — she heals, and her damage swells!", true, 30);
         }
         /* ⚔ Phantom Army (Vex, Floor 65): every 12s, illusionary
-           soldiers strike every hero for 35% of his attack. */
+           soldiers strike every hero for 25% of the party's average max HP. */
         if (f === 65 && bClock >= bossKit.phantomNext) {
           bossKit.phantomNext += 12;
-          bossStrikeAll(0.35);
+          bossStrikeAll(0.25);
           if (tab === "battle") addFloat("⚔ PHANTOM ARMY — illusionary soldiers strike every hero!", true, 30);
         }
         /* 😱 Nightmare (Vex, Floor 65): every 15s, his bells seed
@@ -14281,15 +14507,15 @@
           if (tab === "battle") addFloat("💤 THE FINAL DREAM — every hero falls asleep!", true, 30);
         }
         /* 🌅 Beautiful View + Warmth (Lucian, Floor 70): every 12s he
-           shows the party a beautiful view — light damage (30% of his
-           attack) to every hero, and a 20% chance each hero is dazzled
+           shows the party a beautiful view — light damage (25% of the party's
+           average max HP) to every hero, and a 20% chance each hero is dazzled
            and cannot act for 1.2s. While the Strongest Being holds, the
            view falls twice as often (the deadline is pulled back by dt
            every tick of the window, just above). */
         if (f === 70 && bClock < bossKit.strongestUntil && bossKit.viewNext > bClock) bossKit.viewNext = Math.max(bClock, bossKit.viewNext - dt);
         if (f === 70 && bClock >= bossKit.viewNext) {
           bossKit.viewNext += 12;
-          bossStrikeAll(0.3);
+          bossStrikeAll(0.25);
           var dazzled = [];
           livingIdxs().forEach(function (i) {
             if (Math.random() < 0.2) { bossHold([i], 1.2); dazzled.push(bossFirstName(i)); }
@@ -14306,11 +14532,11 @@
           if (tab === "battle") addFloat("⭐ THE STRONGEST BEING — Lucian's damage doubles for 6s!", true, 30);
         }
         /* 🎶 Cracking Note (Aria, Floor 75): every 12s, her voice cracks
-           mid-song — 35% of her attack to every hero, and a 20% chance
+           mid-song — 25% of the party's average max HP to every hero, and a 20% chance
            each hero is disoriented and cannot act for 1.5s. */
         if (f === 75 && bClock >= bossKit.crackNext) {
           bossKit.crackNext += 12;
-          bossStrikeAll(0.35);
+          bossStrikeAll(0.25);
           var disoriented = [];
           livingIdxs().forEach(function (i) {
             if (Math.random() < 0.2) { bossHold([i], 1.5); disoriented.push(bossFirstName(i)); }
@@ -14346,45 +14572,45 @@
           if (tab === "battle") addFloat("🧱 UNBREAKABLE WALL — Caelum's shield grows by 25% of his max HP!", true, 30);
         }
         /* 🔆 Echo of the Beginning (First Echo, Floor 85): every 12s, an
-           echo of the first memory strikes every hero for 50% of its
-           attack. */
+           echo of the first memory strikes every hero for 25% of the party's
+           average max HP. */
         if (f === 85 && bClock >= bossKit.echoNext) {
           bossKit.echoNext += 12;
-          bossStrikeAll(0.5);
+          bossStrikeAll(0.25);
           if (tab === "battle") addFloat("🔆 ECHO OF THE BEGINNING — an echo of the first memory strikes every hero!", true, 30);
         }
         /* 🌟 The Echo That Remembers (First Echo, Floor 85): every 30s,
-           massive damage to every hero (120% of its attack), and its own
+           massive damage to every hero (45% of the party's average max HP), and its own
            might surges +50% for 3s (bossPowerMult above). */
         if (f === 85 && bClock >= bossKit.echoCapNext) {
           bossKit.echoCapNext += 30;
-          bossStrikeAll(1.2);
+          bossStrikeAll(0.45);
           bossKit.echoSurgeUntil = bClock + 3;
           if (tab === "battle") addFloat("🌟 THE ECHO THAT REMEMBERS — massive damage, and its might surges!", true, 30);
         }
         /* ⚰ The Last Rite (Ossian, Floor 90): every 12s, the Last Rite
-           deals 60% of his attack to every hero. */
+           deals 25% of the party's average max HP to every hero. */
         if (f === 90 && bClock >= bossKit.lastRiteNext) {
           bossKit.lastRiteNext += 12;
-          bossStrikeAll(0.6);
-          if (tab === "battle") addFloat("⚰ THE LAST RITE — 60% of his attack to every hero!", true, 30);
+          bossStrikeAll(0.25);
+          if (tab === "battle") addFloat("⚰ THE LAST RITE — 25% of the party's average max HP to every hero!", true, 30);
         }
         /* 🔢 The Final Count (Ossian, Floor 90): every 30s, massive
-           damage to every hero — 100% of his attack + 20% per soul
+           damage to every hero — 45% of the party's average max HP + 5% per soul
            counted this battle (Soul Harvest, in noteFalls above). */
         if (f === 90 && bClock >= bossKit.finalCountNext) {
           bossKit.finalCountNext += 30;
-          bossStrikeAll(1 + 0.2 * bossKit.souls);
+          bossStrikeAll(0.45 + 0.05 * bossKit.souls);
           if (tab === "battle") addFloat("🔢 THE FINAL COUNT — " + bossKit.souls + (bossKit.souls === 1 ? " soul" : " souls") + " counted!", true, 30);
         }
         /* 💗 Pulse of Memory (Seraphina's Heart, Floor 100): every 12s,
-           its beat stirs the memories it hoards — 40% of its attack to
+           its beat stirs the memories it hoards — 25% of the party's average max HP to
            every hero, in flashes of paradise: a 20% chance each hero is
            disoriented and cannot act for 1.5s. The battlefield flashes
            pink with the beat. */
         if (f === 100 && bClock >= bossKit.pulseNext) {
           bossKit.pulseNext += 12;
-          bossStrikeAll(0.4);
+          bossStrikeAll(0.25);
           var pulseDis = [];
           livingIdxs().forEach(function (i) {
             if (Math.random() < 0.2) { bossHold([i], 1.5); pulseDis.push(bossFirstName(i)); }
@@ -14397,10 +14623,10 @@
         }
         /* 🫀 The Last Beat (Seraphina's Heart, Floor 100): when its HP
            falls below 20%, the heart beats one final, massive time —
-           150% of its attack to every hero (once per battle). */
+           60% of the party's average max HP to every hero (once per battle). */
         if (f === 100 && !bossKit.lastBeatUsed && enemyHp <= bossMaxHp(s, f) * 0.2) {
           bossKit.lastBeatUsed = true;
-          bossStrikeAll(1.5);
+          bossStrikeAll(0.6);
           if (tab === "battle") {
             addFloat("🫀 THE LAST BEAT — the heart beats one final, massive time!", true, 30);
             var beatField = document.getElementById("battlefield");
@@ -15242,7 +15468,7 @@
               next.heirloom = null;
             }
             if (f === 25 && !next.heroes["luna"]) {
-              next.heroes["luna"] = { level: 1, dupes: 0, asc: 0 };
+              next.heroes["luna"] = freshOwnedHero(next, "luna");
               if (next.party.length < MAX_PARTY) next.party.push("luna");
               lunaScene = true;
             }
@@ -15354,7 +15580,7 @@
         loaded.heirloom = null;
       }
       if (loaded.floor > 25 && !loaded.heroes["luna"]) {
-        loaded.heroes["luna"] = { level: 1, dupes: 0, asc: 0 };
+        loaded.heroes["luna"] = freshOwnedHero(loaded, "luna");
         if (loaded.party.length < MAX_PARTY) loaded.party.push("luna");
         lunaScene = true;
       }
