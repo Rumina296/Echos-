@@ -4767,7 +4767,8 @@
     }
     function nextBossFloor(f) { return Math.floor(f / 5) * 5 + 5; }
     // Level-up gold costs (flattened Nov 20, 2026; base raised to 102 so 7★ levels 1–70 total 50M): star factor is 102 × (1 + 0.3 × (stars − 1)) — 102 base at 1★, +30% per star, 285.6 at 7★ — and levels 70–120 get a 10% discount (the post-7★ climb); levels 1–69 stay full price.
-    function upgradeCost(def, o) { return Math.round(102 * (1 + 0.3 * (def.stars - 1)) * Math.pow(1.16, o.level - 1) * (o.level >= 70 ? 0.9 : 1)); }
+    // Slower growth after level 70 (Nov 21, 2026, Rachel's pick B): past level 70 the per-level growth factor drops from ×1.16 to ×1.10, so the exponent splits at 70 — 1.16^69 × 1.10^(level−70). Levels 1–70 are unchanged and the ×0.9 discount at level 70+ stays.
+    function upgradeCost(def, o) { var growth = o.level <= 70 ? Math.pow(1.16, o.level - 1) : Math.pow(1.16, 69) * Math.pow(1.10, o.level - 70); return Math.round(102 * (1 + 0.3 * (def.stars - 1)) * growth * (o.level >= 70 ? 0.9 : 1)); }
     /* Manual synthesis costs — for the NEXT synthesis, where r = o.asc
        (0-based): spare copies on a doubling curve, 2^(r+1) (so 2, 4, 8,
        16, 32, 64, 128, 256… for asc 0–7, doubling on past 7★ too), gems keyed
