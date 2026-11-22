@@ -394,6 +394,7 @@
       .remember-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #a8dcff, #c4b5fd); color: #1e1b4b; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(168,220,255,0.6); }
       .enrage-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #be123c, #f43f5e); color: #fff1f2; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,63,94,0.7); }
       .tenacity-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #0f766e, #14b8a6); color: #ccfbf1; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(20,184,166,0.6); }
+      .ccimmune-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #881337, #f43f5e); color: #ffe4e6; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,63,94,0.6); }
       .taunt-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #e0a92e, #ffd94d); color: #3a2403; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(255,217,77,0.65); }
       .chibi-taunt { position: absolute; top: -0.25rem; right: 0; z-index: 20; font-size: 0.875rem; }
       .chibi-fallen { margin: 0.125rem 0 0; font-size: 9px; font-weight: 900; line-height: 1.15; color: #fda4af; }
@@ -532,6 +533,11 @@
       .skill-box .dungeon-note[open] .dn-open { display: inline; }
       .skill-box .dungeon-note[open] .dn-closed { display: none; }
       .skill-box .dungeon-note .dn-body { display: block; margin-top: 0.25rem; font-size: 0.75rem; line-height: 1.4; color: var(--dim); }
+      /* Paragraph-folding expander (Nov 21, 2026, matching the main
+         game's Expander): long static explainers live behind a
+         collapsed-by-default dotted-underline toggle; the body renders
+         only while open. */
+      .expander-btn { background: none; border: none; cursor: pointer; padding: 0; font-size: 0.75rem; font-weight: 900; color: var(--accent2); text-decoration: underline dotted; text-underline-offset: 2px; }
       .stat-grid { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; font-size: 0.875rem; }
       .stat-cell { border-radius: 16px; border: 1px solid var(--border); background: var(--surface2); padding: 0.5rem 0; }
       .stat-cell .v { font-family: var(--font-display); font-weight: 600; margin: 0; }
@@ -1191,7 +1197,7 @@
         ]},
       dun: { name: "Quench", desc: "Enemy attack −1% per skill level. Fresh from the forge, every blow lands cooler and duller than it should." ,
         more: [
-          { name: "Anvil's Ring", unlock: 4, desc: "Every 15 seconds, Dun's hammer strikes: 120% of his attack x skill level damage and the enemy is stunned for 1s + 0.2s per skill level. At skill level 4: 480% attack, 1.8s stun." }
+          { name: "Anvil's Ring", unlock: 4, desc: "Every 15 seconds, Dun's hammer strikes: 120% of his attack x skill level damage, with an 80% chance to stun the enemy for 1s + 0.2s per skill level. At skill level 4: 480% attack, 1.8s stun, 80% stun chance." }
         ]},
       marlo: { name: "Patient Line", desc: "Gold from clears +3% per skill level. He waits. The tower's coin always bites eventually — his fish are the last from the paradise's rivers." ,
         more: [
@@ -1344,7 +1350,7 @@
         more: [
           { name: "Moonbeam Guidance", desc: "Healing aura +210% per skill level, and her moonlight shields the party (enemy attacks −2% per level). The lowest ally is always wrapped in silver light first. In the tower, her healing is based on her own max HP: on her every 3rd attack, a burst of 10% × (1 + 2.10 × skill level) × her own max HP lands on the lowest-HP hero first.", dungeonNote: DUNGEON_HEAL_NOTE },
           { name: "Waxing Insight", desc: "Party damage +4% per skill level. She names the crack in every defense before the first blow lands." },
-          { name: "Full Moon Vigil — ULTIMATE", desc: "When the party would fall, Luna revives everyone at 40% HP and the fight continues (once a minute). No one climbs alone. No one falls alone." },
+          { name: "Full Moon Vigil — ULTIMATE", desc: "When the party would fall, Luna revives everyone at 40% HP and the fight continues (once per battle). No one climbs alone. No one falls alone." },
           { name: "Seraphina's Voice", unlock: 12, desc: "Every 30 seconds, Luna speaks with the goddess's voice: cleanses the party of ALL debuffs, heals for 4% of party max HP + 1% per skill level, and grants a shield absorbing 4% of party max HP + 1% per skill level. At skill level 6: a 10% heal and a 10% shield every 30s. She IS Seraphina's voice — the strongest support skill in the game." }]
       }
     };
@@ -1742,6 +1748,17 @@
         // --- Grave Tithe (added later; older saves have fed him nothing) ---
         merged.graveKills = typeof p.graveKills === "number" && p.graveKills > 0 ? Math.floor(p.graveKills) : 0;
         // --- Dispatch quests (added later; older saves have none out) ---
+        // Migration: quest runs dispatched before stage scaling existed
+        // carry no lock-ins, and used to show and collect the quest's flat
+        // BASE rewards. Price every missing lock-in now — at the player's
+        // CURRENT highest stage, the only honest basis left for a run whose
+        // dispatch floor was never recorded — and stamp dispatchFloor with
+        // the floor used, so the run displays and collects its scaled
+        // rewards like any newer run. Runs that already carry a lock-in
+        // keep it exactly: a dispatched run's price never moves. A pricing
+        // hiccup must never cost the player their save, so a failure here
+        // just leaves the run unfilled (the base-value fallback in
+        // runRewards / runGold still covers it).
         var qs = [];
         if (Array.isArray(p.quests)) {
           p.quests.forEach(function (r) {
@@ -1749,10 +1766,27 @@
                 Array.isArray(r.heroIds) && r.heroIds.every(function (hh) { return typeof hh === "string"; }) &&
                 typeof r.startedAt === "number" && typeof r.endsAt === "number" &&
                 typeof r.chance === "number" && typeof r.success === "boolean") {
-              qs.push({ id: r.id, questId: r.questId, heroIds: r.heroIds.slice(), startedAt: r.startedAt, endsAt: r.endsAt, chance: r.chance, success: r.success, jackpot: r.jackpot === true });
+              var run = { id: r.id, questId: r.questId, heroIds: r.heroIds.slice(), startedAt: r.startedAt, endsAt: r.endsAt, chance: r.chance, success: r.success, jackpot: r.jackpot === true };
+              if (typeof r.dispatchFloor === "number") run.dispatchFloor = Math.round(r.dispatchFloor);
+              if (typeof r.scaledDifficulty === "number") run.scaledDifficulty = r.scaledDifficulty;
+              if (Array.isArray(r.scaledRewards)) run.scaledRewards = r.scaledRewards;
+              if (typeof r.scaledGold === "number") run.scaledGold = r.scaledGold;
+              qs.push(run);
             }
           });
         }
+        try {
+          var fillFloor = Math.max(1, Math.floor(merged.floor));
+          qs.forEach(function (run) {
+            if (typeof run.dispatchFloor === "number" && typeof run.scaledDifficulty === "number"
+              && Array.isArray(run.scaledRewards) && typeof run.scaledGold === "number") return;
+            var q = questById(run.questId);
+            if (typeof run.dispatchFloor !== "number") run.dispatchFloor = fillFloor;
+            if (typeof run.scaledDifficulty !== "number") run.scaledDifficulty = questScaledDifficulty(q, fillFloor);
+            if (!Array.isArray(run.scaledRewards)) run.scaledRewards = questScaledRewards(q, fillFloor);
+            if (typeof run.scaledGold !== "number") run.scaledGold = questScaledGold(q, merged);
+          });
+        } catch (e) { /* see above — unfilled runs keep the legacy fallback */ }
         merged.quests = qs;
         return merged;
       } catch (e) {
@@ -3055,9 +3089,11 @@
        with the player's highest stage: past each quest's unlock floor
        the recommended power grows +1% a floor and the materials +1% a
        floor (rounded), and the gold pays 10% of what idling for the
-       quest's duration would earn at that highest stage, on the flat
-       idle gold rate (questIdleGoldPerSec — never the clear-rate AFK
-       rate). The scaled difficulty, chance, and rewards all lock in at
+       quest's duration would earn at that highest stage, priced off the
+       party's REAL idle rate (idleGoldPerSec — the stage's repeat-clear
+       gold spread over the party's clear time there; until Nov 21, 2026
+       it was priced off the frozen legacy flat curve,
+       questIdleGoldPerSec, instead). The scaled difficulty, chance, and rewards all lock in at
        dispatch: a run already out keeps the values it was dispatched
        at. Only Starfall Expedition pays Starlight Essence: every quest
        pays a flat bonus of its own material on success — Starfall 2–3
@@ -3094,10 +3130,13 @@
        Starfall 4,500 → 5,491. Materials compound at +1% per floor above
        the unlock floor, rounded to the nearest whole material. Gold pays
        10% of what idling for the quest's duration would earn at the
-       highest stage — the raw legacy idle gold rate (questIdleGoldPerSec),
-       with no party gold multiplier or boost on top, rounded to the nearest whole
-       gold piece: at Floor 40 that is ≈1,129,484 🪙 for the 1h Ember run
-       and ≈13,553,811 🪙 for the 12h Starfall run. */
+       highest stage — the party's REAL idle gold rate there
+       (idleGoldPerSec: the stage's repeat-clear gold spread over the
+       party's clear time on it, priced from the party's tower battle DPS
+       on that stage), with no party gold multiplier or boost on top,
+       rounded to the nearest whole gold piece. Because the rate rides
+       the party's actual clear speed, the same quest at the same floor
+       pays more as the party grows stronger — exactly like idling does. */
     var QUEST_DIFFICULTY_GROWTH = 1.01; // +1% per floor above the unlock floor
     var QUEST_MATERIAL_GROWTH = 1.01; // +1% per floor above the unlock floor
     var QUEST_GOLD_IDLE_SHARE = 0.1; // gold = 10% of idle earnings for the quest's duration
@@ -3111,18 +3150,21 @@
       var mult = Math.pow(QUEST_MATERIAL_GROWTH, questFloorsAbove(q, highestFloor));
       return q.rewards.map(function (r) { return { mat: r.mat, count: Math.max(1, Math.round(r.count * mult)) }; });
     }
-    function questScaledGold(q, highestFloor) {
-      // Quest gold stays priced off the legacy flat idle rate
-      // (questIdleGoldPerSec) — the curve AFK gold paid before the
-      // clear-rate rework — so quest payouts are exactly what they were;
-      // the new AFK rate (idleGoldPerSec) depends on the party's battle
-      // DPS and is deliberately NOT read here.
-      return Math.round(questIdleGoldPerSec(Math.max(1, Math.floor(highestFloor))) * q.hours * 3600 * QUEST_GOLD_IDLE_SHARE);
+    function questScaledGold(q, s) {
+      // Quest gold is priced off the party's REAL idle earnings at the
+      // highest stage: idleGoldPerSec at the party's tower battle DPS on
+      // that stage — the same clear-rate pricing the offline grant pays —
+      // so a quest pays 10% of what idling for its duration would actually
+      // earn this party. (Before Nov 21, 2026 it read the frozen legacy
+      // flat curve, questIdleGoldPerSec, instead.)
+      var floor = Math.max(1, Math.floor(s.floor));
+      var dps = towerBattleDps(s, floor);
+      return Math.round(idleGoldPerSec(dps, floor, floor) * q.hours * 3600 * QUEST_GOLD_IDLE_SHARE);
     }
     /* The values a dispatched run actually pays against: the lock-ins
-       stamped at its dispatch, or — for a run dispatched before stage
-       scaling existed — the quest's base values (base materials, legacy
-       flat gold). */
+       stamped at its dispatch — parseSave prices and fills in any lock-in
+       missing on a run dispatched before stage scaling existed, so the
+       base-value fallback below is only a safety net. */
     function runRewards(run, q) {
       return run.scaledRewards || q.rewards;
     }
@@ -3199,11 +3241,11 @@
     }
     /** The mission board's payout lines: the quest's rewards scaled to the
         player's current highest stage — what a dispatch right now locks in. */
-    function questRewardText(q, highestFloor) {
-      return questRewardTextFor(questScaledRewards(q, highestFloor), questScaledGold(q, highestFloor));
+    function questRewardText(q, s) {
+      return questRewardTextFor(questScaledRewards(q, s.floor), questScaledGold(q, s));
     }
-    function questJackpotText(q, highestFloor) {
-      return questJackpotTextFor(questScaledRewards(q, highestFloor), questScaledGold(q, highestFloor));
+    function questJackpotText(q, s) {
+      return questJackpotTextFor(questScaledRewards(q, s.floor), questScaledGold(q, s));
     }
     /** A dispatched run's payout lines: the values locked in at its dispatch. */
     function questRunJackpotText(q, run) {
@@ -4145,7 +4187,7 @@
           case "ondine": total += atk * lv / 20; break; // High Tide: 100% ATK × lv wave every 20s (the heal is defensive)
           case "sella": total += atk * 1.2 * lv / 15; break; // Storm Surge: 120% ATK × lv lightning every 15s (the 25% stun deals no damage)
           case "faye": total += atk * lv / 20; break; // Thunderclap: 100% ATK × lv every 20s (the silence deals no damage)
-          case "dun": total += atk * 1.2 * lv / 15; break; // Anvil's Ring: 120% ATK × lv every 15s (the stun deals no damage)
+          case "dun": total += atk * 1.2 * lv / 15; break; // Anvil's Ring: 120% ATK × lv every 15s (only the stun is damage-free, and it rolls 80% since Nov 21)
           case "anselm": total += atk * lv / 15; break; // Iron Palm: 100% ATK × lv every 15s (the delay deals no damage)
           case "joss": total += atk * 1.5 * lv / 20; break; // Trick Mirror: the enemy strikes ITSELF for 150% of JOSS's attack × lv every 20s — own ATK, never the enemy's
           case "greta": total += atk * 1.5 * lv / 15; break; // Seam Strike: 150% ATK × lv every 15s (the vulnerability window is a damage mult, not damage itself)
@@ -4187,7 +4229,13 @@
        reflect is 10% of that per skill level every second the enemy
        can attack; the self-hit is 50% of it once per 5 of Mari's
        attacks, time-averaged to her attack rate / 5 of that per
-       second. Display only — the tick applies the real reflect and
+       second. THE CAP (Rachel, Nov 21 — the overpowered-mechanics
+       audit): each of the two is capped at the party's OWN effective
+       DPS (effectivePartyDps) — enemy-priced damage can match the
+       party's own output but never outrun it, however strong the enemy
+       is. The battle loop applies the identical caps (the reflect
+       directly, the self-hit as a per-hit cap that time-averages to the
+       same ceiling). Display only — the tick applies the real reflect and
        yank, and dungeons / offline earnings never see it. */
     function floorDotDps(s) {
       if (!s || !s.heroes) return 0;
@@ -4195,13 +4243,14 @@
       var enemyAtk = monsterAtk(f) * memoryMults(s, f).atk * titheMult(s, f) * rememberMult(f);
       var durnanSlow = s.party.indexOf("durnan") >= 0 ? 0.85 : 1;
       var hoarfrostSteady = s.party.indexOf("nix") >= 0 ? 0.8 : 1;
+      var dpsCap = effectivePartyDps(s); // neither enemy-priced effect may exceed the party's own effective DPS
       var total = 0;
       var ilyaO = s.heroes["ilya"];
       if (ilyaO && s.party.indexOf("ilya") >= 0) {
-        total += enemyAtk * durnanSlow * hoarfrostSteady * 0.10 * skillLevel(ilyaO);
+        total += Math.min(enemyAtk * durnanSlow * hoarfrostSteady * 0.10 * skillLevel(ilyaO), dpsCap);
       }
       if (s.party.indexOf("mari") >= 0) {
-        total += enemyAtk * hoarfrostSteady * 0.5 * heroById("mari").atkSpeed / 5;
+        total += Math.min(enemyAtk * hoarfrostSteady * 0.5 * heroById("mari").atkSpeed / 5, dpsCap);
       }
       return total;
     }
@@ -4240,7 +4289,7 @@
       var ratio = Math.max(0, Math.min(1, cur / max));
       return Math.min(0.50, (1 - ratio) * 0.50);
     }
-    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; tenacityState.stacks = 0; tenacityState.lastAt = Number.NEGATIVE_INFINITY; // a new boss starts with no tenacity
+    function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; vigilUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; tenacityState.stacks = 0; tenacityState.lastAt = Number.NEGATIVE_INFINITY; tenacityState.immune = false; // a new boss starts with no tenacity and no enrage immunity
     poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
     /* Party DPS as it actually lands in a tower battle: the Cantor
        Dirge on Floors 55/70 and the Keeper's Long Vigil on Floor 95
@@ -4337,7 +4386,7 @@
         case "ondine": if (capstoneActive(s, "ondine")) { dps = atk * lv / 20; label = "high tide"; } break; // High Tide: 100% ATK × lv wave every 20s (the heal is defensive)
         case "sella": if (capstoneActive(s, "sella")) { dps = atk * 1.2 * lv / 15; label = "storm surge"; } break; // Storm Surge: 120% ATK × lv lightning every 15s
         case "faye": if (capstoneActive(s, "faye")) { dps = atk * lv / 20; label = "thunderclap"; } break; // Thunderclap: 100% ATK × lv every 20s
-        case "dun": if (capstoneActive(s, "dun")) { dps = atk * 1.2 * lv / 15; label = "anvil ring"; } break; // Anvil's Ring: 120% ATK × lv every 15s
+        case "dun": if (capstoneActive(s, "dun")) { dps = atk * 1.2 * lv / 15; label = "anvil ring"; } break; // Anvil's Ring: 120% ATK × lv every 15s (the stun rolls 80%)
         case "anselm": if (capstoneActive(s, "anselm")) { dps = atk * lv / 15; label = "iron palm"; } break; // Iron Palm: 100% ATK × lv every 15s
         case "joss": if (capstoneActive(s, "joss")) { dps = atk * 1.5 * lv / 20; label = "mirror strike"; } break; // Trick Mirror: the enemy strikes ITSELF for 150% ATK × lv every 20s
         case "greta": if (capstoneActive(s, "greta")) { dps = atk * 1.5 * lv / 15; label = "seam strike"; } break; // Seam Strike: 150% ATK × lv every 15s
@@ -4490,10 +4539,17 @@
        unchanged — tenacity only ever shrinks what a boss actually suffers.
        Both battle loops route every boss CC through applyBossCc, and the
        battle views badge the live stack count, so the numbers can never
-       drift. */
+       drift. ENRAGE IMMUNITY (Nov 21): from 40 battle-seconds — 10s into
+       the enrage — a tower boss becomes immune to CC for the rest of the
+       fight: CC simply does not land (no duration, no tenacity stack
+       banked). Before that point tenacity applies exactly as above.
+       Tower only: dungeons have no enrage, so the dungeon loop never
+       sets the immunity flag on its tenacity state and its boss waves
+       never gain it. */
     var TENACITY_MAX_STACKS = 4;
     var TENACITY_RESET_SEC = 15;
     var TENACITY_MIN_DURATION = 1; // seconds — a boss CC never lands shorter than this
+    var BOSS_CC_IMMUNE_AT = 40; // battle-seconds: enrage (30s) + 10s
     function bossTenacityMult(stacks) {
       return Math.max(0, 1 - 0.25 * Math.min(TENACITY_MAX_STACKS, Math.max(0, stacks)));
     }
@@ -4512,9 +4568,14 @@
        out while spamming. Off a boss (isBoss false) the base duration
        passes through untouched and nothing is banked. `state` is the
        per-fight tenacity state (tower state / dungeon wave fx adapter),
-       `clock` the same battle-clock seconds that state runs on. */
+       `clock` the same battle-clock seconds that state runs on.
+       ENRAGE IMMUNITY: when the tower loop has set `state.immune` (a
+       tower boss at or past BOSS_CC_IMMUNE_AT — 10s into its enrage),
+       the CC does not land at all: 0 is returned and NO stack is banked.
+       The dungeon loop never sets the flag (no enrage in dungeons). */
     function applyBossCc(state, isBoss, clock, baseDur) {
       if (!isBoss) return baseDur;
+      if (state.immune) return 0;
       state.stacks = tenacityStacksAt(state.stacks, state.lastAt, clock);
       var dur = Math.max(TENACITY_MIN_DURATION, baseDur * bossTenacityMult(state.stacks));
       state.stacks = Math.min(TENACITY_MAX_STACKS, state.stacks + 1);
@@ -4572,6 +4633,26 @@
       if (f <= 30) return Math.pow(GEM_GROWTH, f - 1);
       if (f <= 60) return Math.pow(GEM_GROWTH, 29) * Math.pow(1.04, f - 30);
       return Math.pow(GEM_GROWTH, 29) * Math.pow(1.04, 30) * Math.pow(1.08, f - 60);
+    }
+    /* Repeat-clear gem growth (Nov 21, 2026): REPEAT payouts only — first
+       clears keep the curve above exactly. Repeats ride the same ×1.20
+       per floor through Floor 30, then flatten to a single rate from
+       Floor 31 on, chosen so a normal repeat clear at Floor 99 pays
+       ≈200 💎: the rate takes the Floor 30 normal repeat value
+       (0.1 × 1.20^29 ≈ 19.78) to 200 over the 69 floors from 30 to 99,
+       r = (200 / 19.78…)^(1/69) ≈ 1.0341. Lord and Gate repeats use the
+       same flattened factor with their unchanged bases (0.3 / 0.2), so
+       they stay at ×3 and ×2 of a normal repeat. Floors 1–30 repeat
+       payouts are unchanged; the old curve's Floor 99 normal repeat
+       (≈1,291) is tamed to 200. AFK gem earnings ride repeatGems, so
+       they follow automatically. The gold curve is untouched. */
+    var REPEAT_GEM_FLAT_RATE = Math.pow(200 / (0.1 * Math.pow(GEM_GROWTH, 29)), 1 / 69);
+    /** Cumulative repeat-clear gem growth factor for a floor, relative to
+        Floor 1: ×1.20 per floor through Floor 30, then the single
+        flattened rate per floor from 31 up. */
+    function repeatGemGrowthFactor(f) {
+      if (f <= 30) return Math.pow(GEM_GROWTH, f - 1);
+      return Math.pow(GEM_GROWTH, 29) * Math.pow(REPEAT_GEM_FLAT_RATE, f - 30);
     }
     /* Per-clear gold growth (three-segment curve, Nov 20, 2026): ×1.23
        per floor to Floor 30, then a gentle ×1.04 per floor for 31–60,
@@ -4654,7 +4735,7 @@
       var gap = anchorGap(f, highest);
       if (gap !== null) {
         var base = anchorBaseFloor(highest);
-        var baseGems = Math.max(1, Math.round(0.1 * gemGrowthFactor(base)));
+        var baseGems = Math.max(1, Math.round(0.1 * repeatGemGrowthFactor(base)));
         var anchored = Math.max(1, Math.round(baseGems * Math.pow(0.9, gap)));
         return isLordFloor(f) ? anchored * 3 : anchored;
       }
@@ -4663,7 +4744,7 @@
       // never pays nothing. Only Gate floors (and floors above the base)
       // reach this line — normal and Lord floors below the base are
       // anchored above.
-      return Math.max(1, Math.round((isLordFloor(f) ? 0.3 : isGateFloor(f) ? 0.2 : 0.1) * gemGrowthFactor(f) * grindBandMult(f, highest)));
+      return Math.max(1, Math.round((isLordFloor(f) ? 0.3 : isGateFloor(f) ? 0.2 : 0.1) * repeatGemGrowthFactor(f) * grindBandMult(f, highest)));
     }
     function goldForClear(f, isRepeat, highest) { return isRepeat ? repeatGold(f, highest) : clearGold(f); }
     function gemsForClear(f, isRepeat, highest) { return isRepeat ? repeatGems(f, highest) : clearGems(f); }
@@ -5940,6 +6021,17 @@
        toggle (closed by default), and Quick combine's plan confirmation
        lives here until it is confirmed or dismissed. */
     var combineShowAll = false;
+    /* Paragraph folding (Nov 21, 2026, matching the main game's
+       Expander component): long static explainers live behind a
+       collapsed-by-default toggle — same labels as main, body renders
+       only while open so live values inside stay live. One flag per
+       paragraph; quest cards get one per quest id. */
+    var expanderOpen = {};
+    var battleDetailsOpen = false;
+    function expanderHTML(key, label, body, mt) {
+      var open = !!expanderOpen[key];
+      return '<div' + (mt ? ' style="margin-top:' + mt + '"' : '') + '><button type="button" class="expander-btn" data-expander="' + key + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Hide ' : 'Show ') + esc(label) + '">' + (open ? '▾ ' : '▸ ') + esc(label) + '</button>' + (open ? body : '') + '</div>';
+    }
     var combineQuickPlan = null;
     /* Gear list sort (matching the main game): "stars" highest first,
        "matches" groups pieces sharing a slot and star rank, "newest"
@@ -6069,14 +6161,14 @@
     var targetNextPick = 0;
     var standFastNext = 20;
     var enrageAnnounced = false;
-    var tenacityState = { stacks: 0, lastAt: Number.NEGATIVE_INFINITY }; // 🛡 Boss tenacity: this boss's CC stacks and the battle-clock second the last CC landed — built only on boss floors, reset with the fight (resetBattleTimers); see applyBossCc
+    var tenacityState = { stacks: 0, lastAt: Number.NEGATIVE_INFINITY, immune: false }; // 🛡 Boss tenacity: this boss's CC stacks and the battle-clock second the last CC landed — built only on boss floors, reset with the fight (resetBattleTimers); see applyBossCc. `immune` is the enrage CC immunity flag, refreshed every tick (tower bosses only, from BOSS_CC_IMMUNE_AT)
     var atkTimers = {};
     var lungeAt = {};
     var monsterHitAt = 0;
     var monsterLungeAt = 0;
     var partyHurtAt = 0;
     var monsterAtkTimer = 0;
-    var vigilReadyAt = 0;
+    var vigilUsed = false; // Luna's Full Moon Vigil: once per battle (per monster faced) — was a 60-second cooldown until Nov 21, 2026
     var phoenixUsed = false;
     var burn = { dps: 0, until: 0, lastFloat: 0 };
     var snare = { dps: 0, until: 0, lastFloat: 0 };
@@ -6450,7 +6542,7 @@
         h += '<div class="monster-box"><div id="monster-wrap"><div class="anim-bob"><div class="monster-orb' + (isBossFloor(f) ? " anim-glow boss" : "") + '" id="monster-orb" aria-hidden="true">' + (f === 100 ? "💗" : isBossFloor(f) ? "👹" : "👾") + "</div></div></div>";
       }
       h += '<span id="spark-slot"></span><span id="floats-layer"></span>';
-      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p><p class="timestop-badge" id="timestop-badge" style="display:none">⏳ TIME STOP — cannot act</p><p class="silence-badge" id="silence-badge" style="display:none">🌩 SILENCED — boss abilities paused</p><p class="enrage-badge" id="enrage-badge" style="display:none">😡 ENRAGED — damage ×1.5</p><p class="tenacity-badge" id="tenacity-badge" style="display:none">🛡 Tenacity ×0 — next CC −0% (min 1s)</p><p class="taunt-badge" id="taunt-badge" style="display:none">🎯 TAUNTED</p><span class="wave-crash-span" id="wave-crash" style="display:none" aria-hidden="true">🌊🌊🌊</span></div>';
+      h += '<p class="monster-tag">' + (f === 100 ? "👑 Final Boss" : isLordFloor(f) ? "👑 Floor Lord" : isGateFloor(f) ? "Gate Boss" : "Monster") + '</p><br /><p class="stun-badge" id="stun-badge" style="display:none">🕸 STUNNED — cannot attack</p><p class="poison-badge" id="poison-badge" style="display:none">☠ POISONED</p><p class="bleed-badge" id="bleed-badge" style="display:none">🩸 BLEEDING</p><p class="chill-badge" id="chill-badge" style="display:none">❄️ CHILLED</p><p class="frozen-badge" id="frozen-badge" style="display:none">❄️ FROZEN — cannot attack</p><p class="rooted-badge" id="rooted-badge" style="display:none">🌿 ROOTED — cannot attack</p><p class="eclipse-badge" id="eclipse-badge" style="display:none">🌑 ECLIPSE — cannot attack</p><p class="regen-badge" id="regen-badge" style="display:none">🗝 STILL STANDING — regenerating</p><p class="sticky-badge" id="sticky-badge" style="display:none">💚 STICKY GRASP — party damage −20%</p><p class="toll-badge" id="toll-badge" style="display:none">🔔 THE TOLLING!</p><p class="ember-badge" id="ember-badge" style="display:none">🔥 EMBER TRAIL — party burning</p><p class="thorn-badge" id="thorn-badge" style="display:none">🌿 THORN SNARE — party cannot attack</p><p class="deepchill-badge" id="deepchill-badge" style="display:none">❄️ DEEP CHILL — healing −50%</p><p class="remember-badge" id="remember-badge" style="display:none">❄️ REMEMBERING +0%</p><p class="timestop-badge" id="timestop-badge" style="display:none">⏳ TIME STOP — cannot act</p><p class="silence-badge" id="silence-badge" style="display:none">🌩 SILENCED — boss abilities paused</p><p class="enrage-badge" id="enrage-badge" style="display:none">😡 ENRAGED — damage ×1.5</p><p class="tenacity-badge" id="tenacity-badge" style="display:none">🛡 Tenacity ×0 — next CC −0% (min 1s)</p><p class="ccimmune-badge" id="ccimmune-badge" style="display:none">⛔ CC Immune</p><p class="taunt-badge" id="taunt-badge" style="display:none">🎯 TAUNTED</p><span class="wave-crash-span" id="wave-crash" style="display:none" aria-hidden="true">🌊🌊🌊</span></div>';
       h += "</div>";
       h += '<div style="margin-top:0.25rem;height:6px;border-radius:999px;background:rgba(0,0,0,0.5)" aria-hidden="true"></div>';
       h += "</div>"; /* battlefield */
@@ -6459,13 +6551,14 @@
       h += '<p class="bar-label" id="enemy-hp-text"></p>';
       h += '<div class="bar-outer bar-party" role="progressbar" aria-label="Party health" id="party-bar-outer"><div class="bar-inner" id="party-bar"></div></div>';
       h += '<p class="party-status" id="party-status"></p>';
+      h += '<button type="button" class="expander-btn" id="battle-details-btn" data-battle-details aria-expanded="' + battleDetailsOpen + '" aria-label="' + (battleDetailsOpen ? "Hide battle details" : "Show battle details") + '">' + (battleDetailsOpen ? "▾ Battle details" : "▸ Battle details") + '</button>';
       h += '<ul id="hero-hp-bars" class="hero-hp-bars" aria-label="Each hero\'s health"></ul>';
       h += synergyBadgesHTML();
       h += "</div></div>"; /* battle card inner + card */
 
       /* grind panel */
       h += grindHTML();
-      h += '<p class="small dim" style="margin-top:0.75rem">Your party fights on its own, Master — even while you\'re away (offline earnings up to 8 hours, paid at your current target floor\'s rate — grind floor if you\'re grinding). Every clear pays gems that grow with the floor (~20% more per floor early on, easing off past Floor 30): a normal floor pays 💎 1 on first clear, gate bosses 💎 2, and Floor Lords 💎 5 — those are the Floor 1 rates, and they climb from there. Spend gold leveling heroes in the <button type="button" class="linklike" data-goto="heroes" style="font-size:0.875rem">Heroes</button> tab when a floor feels slow.</p>';
+      h += expanderHTML("offline", "Offline earnings & gem payouts", '<p class="small dim" style="margin-top:0.75rem">Your party fights on its own, Master — even while you\'re away (offline earnings up to 8 hours, paid at your current target floor\'s rate — grind floor if you\'re grinding). Every clear pays gems that grow with the floor (~20% more per floor early on, easing off past Floor 30): a normal floor pays 💎 1 on first clear, gate bosses 💎 2, and Floor Lords 💎 5 — those are the Floor 1 rates, and they climb from there. Spend gold leveling heroes in the <button type="button" class="linklike" data-goto="heroes" style="font-size:0.875rem">Heroes</button> tab when a floor feels slow.</p>', "0.75rem");
       /* ---------- Boost (player-facing name; the Offline Boost in code) ---------- */
       h += offlineBoostHTML();
       if (!s.heroes["luna"] && highest <= 25) {
@@ -6485,8 +6578,8 @@
       h += '<div class="panel-head"><h3>🔁 Grind Previous Floors</h3><p class="xs bold dim" style="margin:0">' +
         (grinding ? "Grinding Floor " + f + " · Highest " + highest : "Pushing Floor " + highest) +
         ((s.totalGrindClears || 0) > 0 ? " · " + s.totalGrindClears + " grind clears" : "") + "</p></div>";
-      h += '<p class="small dim" style="margin-top:0.25rem">Stuck on a floor? Drop back and farm a cleared floor on loop. Repeat clears pay <span class="bold" style="color:var(--text)">85% gold</span> and reduced gems (1 💎 on Floor 1 for every floor type, and gems grow ~20% per floor up to Floor 30, then more slowly from there) — great for leveling, while a brand-new floor still pays best. Your grind target is saved in this browser, and offline earnings use it too.</p>';
-      h += '<p class="small dim" style="margin-top:0.25rem">One catch: grinding below your highest floor pays less. Repeat rewards (live and offline) are anchored to your highest normal floor: every floor below it pays a share of that floor\'s reward, <span class="bold" style="color:var(--text)">10% less for each floor you go down</span> (Floor Lords still get their ×3 on top). Gate floors keep their own rates throughout. First clears are never reduced.</p>';
+      h += expanderHTML("grinding", "How grinding works", '<p class="small dim" style="margin-top:0.25rem">Stuck on a floor? Drop back and farm a cleared floor on loop. Repeat clears pay <span class="bold" style="color:var(--text)">85% gold</span> and reduced gems (1 💎 on Floor 1 for every floor type, and gems grow ~20% per floor up to Floor 30, then more slowly from there) — great for leveling, while a brand-new floor still pays best. Your grind target is saved in this browser, and offline earnings use it too.</p>' +
+      '<p class="small dim" style="margin-top:0.25rem">One catch: grinding below your highest floor pays less. Repeat rewards (live and offline) are anchored to your highest normal floor: every floor below it pays a share of that floor\'s reward, <span class="bold" style="color:var(--text)">10% less for each floor you go down</span> (Floor Lords still get their ×3 on top). Gate floors keep their own rates throughout. First clears are never reduced.</p>', "0.25rem");
       if (highest <= 1) {
         h += '<p class="note-box">Clear Floor 1 first — then you can come back here to grind it any time.</p>';
       } else {
@@ -6614,6 +6707,8 @@
       var tenacityStacksNow = isBossFloor(f) ? tenacityStacksAt(tenacityState.stacks, tenacityState.lastAt, battleElapsed) : 0;
       var tenacityCutPct = Math.round((1 - bossTenacityMult(tenacityStacksNow)) * 100);
       if (tenacityStacksNow > 0) status += " · 🛡 TENACITY ×" + tenacityStacksNow + " — every CC this boss has eaten makes the next one " + tenacityCutPct + "% shorter (never under 1s)";
+      var bossCcImmuneNow = isBossFloor(f) && battleElapsed >= BOSS_CC_IMMUNE_AT; // ⛔ enrage CC immunity (40s+): the boss shrugs off all CC for the rest of the fight
+      if (bossCcImmuneNow) status += " · ⛔ ENRAGE FURY — the boss is immune to CC for the rest of the fight!";
       if (nowMs < burn.until && s.party.indexOf("draven") >= 0) status += " · 🔥 the monster is BURNING";
       if (nowMs < snare.until && s.party.indexOf("aurelia") >= 0) status += " · 🕸 the monster is SNARED in golden silk";
       var poisonStacksNow = poisonStacksAt(nowMs);
@@ -6677,6 +6772,8 @@
       if (enb) { enb.style.display = bossEnragedNow ? "inline-block" : "none"; if (bossEnragedNow) enb.textContent = "😡 Enraged — damage ×" + (Math.round(bossEnrageMult(battleElapsed) * 100) / 100); }
       var tnb = document.getElementById("tenacity-badge");
       if (tnb) { tnb.style.display = tenacityStacksNow > 0 ? "inline-block" : "none"; if (tenacityStacksNow > 0) tnb.textContent = "🛡 Tenacity ×" + tenacityStacksNow + " — next CC −" + tenacityCutPct + "% (min 1s)"; }
+      var cib = document.getElementById("ccimmune-badge");
+      if (cib) { cib.style.display = bossCcImmuneNow ? "inline-block" : "none"; if (bossCcImmuneNow) cib.textContent = "⛔ CC Immune"; }
       var tauntBadge = document.getElementById("taunt-badge");
       if (tauntBadge) { tauntBadge.style.display = liveTauntNow ? "inline-block" : "none"; if (liveTauntNow) tauntBadge.textContent = "🎯 TAUNTED — focused on " + heroById(liveTauntNow.id).name.split(" ")[0]; }
       /* 😡 Enraged aura: the boss glows red for as long as it rages —
@@ -6743,7 +6840,7 @@
       if (dcb) dcb.style.display = mbIdDyn === "frostmaw" ? "inline-block" : "none";
       var rmb = document.getElementById("remember-badge");
       if (rmb) { rmb.style.display = (mbIdDyn === "thawingsaint" && (rememberStacks || 0) > 0) ? "inline-block" : "none"; if ((rememberStacks || 0) > 0) rmb.textContent = "❄️ REMEMBERING +" + rememberPct(f) + "% ATK"; }
-      if (s.heroes["luna"] && s.party.indexOf("luna") >= 0) status += " · 🌙 Luna's vigil: the party rises once a minute instead of falling";
+      if (s.heroes["luna"] && s.party.indexOf("luna") >= 0) status += vigilUsed ? " · 🌙 Luna's vigil spent for this battle" : " · 🌙 Luna's vigil stands ready — the party rises once this battle instead of falling";
       if (wrenPhoenixActive) status += phoenixUsed ? " · 🧪 Phoenix Tonic spent for this battle" : " · 🧪 Wren's Phoenix Tonic stands ready — the party rises once this battle instead of falling";
       /* Split-HP per-hero bars (Nov 20, 2026): one row per party hero
          under the pooled bar — name (🛡 while taunting), a bar in the
@@ -6784,7 +6881,9 @@
         if (fl) fl.style.display = hfallenS ? "block" : "none";
       });
       var ps = document.getElementById("party-status");
-      if (ps) ps.textContent = status;
+      if (ps) ps.textContent = battleDetailsOpen ? status : "Party HP " + fmt(pHp) + " / " + fmt(maxHp);
+      var bdb = document.getElementById("battle-details-btn");
+      if (bdb) { bdb.textContent = battleDetailsOpen ? "▾ Battle details" : "▸ Battle details"; bdb.setAttribute("aria-expanded", battleDetailsOpen ? "true" : "false"); bdb.setAttribute("aria-label", battleDetailsOpen ? "Hide battle details" : "Show battle details"); }
     }
 
     /* ============================== RENDER: DUNGEON TAB ============================== */
@@ -7062,18 +7161,18 @@
         h += "</div>";
       });
       h += "</div>";
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×1.5, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×3, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×4, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems stay tied to the enemy tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment), every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>';
+      h += expanderHTML("dungeons", "How dungeons work", '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×1.5, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×3, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×4, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems stay tied to the enemy tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment), every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>', "0.5rem");
 
       } /* end dungeon view */
       if (dungeonTab === "forge") {
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>';
+      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
       /* 👑 The 7★ set tracker — also the locked hint that tells players
          the tier exists and exactly how it unlocks, long before Floor 70. */
       h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
-      h += '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. A flawless Starlight game whose gate isn\'t met still forges <span style="color:var(--text)">6★</span>; every non-perfect result tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>";
+      h += expanderHTML("sevenstar", "👑 The 7★ Set", '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. A flawless Starlight game whose gate isn\'t met still forges <span style="color:var(--text)">6★</span>; every non-perfect result tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>", "");
       h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.375rem">';
       GEAR_SLOTS.forEach(function (sl) {
         var seven = null;
@@ -7200,11 +7299,11 @@
         var available = HEROES.filter(function (hh) { return s.heroes[hh.id] && !away[hh.id]; });
         available.sort(function (a, b) { return heroPower(s, b.id) - heroPower(s, a.id); });
         h += '<div class="anime-card card-pad" aria-label="Mission: ' + esc(q.name) + '"' + (locked ? ' style="opacity:0.75"' : "") + ">";
-        h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(scaledDifficulty) + ' (a team at that power succeeds ≈80% of the time)</p></div><span class="quest-reward-pill">' + esc(questRewardText(q, s.floor)) + "</span></div>";
+        h += '<div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:0.5rem"><div><p class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + q.icon + " " + esc(q.name) + '</p><p class="xs" style="margin-top:0.125rem;font-weight:900;letter-spacing:0.04em;color:var(--dim)">⏱ ' + fmtClock(q.hours * 3600) + " expedition · recommended power ≈ " + fmt(scaledDifficulty) + ' (a team at that power succeeds ≈80% of the time)</p></div><span class="quest-reward-pill">' + esc(questRewardText(q, s)) + "</span></div>";
         h += '<p class="small dim" style="margin-top:0.375rem;font-weight:500">' + esc(q.desc) + "</p>";
         h += '<p class="xs bold dim" style="margin-top:0.25rem">📈 Scaled to your highest stage (Floor ' + s.floor + '): past its Floor ' + q.unlockFloor + ' unlock, the recommended power grows +1% a floor and the materials +1% a floor, and the gold pays 10% of what idling ' + fmtClock(q.hours * 3600) + ' at Floor ' + s.floor + ' would earn. What you see is what a dispatch locks in.</p>';
         h += '<p class="xs bold dim" style="margin-top:0.25rem">Favored classes (power ×1.5): ' + q.favored.join(" · ") + "</p>";
-        h += '<p class="xs bold" style="margin-top:0.25rem;color:#ffd94d">🎰 Jackpot — 5% chance on a success, rolled when you dispatch: ' + esc(questJackpotText(q, s.floor)) + "</p>";
+        h += '<p class="xs bold" style="margin-top:0.25rem;color:#ffd94d">🎰 Jackpot — 5% chance on a success, rolled when you dispatch: ' + esc(questJackpotText(q, s)) + "</p>";
         h += '<p class="xs bold dim" style="margin-top:0.25rem">🩹 Pity — a failed run still brings home ' + esc(questPityText(q)) + ", and no gold.</p>";
         if (locked) {
           h += '<p class="note-box">🔒 Sealed — reach tower Floor ' + q.unlockFloor + " to unlock (you're at Floor " + s.floor + ").</p>";
@@ -7227,9 +7326,9 @@
           }
           if (activeRuns.length >= MAX_ACTIVE_QUESTS) h += '<p class="xs bold dim" style="margin:0">All ' + MAX_ACTIVE_QUESTS + " dispatch slots are out.</p>";
           h += "</div>";
-          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">🎯 How the odds work: recommended power is a team built to succeed — at exactly the recommended power the chance is ≈80%. Half the recommended power is a 50/50 gamble, 1.5× it is ≈90%, and 2× it is ≈94%, topping out at 98%.</p>';
-          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⭐ Stars help indirectly: higher stars mean stronger heroes and a higher level cap, so more quest power — and a favored class can outshine a higher star.</p>';
-          h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. A normal success pays the rewards shown plus ' + esc(questBonusText(q)) + '; a 5% jackpot roll, made when you dispatch, pays 1.5× the material and gold instead — the bonus stays flat and is never multiplied. A failed run brings home just 1 pity material and no gold. And no quest\'s odds ever drop below 20%.</p>';
+          h += expanderHTML("quests-" + q.id, "How quests work", '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">🎯 How the odds work: recommended power is a team built to succeed — at exactly the recommended power the chance is ≈80%. Half the recommended power is a 50/50 gamble, 1.5× it is ≈90%, and 2× it is ≈94%, topping out at 98%.</p>' +
+          '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⭐ Stars help indirectly: higher stars mean stronger heroes and a higher level cap, so more quest power — and a favored class can outshine a higher star.</p>' +
+          '<p class="xs dim" style="margin-top:0.375rem;font-weight:600">⚔ = currently in your tower party — sending them pulls them off the floor until they return. A normal success pays the rewards shown plus ' + esc(questBonusText(q)) + '; a 5% jackpot roll, made when you dispatch, pays 1.5× the material and gold instead — the bonus stays flat and is never multiplied. A failed run brings home just 1 pity material and no gold. And no quest\'s odds ever drop below 20%.</p>', "0.375rem");
         }
         h += "</div>";
       });
@@ -7307,9 +7406,10 @@
         chance: chance,
         success: success,
         jackpot: success && Math.random() < QUEST_JACKPOT_CHANCE,
+        dispatchFloor: Math.max(1, Math.floor(s.floor)),
         scaledDifficulty: scaledDifficulty,
         scaledRewards: questScaledRewards(q, s.floor),
-        scaledGold: questScaledGold(q, s.floor)
+        scaledGold: questScaledGold(q, s)
       };
       var next = JSON.parse(JSON.stringify(s));
       next.party = remainingParty;
@@ -7764,7 +7864,7 @@
       }
       /* synergy list */
       h += '<div class="anime-card mt4 card-pad" aria-label="All party synergies"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">✨ Party Synergies</h3>';
-      h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:600">When these heroes fight in the party together, their bond ignites — the bonus is live in battle, idle gold, and offline earnings. A live bond\'s bonus scales up with its members\' rarity and the size of the link, so an active card shows the exact numbers your current party gets.</p>';
+      h += expanderHTML("synergies", "How synergies work", '<p class="xs dim" style="margin-top:0.125rem;font-weight:600">When these heroes fight in the party together, their bond ignites — the bonus is live in battle, idle gold, and offline earnings. A live bond\'s bonus scales up with its members\' rarity and the size of the link, so an active card shows the exact numbers your current party gets.</p>', "0.125rem");
       h += '<ul class="syn-list">';
       /* Tiered order: (1) active bonds, (2) fully owned but not in
           the party, (3) partially owned, (4) nothing owned. Inside
@@ -8273,6 +8373,20 @@
           renderMain();
         });
       });
+      main.querySelectorAll("[data-expander]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          var k = el.getAttribute("data-expander") || "";
+          expanderOpen[k] = !expanderOpen[k];
+          renderMain();
+        });
+      });
+      main.querySelectorAll("[data-battle-details]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          battleDetailsOpen = !battleDetailsOpen;
+          /* The battle tick rewrites the status line and the button
+             label every tick — no re-render needed mid-battle. */
+        });
+      });
       main.querySelectorAll("[data-quick-combine]").forEach(function (el) {
         el.addEventListener("click", function () {
           combineQuickPlan = quickCombinePlan(save);
@@ -8428,11 +8542,11 @@
     function shopClone(s) { return JSON.parse(JSON.stringify(s)); }
 
     /* ============================== OFFLINE BOOST ==============================
-       +50% offline gold AND +50% offline gems for 8 hours, bought on the
+       +50% offline gold AND +50% offline gems for 4 hours, bought on the
        Tower screen for 5,000 💎. Buyable ANY time — including while a boost
-       is still running: each purchase adds 8 hours to the remaining time,
-       capped at 8 hours total remaining, so a top-up always lands the timer
-       at a full 8 hours and never beyond (the +50% itself never stacks —
+       is still running: each purchase adds 4 hours to the remaining time,
+       capped at 4 hours total remaining, so a top-up always lands the timer
+       at a full 4 hours and never beyond (the +50% itself never stacks —
        only the duration extends). There is no once-per-day limit anymore
        (removed 2026-11-21). State lives in the save: boostExpiresAt (epoch
        ms, 0 = inactive) + lastBoostBuy (date of last purchase — kept as a
@@ -8444,7 +8558,7 @@
        switch), which keep their dps <= 0 guard, so zero DPS still earns
        zero even with the boost. */
     var OFFLINE_BOOST_COST = 5000;
-    var OFFLINE_BOOST_DURATION_MS = 8 * 3600 * 1000;
+    var OFFLINE_BOOST_DURATION_MS = 4 * 3600 * 1000; // 4 hours per purchase (was 8 until Nov 21, 2026); also the top-up cap
     var OFFLINE_BOOST_MULT = 1.5;
     function boostActive(s, now) {
       return s.boostExpiresAt > 0 && now < s.boostExpiresAt;
@@ -8454,9 +8568,9 @@
     }
     /** Pure purchase: null only when gems are short. Otherwise the save
         with exactly 5,000 💎 deducted and the expiry topped up: the time
-        still remaining (0 when inactive) plus a fresh 8 hours, capped at
-        8 hours total remaining — so buying mid-boost refills the timer to
-        a full 8h from `now`, never more. */
+        still remaining (0 when inactive) plus a fresh 4 hours, capped at
+        4 hours total remaining — so buying mid-boost refills the timer to
+        a full 4h from `now`, never more. */
     function applyOfflineBoostPurchase(s, now) {
       if (s.gems < OFFLINE_BOOST_COST) return null;
       var remainingMs = boostActive(s, now) ? s.boostExpiresAt - now : 0;
@@ -9479,11 +9593,11 @@
       var active = boostActive(s, now);
       var h = '<div class="anime-card mt4 card-pad" aria-label="Boost">';
       h += '<div style="display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0.5rem"><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚡ Boost</h3><p class="xs" style="margin:0;font-weight:800;color:var(--dim)">5,000 💎 · top up anytime</p></div>';
-      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 8 hours</span>. Buy it again any time — each purchase tops the remaining time back up to a full 8 hours.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Your party fights harder while you\'re away: <span class="bold" style="color:var(--text)">+50% offline gold and +50% offline gems for 4 hours</span>. Buy it again any time — each purchase tops the remaining time back up to a full 4 hours.</p>';
       if (active) {
         h += '<p class="small" style="margin-top:0.75rem;display:inline-block;border-radius:999px;border:1px solid rgba(255,217,77,0.55);background:rgba(255,217,77,0.15);padding:0.375rem 0.875rem;font-weight:900;color:#ffd94d">⚡ Boost active — ' + fmtClock(Math.max(0, (s.boostExpiresAt - now) / 1000)) + " left of +50% offline gold &amp; gems</p>";
       }
-      h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems") : (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — refill the remaining time to a full 8 hours of plus 50 percent offline gold and gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 8 hours")) + '">' + (active ? "⚡ Top up to 8h — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎" : "⚡ Buy Boost — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎") + "</button>";
+      h += '<button type="button" class="btn-pill anime-btn-gold" id="boost-buy" style="margin-top:0.75rem" ' + (s.gems < OFFLINE_BOOST_COST ? "disabled" : "") + ' aria-label="' + (s.gems < OFFLINE_BOOST_COST ? (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — you only have " + s.gems + " gems") : (active ? "Top up the Boost for " + OFFLINE_BOOST_COST + " gems — refill the remaining time to a full 4 hours of plus 50 percent offline gold and gems" : "Buy the Boost for " + OFFLINE_BOOST_COST + " gems — plus 50 percent offline gold and gems for 4 hours")) + '">' + (active ? "⚡ Top up to 4h — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎" : "⚡ Buy Boost — " + OFFLINE_BOOST_COST.toLocaleString("en-US") + "💎") + "</button>";
       h += "</div>";
       return h;
     }
@@ -9491,7 +9605,7 @@
     /* ============================== SHOP ACTIONS ============================== */
     /* Offline Boost: bought on the Tower screen for 5,000 💎, any time —
        including while one is still running, topping the timer back to
-       8h. The pure helper refuses only when gems are short. */
+       4h. The pure helper refuses only when gems are short. */
     function buyOfflineBoost() {
       var s = save;
       if (!s) return;
@@ -11132,7 +11246,7 @@
       capLvD = capFireD("sella");
       if (capLvD) { if (Math.random() < 0.25) fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + applyDungeonCc(1.5)); capNextD("sella", 15); } // Storm Surge stun, 1.5s since the Nov 21 cut (the lightning rides dungeonDotDps)
       capLvD = capFireD("dun");
-      if (capLvD) { fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + applyDungeonCc(1 + 0.2 * capLvD)); capNextD("dun", 15); } // Anvil's Ring stun
+      if (capLvD) { if (Math.random() < 0.80) fx.capStunUntil = Math.max(fx.capStunUntil, fx.clock + applyDungeonCc(1 + 0.2 * capLvD)); capNextD("dun", 15); } // Anvil's Ring stun — rolls 80% per the Nov 21 CC+damage rule (capstone tier)
       capLvD = capFireD("anselm");
       if (capLvD) { fx.capDelayUntil = Math.max(fx.capDelayUntil, fx.clock + applyDungeonCc(2)); capNextD("anselm", 15); } // Iron Palm delay — 2s base stays (deliberately not cut); boss-wave tenacity still applies
       capLvD = capFireD("greta");
@@ -12243,6 +12357,12 @@
          routes its duration through applyBossCc with this flag, and a
          regular monster's fight passes every duration through untouched. */
       var bossFight = isBossFloor(f);
+      // ⛔ Enrage CC immunity for this tick: from BOSS_CC_IMMUNE_AT
+      // (40 battle-seconds — 10s into the enrage) a tower boss shrugs
+      // off ALL CC for the rest of the fight; applyBossCc reads the
+      // flag off the tenacity state and lands nothing. Tenacity alone
+      // governs every CC before that second.
+      tenacityState.immune = bossFight && battleElapsed >= BOSS_CC_IMMUNE_AT;
       var capNow = performance.now();
       function capFire(id) {
         var lv = capstoneLv(s, id);
@@ -12332,9 +12452,9 @@
         capNextIn("faye", 20); capFloat("🌩 THUNDERCLAP — SILENCED!");
       }
       capLv = capFire("dun");
-      if (capLv) { // 🔨 Anvil's Ring: 120% ATK × lv + stun 1s + 0.2s/lv — every 15s.
+      if (capLv) { // 🔨 Anvil's Ring: 120% ATK × lv + an 80% chance to stun 1s + 0.2s/lv — every 15s. (The 80% roll was MISSING until Nov 21 — every other damage+CC capstone rolls it per the standing CC+damage rule's capstone tier: the damage always lands, the CC rolls 80%, and a landed stun banks a tenacity stack on a boss.)
         timedDmg += capstoneAtk(s, "dun") * 1.2 * capLv;
-        cap.stunUntil = Math.max(cap.stunUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1 + 0.2 * capLv));
+        if (Math.random() < 0.80) cap.stunUntil = Math.max(cap.stunUntil, bClock + applyBossCc(tenacityState, bossFight, bClock, 1 + 0.2 * capLv));
         capNextIn("dun", 15); capFloat("🔨 ANVIL'S RING!");
       }
       capLv = capFire("anselm");
@@ -12676,8 +12796,12 @@
               pendingFloats.push({ text: "📯 WARLORD'S ROAR!", big: true, x: 30 });
             }
             if (id === "mari" && mariIn) {
-              /* 🎭 Cut Strings: Mari yanks the enemy's strings — it strikes itself for 50% of its attack. */
-              timedDmg += enemyAtkStat * hoarfrostMult * 0.5;
+              /* 🎭 Cut Strings: Mari yanks the enemy's strings — it strikes itself for 50% of its attack.
+                 CAP (Nov 21, overpowered-mechanics audit): the self-hit is capped so its
+                 time-averaged rate can never exceed the party's own effective DPS — the
+                 per-hit cap is that DPS ceiling × 5 attacks ÷ Mari's attack rate, exactly
+                 the ceiling floorDotDps prices. */
+              timedDmg += Math.min(enemyAtkStat * hoarfrostMult * 0.5, effectivePartyDps(s) * 5 / heroById("mari").atkSpeed);
               pendingFloats.push({ text: "🎭 CUT STRINGS — it strikes itself!", big: true, x: 62 });
             }
             if (id === "vesper" && vesperIn) {
@@ -12789,9 +12913,12 @@
       /* 🌿 Thornmail: whenever the enemy attacks, its thorns bite back —
          it takes damage equal to 10% of its own attack per skill level.
          The enemy only attacks while it can move, so a stunned, frozen,
-         rooted, eclipsed, or swallowed enemy grows no thorns that tick. */
+         rooted, eclipsed, or swallowed enemy grows no thorns that tick.
+         CAP (Nov 21, overpowered-mechanics audit): the reflect can
+         never exceed the party's own effective DPS — the same ceiling
+         floorDotDps prices — however strong the enemy is. */
       if (ilyaIn && enemyCanAttack) {
-        var reflectDps = enemyAtkStat * durnanSlow * hoarfrostMult * 0.10 * skillLevel(ilyaO);
+        var reflectDps = Math.min(enemyAtkStat * durnanSlow * hoarfrostMult * 0.10 * skillLevel(ilyaO), effectivePartyDps(s));
         dmgThisTick += reflectDps * dt;
         if (nowMs2 - thornFx.lastFloat > 1100) {
           thornFx.lastFloat = nowMs2;
@@ -13149,8 +13276,14 @@
           cap.sorenWinUntil = battleElapsed + 8;
           heroHps[hanIdx] = 1;
           addFloat("⭐ UNDYING STAR — Soren refuses to fall!", true, 30);
-        } else if (s.heroes["luna"] && s.party.indexOf("luna") >= 0 && nowMs3 >= vigilReadyAt) {
-          vigilReadyAt = nowMs3 + 60000;
+        } else if (s.heroes["luna"] && s.party.indexOf("luna") >= 0 && !vigilUsed) {
+          // 🌕 FULL MOON VIGIL — Luna's ultimate: the party rises instead
+          // of falling, every fallen hero back at 40% of their own max
+          // HP. ONCE PER BATTLE (Nov 21, 2026 — it was once a minute):
+          // in a long boss fight it fires a single time, like Wren's
+          // Phoenix Tonic, Durnan's Unbreakable, and Soren's Undying
+          // Star beside it.
+          vigilUsed = true;
           for (var vi = 0; vi < heroHps.length; vi++) heroHps[vi] = (maxes[vi] || 0) * 0.4;
           addFloat("🌕 FULL MOON VIGIL", true, 30);
         } else if (wrenPhoenixReady) {
