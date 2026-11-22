@@ -4398,8 +4398,8 @@
        90 is unlocked (the player clears Floor 89, so their frontier
        reaches 90). From then on EVERY monster the party kills feeds
        him — tower clears and grind repeats on any floor, and dungeon
-       wave kills too: every 10 kills = +1 Tithe stack, each stack
-       +5% attack and +5% HP, capped at 20 stacks (+100%). The raw
+       wave kills too: every 100 kills = +1 Tithe stack, each stack
+       +1% attack and +1% HP, capped at 25 stacks (+25%). The raw
        kill count lives in the save (save.graveKills), persists across
        wipes and sessions, and travels into cloud copies; defeating
        Ossian empties the ledger — the count resets to 0. */
@@ -4411,12 +4411,15 @@
        fell (older saves have no field and read as 0 / unstarted). */
     function graveKillsOf(s) { return s && typeof s.graveKills === "number" && s.graveKills > 0 ? Math.floor(s.graveKills) : 0; }
     function titheStarted(s) { return !!s && s.floor >= OSSIAN_BOSS.floor; }
-    function titheStacks(s) { return Math.min(20, Math.floor(graveKillsOf(s) / 10)); }
-    function tithePct(s) { return titheStacks(s) * 5; }
+    var TITHE_KILLS_PER_STACK = 100;
+    var TITHE_MAX_STACKS = 25;
+    var TITHE_PER_STACK = 0.01;
+    function titheStacks(s) { return Math.min(25, Math.floor(graveKillsOf(s) / 100)); }
+    function tithePct(s) { return titheStacks(s) * 1; }
     /* His growth multiplier for a floor: 1 everywhere except his own
-       floor, where it is 1 + 5% per Tithe stack (cap ×2 at 20). */
-    function titheMult(s, f) { return ossianBoss(f) ? 1 + titheStacks(s) * 0.05 : 1; }
-    function titheKillsToNext(s) { return 10 - (graveKillsOf(s) % 10); }
+       floor, where it is 1 + 1% per Tithe stack (cap ×1.25 at 25). */
+    function titheMult(s, f) { return ossianBoss(f) ? 1 + titheStacks(s) * 0.01 : 1; }
+    function titheKillsToNext(s) { return 100 - (graveKillsOf(s) % 100); }
     /* One dungeon wave kill feeds the ledger (persisted the same way
        tower clears persist theirs). No-op until Floor 90 is unlocked. */
     function feedGraveTitheDungeon() {
@@ -8224,7 +8227,7 @@
       }
       if (ob) {
         h += '<p class="boss-flavor">' + esc(ob.flavor) + "</p>";
-        h += '<p class="tithe-note">⚰️ Grave Tithe <span class="pct">×' + titheStacks(s) + "</span> — " + graveKillsOf(s) + " dead kept since his floor opened. Every 10 kills is a stack: <span class=\"pct\">+" + tithePct(s) + "% attack and HP</span> for him (" + titheStacks(s) + " of 20 stacks, cap +100%)" + (titheStacks(s) >= 20 ? " — the tithe is full; he can grow no hungrier." : ", next stack in " + titheKillsToNext(s) + " kills") + ". His HP bar and time-to-clear already count the Tithe — and beating him empties the ledger back to 0.</p>";
+        h += '<p class="tithe-note">⚰️ Grave Tithe <span class="pct">×' + titheStacks(s) + "</span> — " + graveKillsOf(s) + " dead kept since his floor opened. Every 100 kills feed him a stack: <span class=\"pct\">+" + tithePct(s) + "% attack and HP</span> for him (" + titheStacks(s) + " of 25 stacks, cap +25%)" + (titheStacks(s) >= 25 ? " — the tithe is full; he can grow no hungrier." : ", next stack in " + titheKillsToNext(s) + " kills") + ". His HP bar and time-to-clear already count the Tithe — and beating him empties the ledger back to 0.</p>";
       }
       if (mb) {
         h += '<p class="boss-flavor">' + esc(mb.flavor) + "</p>";
@@ -8271,7 +8274,7 @@
         h += '<p style="margin-top:0.5rem;font-size:0.75rem;font-weight:800;color:#ffd94d">🎵 THE CONCERT RINGS — the party deals +50% damage while the song lasts!</p>';
       }
       if (titheStarted(s)) {
-        h += '<p class="tithe-chip" role="status">⚰️ Grave Tithe ×' + titheStacks(s) + " — Ossian has kept " + graveKillsOf(s) + " of your dead (+" + tithePct(s) + "% ATK &amp; HP waiting at Floor 90" + (titheStacks(s) >= 20 ? " — the tithe is full" : " · next stack in " + titheKillsToNext(s) + " kills") + ")</p>";
+        h += '<p class="tithe-chip" role="status">⚰️ Grave Tithe ×' + titheStacks(s) + " — Ossian has kept " + graveKillsOf(s) + " of your dead (+" + tithePct(s) + "% ATK &amp; HP waiting at Floor 90" + (titheStacks(s) >= 25 ? " — the tithe is full" : " · next stack in " + titheKillsToNext(s) + " kills") + ")</p>";
       }
 
       /* battlefield */
