@@ -3110,8 +3110,9 @@
        Each dungeon's Normal foes are scaled by its `powerMult` — applied
        to BOTH wave HP and wave attack inside dungeonWaveHp /
        dungeonWaveAtk, underneath the run difficulty's own multiplier, so
-       Hard / Nightmare / Torment (×1.5 / ×3 / ×4) ride on the new Normal
-       baseline unchanged. The multipliers were SOLVED, not eyeballed:
+       Hard / Nightmare / Torment (then ×1.5 / ×3 / ×4; ×4.75 / ×5.5 /
+       ×6.5 since the Nov 23, 2026 re-spacing — see the note above
+       DUNGEON_DIFFICULTIES) ride on the new Normal baseline unchanged. The multipliers were SOLVED, not eyeballed:
        executing the real dungeonRecommendedBp (net-damage model) against
        candidate multipliers, the values below land each dungeon's Normal
        Recommended BP exactly on the targets Rachel picked — Ember
@@ -3182,7 +3183,8 @@
        Every dungeon offers four difficulties, picked per run on its card.
        Two multipliers ride on each tier, and they are DECOUPLED: `mult` is
        the ENEMY multiplier — it scales wave HP and attack (Normal ×1,
-       Hard ×1.5, Nightmare ×3, Torment ×4) — while `rewardMult` scales the
+       Hard ×4.75, Nightmare ×5.5, Torment ×6.5 — re-spaced Nov 23, 2026,
+       see the note below) — while `rewardMult` scales the
        run's material, gold, and gem payouts and steps by ×1.5 per tier
        instead of matching the foes: Normal ×1, Hard ×1.5, Nightmare ×2.25,
        Torment ×3.375 (shown to the player as ×3.4 — see
@@ -3198,22 +3200,55 @@
        luck roll is untouched — it is rolled exactly as before and applies
        ON TOP of the reward-multiplied base (the drop ranges and gold are
        multiplied by rewardMult first, then the luck tier scales the
-       result). Jackpot gems stay tied to the ENEMY tier, NOT the reward
-       multiplier: JACKPOT_GEMS × mult — 5 Normal, 8 Hard, 15 Nightmare,
-       20 Torment. Runs are NOT tracked per difficulty: the 3 free daily
+       result). Jackpot gems are PINNED per tier in each difficulty's
+       `jackpotGems` — 5 Normal, 8 Hard, 15 Nightmare, 20 Torment — and
+       deliberately do NOT scale with either multiplier (pinned Nov 23,
+       2026, Rachel's call: when the enemy multipliers were re-spaced,
+       the old JACKPOT_GEMS × mult formula would have inflated them to
+       24 / 28 / 33; they stay at their original values instead). Runs
+       are NOT tracked per difficulty: the 3 free daily
        runs and the gem-bought extra runs are shared across all four
        difficulties of a dungeon, and extra runs cost the same gems at
        every difficulty. The Recommended BP on a card, its drops line,
        and its wave-damage preview all follow the ENEMY multiplier, so
        the player can see whether their team is ready for the harder
-       delve and what its foes hit for. */
+       delve and what its foes hit for.
+
+       Difficulty re-spacing (Nov 23, 2026, Rachel's call): the enemy
+       multipliers were re-anchored, not rescaled. Hard Ember Caverns now
+       starts at HALF of Normal Starlight Abyss's Recommended BP — 4,750
+       against 9,500 — so Hard's multiplier is 4.75 on the unchanged
+       Normal ladder (Ember 1,000 / Frostwood 5,500 / Starlight 9,500).
+       Nightmare and Torment were then spaced ABOVE Hard with deliberately
+       LOWER steps than the old ladder's (×5.5 and ×6.5, where the old
+       ×1.5 / ×3 / ×4 shape would have run far hotter), so Torment
+       Starlight lands on its agreed 61,750 — still beatable by a stacked
+       11★ team at max level in attuned gear only: Aldric, Soren, Luna,
+       Aurelia Vey, Lucian, and Amara at effective 11★, Lv 110, wearing
+       7★ attuned full sets read 82,138 effective BP on the card's own
+       model. The full agreed table: Normal 1,000 / 5,500 / 9,500 ·
+       Hard 4,750 / 26,125 / 45,125 · Nightmare 5,500 / 30,250 / 52,250 ·
+       Torment 6,500 / 35,750 / 61,750. Verified by executing the real
+       dungeonRecommendedBp / partyEffectiveBp on exactly this team:
+       Normal reads exact, and the higher tiers land within the formula's
+       per-wave rounding grain of the table (Ember 4,749 / 5,499 / 6,499;
+       Frostwood 26,123 / 30,248 / 35,747; Starlight 45,126 / 52,251 /
+       61,751) — every difficulty still reads harder than the last inside
+       every dungeon, and the 11★ team clears even the executed 61,751
+       with room to spare. NOTHING else moved: the reward multipliers, the
+       unlock gates (Hard = that dungeon's first Normal clear, Nightmare
+       Floor 60, Torment Floor 70), wave counts, daily run limits, and
+       the BP comparison display are exactly as they were; heroes, gear,
+       and the BP model itself were not buffed — only the three enemy
+       multipliers changed. (Jackpot gems are pinned per tier — 5 / 8 /
+       15 / 20 — and do NOT scale with the new multipliers.) */
     var NIGHTMARE_UNLOCK_FLOOR = 60;
     var TORMENT_UNLOCK_FLOOR = 70;
     var DUNGEON_DIFFICULTIES = [
-      { id: "normal", label: "Normal", emoji: "🍀", mult: 1, rewardMult: 1 },
-      { id: "hard", label: "Hard", emoji: "🔥", mult: 1.5, rewardMult: 1.5 },
-      { id: "nightmare", label: "Nightmare", emoji: "💀", mult: 3, rewardMult: 2.25, unlockFloor: NIGHTMARE_UNLOCK_FLOOR },
-      { id: "torment", label: "Torment", emoji: "👹", mult: 4, rewardMult: 3.375, unlockFloor: TORMENT_UNLOCK_FLOOR }
+      { id: "normal", label: "Normal", emoji: "🍀", mult: 1, rewardMult: 1, jackpotGems: 5 },
+      { id: "hard", label: "Hard", emoji: "🔥", mult: 4.75, rewardMult: 1.5, jackpotGems: 8 },
+      { id: "nightmare", label: "Nightmare", emoji: "💀", mult: 5.5, rewardMult: 2.25, jackpotGems: 15, unlockFloor: NIGHTMARE_UNLOCK_FLOOR },
+      { id: "torment", label: "Torment", emoji: "👹", mult: 6.5, rewardMult: 3.375, jackpotGems: 20, unlockFloor: TORMENT_UNLOCK_FLOOR }
     ];
     function dungeonDifficultyDef(id) {
       for (var i = 0; i < DUNGEON_DIFFICULTIES.length; i++) if (DUNGEON_DIFFICULTIES[i].id === id) return DUNGEON_DIFFICULTIES[i];
@@ -9131,7 +9166,7 @@
         h += '<p class="dg-diff" style="color:' + (dg.diff === "Easy" ? "#5eead4" : dg.diff === "Medium" ? "#7dd3fc" : "#fda4af") + '">' + esc(dg.diff) + " · " + dg.waves + " waves</p>";
         /* Per-run difficulty pick: Normal is the dungeon as it has always
            been; Hard / Nightmare / Torment scale enemy HP & attack by the
-           tier's enemy multiplier (×1.5 / ×3 / ×4) while the payouts step
+           tier's enemy multiplier (×4.75 / ×5.5 / ×6.5) while the payouts step
            by ×1.5 per tier (×1.5 / ×2.25 / ×3.4) — the two are decoupled.
            The Recommended BP, drops line, and wave-damage preview below
            follow the enemy multiplier. The tiers past Normal are gated:
@@ -9173,7 +9208,7 @@
         h += '<div style="margin-top:0.25rem"><p class="xs" style="font-weight:900" aria-label="' + esc(dg.name) + " on " + esc(selDiff.label) + ": recommended Battle Power " + fmt(recBp) + "; your current party's effective Battle Power is " + fmt(myBp) + ", " + bpPct + "% of the recommendation" + (bpReady ? " — at or above the recommendation" : " — below the recommendation") + '">⚔️ Recommended BP: ' + fmt(recBp) + ' · <span style="color:' + (bpReady ? "#5eead4" : "#fda4af") + '">Your party: ' + fmt(myBp) + " BP" + (bpReady ? " ✓" : "") + "</span></p>";
         h += '<div style="margin-top:0.375rem;display:flex;align-items:center;gap:0.5rem"><div style="height:0.625rem;flex:1;overflow:hidden;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.5);padding:2px" role="progressbar" aria-label="' + esc(dg.name) + ": your party's effective Battle Power as a percentage of the recommended Battle Power for " + esc(selDiff.label) + '" aria-valuenow="' + Math.min(100, bpPct) + '" aria-valuemin="0" aria-valuemax="100" aria-valuetext="' + bpPct + '%"><div style="height:100%;border-radius:999px;width:' + Math.min(100, bpPct) + '%;background:' + (bpReady ? "linear-gradient(90deg,#2dd4bf,#7dd3fc)" : "linear-gradient(90deg,#fb7185,#ff7eb6)") + '"></div></div><span style="white-space:nowrap;font-size:11px;font-weight:900;color:' + (bpReady ? "#5eead4" : "#fda4af") + '">' + bpPct + "% of recommended</span></div></div>";
         h += '<p class="xs dim" style="margin-top:0.375rem">' + esc(dg.desc) + '</p><p class="xs" style="margin-top:0.375rem;font-weight:700">Drops: ' + dg.drops.map(function (dr) { var m = materialById(dr.mat); return m.icon + " " + esc(m.name) + " " + Math.round(dr.min * selDiff.mult) + "–" + Math.round(dr.max * selDiff.mult); }).join(" · ") + " · 🪙 " + Math.round(dg.gold * selDiff.mult).toLocaleString("en-US") + " gold" + (selDiff.mult > 1 ? " (×" + selDiff.mult + " on " + esc(selDiff.label) + ", before luck)" : "") + "</p>";
-        h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + Math.round(JACKPOT_GEMS * selDiff.mult) + "💎</span></p>";
+        h += '<p class="xs bold dim" style="margin-top:0.375rem">🎲 Luck roll on every clear: <span style="color:#b6c2d2">Unlucky (' + LUCK_INFO.unlucky.odds + ') half</span> · <span style="color:#4ade80">Lucky haul (' + LUCK_INFO.lucky.odds + ') +50%</span> · <span style="color:#ffd94d">JACKPOT (' + LUCK_INFO.jackpot.odds + ') ×2 + ' + selDiff.jackpotGems + "💎</span></p>";
         /* Wave-by-wave incoming damage vs the party's healer trickle,
            priced with the exact formulas the run loop applies (the
            wave's attack stat from dungeonWaveAtk, growing +25% per
@@ -9203,7 +9238,7 @@
         h += "</div>";
       });
       h += "</div>";
-      h += expanderHTML("dungeons", "How dungeons work", '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×1.5, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×3, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×4, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems stay tied to the enemy tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment), every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>', "0.5rem");
+      h += expanderHTML("dungeons", "How dungeons work", '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×4.75, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×5.5, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×6.5, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems are pinned per tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment) and never scale with the enemy multiplier, every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>', "0.5rem");
 
       } /* end dungeon view */
       if (dungeonTab === "forge") {
@@ -13327,8 +13362,8 @@
        priced with the exact formulas the dungeon run loop applies —
        the Dungeon tab's wave preview and the live run card read the
        same numbers, so the two can never drift apart. `mult` is the
-       run's difficulty multiplier (1 on Normal; 1.5 on Hard, 3 on
-       Nightmare, 4 on Torment), applied to both the wave's HP and its
+       run's difficulty multiplier (1 on Normal; 4.75 on Hard, 5.5 on
+       Nightmare, 6.5 on Torment), applied to both the wave's HP and its
        attack. The dungeon's own `powerMult` (the Nov 20, 2026 enemy
        power retune — see the note above DUNGEONS) rides inside both
        formulas as well, so every reader of wave stats — the run loop,
@@ -13423,7 +13458,7 @@
        `mult` is the selected run difficulty's multiplier: it scales
        every wave's HP and attack inside the same formulas, so the
        recommendation scales with the difficulty exactly as the run
-       itself does (×1.5 Hard, ×3 Nightmare, ×4 Torment — the required
+       itself does (×4.75 Hard, ×5.5 Nightmare, ×6.5 Torment — the required
        DPS, the gross damage, and the required HP pool all grow by the
        multiplier, so the BP does too). The dungeon's own `powerMult`
        rides inside the same wave formulas, so the Normal readings are
@@ -14229,12 +14264,13 @@
          the gold are multiplied by it (×1 on Normal, so a Normal run
          pays exactly what it always has) — and the luck tier then
          applies on top of that multiplied base. The jackpot gem bonus
-         is the exception: it stays tied to the ENEMY multiplier
-         (5 / 8 / 15 / 20), not the reward step. */
+         is the exception: it is PINNED per tier (5 / 8 / 15 / 20 via
+         the difficulty's jackpotGems), not the reward step and NOT
+         scaled with the enemy multiplier. */
       var luck = rollLuckTier();
       var drops = dungeonDrops(dgId, luck, runDiff.rewardMult);
       var luckGold = Math.round(dg.gold * runDiff.rewardMult * LUCK_INFO[luck].mult);
-      var luckGems = luck === "jackpot" ? Math.round(JACKPOT_GEMS * runDiff.mult) : 0;
+      var luckGems = luck === "jackpot" ? runDiff.jackpotGems : 0;
       var next = JSON.parse(JSON.stringify(save));
       if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
       for (var k in drops) next.materials[k] = (next.materials[k] || 0) + drops[k];
