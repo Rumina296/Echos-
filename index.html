@@ -596,6 +596,7 @@
          only while open. */
       .expander-btn { background: none; border: none; cursor: pointer; padding: 0; font-size: 0.75rem; font-weight: 900; color: var(--accent2); text-decoration: underline dotted; text-underline-offset: 2px; }
       .stat-grid { margin-top: 0.75rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; font-size: 0.875rem; }
+      .stat-grid.four { grid-template-columns: repeat(4, 1fr); }
       .stat-cell { border-radius: 16px; border: 1px solid var(--border); background: var(--surface2); padding: 0.5rem 0; }
       .stat-cell .v { font-family: var(--font-display); font-weight: 600; margin: 0; }
       .stat-cell .l { font-size: 11px; font-weight: 700; color: var(--dim); margin: 0; }
@@ -1064,7 +1065,7 @@
        so this one text serves every healer; it renders as a collapsed
        "more" expander inside the skill description so the main desc
        stays clean. Description text only — no numbers changed. */
-    var DUNGEON_HEAL_NOTE = "In dungeons, healing runs on the team's pooled HP instead: the party shares one HP pool, and while a healer stands in the party it mends continuously — a passive trickle of 4.8% of the party's pooled max HP per second × the party's heal multiplier (every healing aura in the party feeds that multiplier, this one included).";
+    var DUNGEON_HEAL_NOTE = "In dungeons, healing runs on the team's pooled HP instead: the party shares one HP pool, and while a healer stands in the party it mends continuously — a passive trickle of 4.8% of the party's pooled max HP per second × the party's heal multiplier (every healing aura in the party feeds that multiplier, this one included), with diminishing returns — each extra healing aura adds less than the last.";
     /* The collapsed-by-default "more" expander that carries a healer's
        dungeon healing basis inside their skill description: a native
        <details> element, so it opens and closes with no JS — the
@@ -4683,7 +4684,7 @@
       60: [
         { name: "The Amulet", icon: "🟣", desc: "passive — once per battle, at 20% HP, the Amulet wakes: Mara takes 30% less damage and gains a shield of 15% of her max HP" },
         { name: "Lullaby", icon: "🌙", desc: "every 10s (quicker as the fight goes on, down to every 7s), two heroes fall asleep for 2s — they cannot act" },
-        { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, she heals 15% of her max HP and the goddess sings with her: her damage +20% for 10s" }
+        { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, she heals 10% of her max HP and the goddess sings with her: her damage +20% for 10s" }
       ],
       65: [
         { name: "Phantom Army", icon: "⚔", desc: "every 12s, illusionary soldiers strike every hero for 25% of the party's average max HP — he can conjure soldiers, but he cannot heal, shield, or buff" },
@@ -10342,10 +10343,11 @@
       var s = save;
       var h = '<div class="card-details" role="region" aria-label="' + esc(def.name) + ' card details" style="margin-top:0.375rem;border-radius:16px;border:2px solid var(--border);background:rgba(27,18,53,0.5);padding:0.75rem;text-align:left">';
       if (o) {
-        h += '<div class="stat-grid">';
+        h += '<div class="stat-grid four">';
         h += '<div class="stat-cell"><p class="v">Lv ' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL</p></div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + Math.round((0.12 + partyMods(s).critBonus) * 100) + '%</p><p class="l">CRIT</p></div>';
         h += "</div>";
         var legLineC = legacyLabel(o); if (legLineC) h += '<p class="small dim" style="margin-top:0.25rem;font-weight:700">' + legLineC + '</p>';
       } else {
@@ -10612,7 +10614,7 @@
         h += '<span class="hcls" style="color:' + hd.color + '">' + esc(classLabel(hd)) + " · " + esc(hd.job) + "</span>";
         if (o) {
           h += '<span class="eff-line" style="' + starTextStyle(effRank(hd, o)) + '">Effective ★' + effRank(hd, o) + (o.asc > 0 ? ' <span class="eff-base">' + hd.stars + "★ base + " + o.asc + " Syn</span>" : "") + "</span>";
-          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps" + heroDotLineHTML(s, hd.id) + "</span>";
+          h += '<span class="hmeta">Lv' + o.level + "/" + maxLevel(hd, o) + " (" + effRank(hd, o) + "★ cap)" + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(hd, o)) + " dps" + " · CRIT " + Math.round((0.12 + partyMods(s).critBonus) * 100) + "%" + heroDotLineHTML(s, hd.id) + "</span>";
           var legLine = legacyLabel(o); if (legLine) h += '<span class="hmeta" style="font-weight:700">' + legLine + '</span>';
           var gearBits = [];
           GEAR_SLOTS.forEach(function (sl) { var gg = equippedGear(hd.id, sl); if (gg) gearBits.push(GEAR_SLOT_ICON[sl] + " " + gg.stars + "★"); });
@@ -10658,7 +10660,7 @@
         h += '<div class="upg-row' + (open ? " selected" : "") + '">';
         h += '<button type="button" class="upg-view" data-upg-toggle="' + def.id + '" aria-expanded="' + open + '" aria-label="' + (open ? "Hide" : "Show") + ' upgrade options for ' + esc(def.name) + '"><span class="upg-face"><img src="' + heroPortrait(def) + '" alt="" width="560" height="1120" loading="lazy" /></span>' +
           '<span class="upg-info"><span class="upg-name">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span>' + (o.asc > 0 ? ' <span style="' + starTextStyle(effRank(def, o)) + ';font-size:12px">Effective ★' + effRank(def, o) + "</span>" : "") + '</span>' +
-          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + " (" + effRank(def, o) + "★ cap)" + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + heroDotLineHTML(s, def.id) + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
+          '<span class="upg-meta" style="display:block">Lv' + o.level + "/" + maxLevel(def, o) + " (" + effRank(def, o) + "★ cap)" + (o.asc > 0 ? " · Syn " + o.asc : "") + (o.dupes > 0 ? " · " + o.dupes + " spare" : "") + " · " + fmt(heroDps(def, o)) + " dps" + " · CRIT " + Math.round((0.12 + partyMods(s).critBonus) * 100) + "%" + heroDotLineHTML(s, def.id) + (inParty ? " · ⚔ in party" : "") + (onQuest ? " · 📜 on quest" : "") + '</span></span>' +
           (onQuest ? '<span class="upg-quest">📜 ON QUEST</span>' : "") +
           '<span class="upg-chev" aria-hidden="true">' + (open ? "▾" : "▸") + "</span></button>";
         h += '<span class="upg-actions">';
@@ -10731,10 +10733,11 @@
           h += '<p class="small" style="margin-top:0.75rem;border-radius:16px;border:1px solid rgba(125,211,252,0.4);background:var(--surface2);padding:0.5rem 0.75rem;font-weight:700;color:#7dd3fc">📜 Away on ' + esc(questById(questRun.questId).name) + " — back in " + fmtClock((questRun.endsAt - Date.now()) / 1000) + ". They can't join the tower party until they return (or recall the quest from the Quests tab).</p>";
         }
         var effD = effRank(def, o);
-        h += '<div class="stat-grid">';
+        h += '<div class="stat-grid four">';
         h += '<div class="stat-cell"><p class="v">' + o.level + '<span class="dim">/' + maxLevel(def, o) + '</span></p><p class="l">LEVEL · ' + effD + '★ CAP</p></div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroDps(def, o)) + '</p><p class="l">DPS</p>' + (function () { var dot = heroDotDps(s, def.id); return dot ? '<p style="font-size:10px;font-weight:900;color:#5eead4">+ ' + fmt(dot.dps) + " " + dot.label + "/s</p>" : ""; })() + '</div>';
         h += '<div class="stat-cell"><p class="v">' + fmt(heroHp(def, o)) + '</p><p class="l">HP</p></div>';
+        h += '<div class="stat-cell"><p class="v">' + Math.round((0.12 + partyMods(s).critBonus) * 100) + '%</p><p class="l">CRIT</p></div>';
         h += "</div>";
         var legLineD = legacyLabel(o); if (legLineD) h += '<p class="small dim" style="margin-top:0.25rem;font-weight:700">' + legLineD + '</p>';
         /* Equipment slots */
@@ -14221,10 +14224,10 @@
        pool every tick, and the Dungeon tab's wave preview and the
        effective-BP survival credit read the same helper, so the three
        can never drift apart. */
-    function dungeonHealPerSec(s) {
+    function dungeonHealPerSec(s) { // healMult enters under a square root (diminishing returns, Nov 23, 2026)
       var hasHealer = s.party.some(function (id) { return s.heroes[id] && isHealerDef(heroById(id)); });
       if (!hasHealer) return 0;
-      return partyMaxHp(s) * 0.012 * 4 * partyMods(s).healMult;
+      return partyMaxHp(s) * 0.012 * 4 * Math.sqrt(partyMods(s).healMult);
     }
     /* The current party's Battle Power (BP): heroPower — a hero's battle
        DPS plus 5% of their HP, gear and synergy included — summed over
@@ -17070,11 +17073,11 @@
           if (tab === "battle" && lullIdxs.length) addFloat("🌙 LULLABY — " + lullIdxs.map(bossFirstName).join(" and ") + (lullIdxs.length > 1 ? " fall" : " falls") + " asleep!", true, 30);
         }
         /* 🎼 Seraphina's Accompaniment (Mara, Floor 60): every 30s she
-           heals 15% of her max HP and the goddess sings with her — her
+           heals 10% of her max HP and the goddess sings with her — her
            damage +20% for 10s (bossPowerMult above). */
         if (f === 60 && bClock >= bossKit.accompNext) {
           bossKit.accompNext += 30;
-          enemyHp = Math.min(bossMaxHp(s, f), enemyHp + bossMaxHp(s, f) * 0.15);
+          enemyHp = Math.min(bossMaxHp(s, f), enemyHp + bossMaxHp(s, f) * 0.10);
           bossKit.accompUntil = bClock + 10;
           if (tab === "battle") addFloat("🎼 SERAPHINA'S ACCOMPANIMENT — she heals, and her damage swells!", true, 30);
         }
