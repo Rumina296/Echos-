@@ -1584,6 +1584,7 @@
         materials: { iron: 0, moon: 0, scale: 0, essence: 0 },
         gearInv: [], equipped: {},
         dungeonDate: null, dungeonRuns: { ember: 0, frost: 0, star: 0 }, dungeonExtra: { ember: 0, frost: 0, star: 0 }, dungeonClears: {},
+        dungeonDiffClears: {}, /* ⏩ per-dungeon-per-difficulty clear counts, keyed `dungeonId:difficulty` — a recorded clear at a dungeon AND difficulty is what unlocks that card's ⏩ SKIP sweep; seeded from dungeonClears' Normal counts in parseSave and stamped on every played or skipped clear */
         redeemedCodes: [],
         redeemedGiftIds: [],
         floorMemory: {},
@@ -2115,6 +2116,33 @@
           });
         }
         merged.dungeonClears = dc;
+        // Migration (Nov 23, 2026): per-dungeon-per-difficulty clear
+        // counts — the record the ⏩ SKIP sweep reads. Older saves have
+        // none: their existing Normal clears (dungeonClears, sanitized
+        // just above) seed the `dungeonId:normal` entries, so a dungeon
+        // already cleared on Normal can be skipped on Normal right away,
+        // while its higher tiers stay unskippable until actually cleared
+        // at those tiers. Sanitize: only real dungeon ids × the four
+        // valid difficulties with whole positive counts survive; a stored
+        // Normal count never drops below the dungeonClears count it was
+        // seeded from.
+        var ddc = {};
+        if (p.dungeonDiffClears && typeof p.dungeonDiffClears === "object") {
+          for (var ddk in p.dungeonDiffClears) {
+            var ddp = ddk.split(":");
+            if (ddp.length !== 2) continue;
+            var ddv = p.dungeonDiffClears[ddk];
+            if (["ember", "frost", "star"].indexOf(ddp[0]) >= 0 && ["normal", "hard", "nightmare", "torment"].indexOf(ddp[1]) >= 0 && typeof ddv === "number" && ddv > 0) {
+              ddc[ddp[0] + ":" + ddp[1]] = Math.floor(ddv);
+            }
+          }
+        }
+        ["ember", "frost", "star"].forEach(function (dk) {
+          var normalCount = dc[dk] || 0;
+          var nkey = dk + ":normal";
+          if (normalCount > 0 && (ddc[nkey] || 0) < normalCount) ddc[nkey] = normalCount;
+        });
+        merged.dungeonDiffClears = ddc;
         // --- Gift codes (added later; older saves get an empty list) ---
         var rc = [];
         if (Array.isArray(p.redeemedCodes)) {
@@ -8169,6 +8197,9 @@
        and pushed the grid down is gone. */
     var cardModalHero = null;
     var dungeonBattle = null;
+    /* Dungeon-only battle speed (1x/2x): the tower loop never reads it;
+       reset to 1x whenever a run starts and when the battle ends/closes. */
+    var dungeonSpeed = 1;
     /* The difficulty picked on each dungeon card for its next run, keyed by
        dungeon id — a plain variable (this copy has no React state); the
        pick survives re-renders until the page reloads, like the forge slot. */
@@ -9534,6 +9565,9 @@
         var runDiff = dungeonDifficultyDef(dungeonBattle.diff || "normal");
         h += '<div class="anime-card mt4 card-pad dungeon-battle" aria-label="Dungeon battle in progress">';
         h += '<div class="panel-head"><h3>' + dg0.icon + " " + esc(dg0.name) + ' — Wave <span id="dg-wave">' + dungeonBattle.wave + "/" + dungeonBattle.waves + "</span>" + (runDiff.id !== "normal" ? ' · <span style="color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label).toUpperCase() + " ×" + runDiff.mult + "</span>" : "") + '</h3><p class="xs bold dim" style="margin:0">Auto-battle · your party fights on its own</p></div>';
+        if (dungeonBattle.status === "fighting") {
+          h += '<button type="button" class="btn-pill anime-btn-sky" id="dg-speed-toggle" style="margin-top:0.5rem" aria-pressed="' + (dungeonSpeed === 2) + '" aria-label="' + (dungeonSpeed === 2 ? "Dungeon battle speed is 2x — tap to return to 1x" : "Speed up the dungeon battle to 2x") + '">' + (dungeonSpeed === 2 ? "⏩ 2x — tap for 1x" : "▶ 1x — tap for 2x") + "</button>";
+        }
         if (runDiff.id !== "normal") h += '<p class="xs" style="margin-top:0.375rem;font-weight:900;color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label) + " difficulty — rewards ×" + dungeonRewardMultText(runDiff.rewardMult) + ", with the luck roll applied on top</p>";
         h += '<div class="battlefield"><div id="dg-shots-layer" class="shots-layer"></div><div class="bf-row"><ul class="party-row" aria-label="Your party">';
         s.party.forEach(function (id, idx) {
@@ -9645,13 +9679,21 @@
         } else {
           h += '<p class="xs bold dim" style="margin-top:0.5rem">Runs left today: ' + left + " / " + allowed + "</p>";
           h += '<button type="button" class="btn-pill anime-btn-primary" data-dungeon-run="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (left <= 0 || dungeonBattle ? "disabled" : "") + ' aria-label="' + (left <= 0 ? esc(dg.name) + ": no runs left today" : "Enter " + esc(dg.name) + " on " + esc(selDiff.label) + " difficulty — " + left + " of " + allowed + " runs left today") + '">' + (dungeonBattle ? "⚔ Party is delving…" : left <= 0 ? "🌙 No runs left today" : "▶ ENTER " + esc(selDiff.label).toUpperCase() + " — " + left + "/" + allowed + " runs left today") + "</button>";
+          /* ⏩ SKIP sweep: enabled only when this dungeon has actually
+             been cleared at the SELECTED difficulty (dungeonDiffClears),
+             that difficulty is unlocked, and a daily run remains — the
+             disabled label always says which requirement is missing. */
+          var diffUnlocked = dungeonDifficultyUnlocked(selDiff.id, s, dg.id);
+          var diffCleared = ((s.dungeonDiffClears || {})[dg.id + ":" + selDiff.id] || 0) > 0;
+          var skipDisabled = !diffUnlocked || !diffCleared || left <= 0 || dungeonBattle;
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-dungeon-skip="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (skipDisabled ? "disabled" : "") + ' aria-label="' + (dungeonBattle ? esc(dg.name) + ": a run is already underway" : !diffUnlocked ? "Skip " + esc(dg.name) + " on " + esc(selDiff.label) + " — locked: " + esc(dungeonDifficultyLockReason(selDiff.id, dg.name)) : !diffCleared ? "Skip " + esc(dg.name) + " on " + esc(selDiff.label) + " — locked: clear " + esc(dg.name) + " on " + esc(selDiff.label) + " once first" : left <= 0 ? esc(dg.name) + ": no runs left today" : "Skip " + esc(dg.name) + " on " + esc(selDiff.label) + " — instant clear for one daily run, same rewards as a played clear (" + left + " of " + allowed + " runs left today)") + '">' + (dungeonBattle ? "⏩ SKIP — party is delving…" : !diffUnlocked ? "⏩ SKIP — " + esc(selDiff.label) + " is locked" : !diffCleared ? "⏩ SKIP — clear " + esc(dg.name) + " on " + esc(selDiff.label) + " first" : left <= 0 ? "⏩ SKIP · 🌙 No runs left today" : "⏩ SKIP " + esc(selDiff.label).toUpperCase() + " — instant clear") + "</button>";
           h += '<button type="button" class="btn-pill anime-btn-gold" data-dungeon-extra="' + dg.id + '" style="margin-top:0.5rem;width:100%" ' + (extraLeft <= 0 || !canAffordExtra || dungeonBattle ? "disabled" : "") + ' aria-label="' + (extraLeft <= 0 ? esc(dg.name) + ": all " + DUNGEON_EXTRA_RUNS_PER_DAY + " extra runs bought today" : !canAffordExtra ? "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, not enough gems (you hold " + s.gems.toLocaleString("en-US") + ")" : "Buy extra run for " + esc(dg.name) + " — " + extraPrice.toLocaleString("en-US") + " gems, " + extraLeft + " left today") + '">' + (extraLeft <= 0 ? "🎟️ Extra runs maxed today" : "🎟️ Buy extra run — " + extraPrice.toLocaleString("en-US") + "💎 (" + extraLeft + " left)") + "</button>";
           h += '<p class="xs bold dim center" style="margin-top:0.375rem">' + (extraPurchased > 0 ? extraPurchased + " extra run" + (extraPurchased === 1 ? "" : "s") + " bought today · " : "") + "You hold " + s.gems.toLocaleString("en-US") + "💎" + (extraLeft > 0 && !canAffordExtra ? " · need " + (extraPrice - s.gems).toLocaleString("en-US") + " more for an extra run" : "") + "</p>";
         }
         h += "</div>";
       });
       h += "</div>";
-      h += expanderHTML("dungeons", "How dungeons work", '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×4.75, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×5.5, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×6.5, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems are pinned per tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment) and never scale with the enemy multiplier, every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>', "0.5rem");
+      h += expanderHTML("dungeons", "How dungeons work", '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Each dungeon allows 3 free runs per day (they reset at midnight). You can also buy up to 3 extra runs per dungeon per day with gems — Ember Caverns 1,000💎, Frostwood Depths 2,000💎, Starlight Abyss 5,000💎 per extra run — and extra runs reset at midnight too. Once you\'ve cleared a dungeon on a difficulty, its card gains a ⏩ SKIP button: skipping spends one of the same daily runs and pays exactly the same rewards as a played clear at that difficulty — same drops, gold, and luck roll — with no battle to sit through; and during a played run, the 2x toggle in the battle header doubles the battle speed whenever you want the fight itself over faster. Each card also lets you pick the difficulty of your next run — <span class="bold" style="color:var(--text)">Normal</span> (the standard delve), <span class="bold" style="color:var(--text)">Hard</span> (enemy HP &amp; attack ×4.75, material, gold &amp; gem rewards ×1.5 — locked for each dungeon until you clear that dungeon on Normal once), <span class="bold" style="color:var(--text)">Nightmare</span> (enemies ×5.5, rewards ×2.25 — locked until your highest stage reaches Floor 60) or <span class="bold" style="color:var(--text)">Torment</span> (enemies ×6.5, rewards ×3.4 — locked until your highest stage reaches Floor 70) — rewards step up ×1.5 per tier rather than matching the foes; the luck roll still applies on top of the multiplied rewards, and jackpot gems are pinned per tier (5 on Normal, 8 on Hard, 15 on Nightmare, 20 on Torment) and never scale with the enemy multiplier, every difficulty spends one of the same shared daily runs (extra runs cost the same gems at any difficulty), and each card\'s recommended BP, drops, and wave damage follow the difficulty you\'ve picked. Your current party delves as-is — gear, skills, synergies and damage-over-time all count. Durnan\'s Warlord\'s Roar, Amara\'s Pearlescent Aegis, and Mari\'s Second Act all work down here too, on their hero\'s every 5th attack in a wave — the roar lifts party damage +25% for 5s, the aegis mends 2% of max HP, and the second act keeps building toward +30%. Every clear rolls its luck: Unlucky haul ' + LUCK_INFO.unlucky.odds + ' (half materials &amp; gold) · Normal haul ' + LUCK_INFO.normal.odds + ' · Lucky haul ' + LUCK_INFO.lucky.odds + ' (+50% materials &amp; gold) · Jackpot ' + LUCK_INFO.jackpot.odds + ' (double materials &amp; gold, +' + JACKPOT_GEMS + '💎) — hauls are tuned so the long-run average stays about the same; the swing is the fun. Each card also shows a <span class="bold" style="color:var(--text)">recommended BP</span> beside your current party\'s <span class="bold" style="color:var(--text)">effective BP</span>, with a bar and a percentage of the recommendation. The recommendation is priced from that dungeon\'s own waves for the party that actually clears them — one that brings a healer and crowd control: enough damage to bring every wave down in about 12 seconds apiece, with the foe held fast most of the run and the healer\'s mending counted, and still HP to spare at the end. Your party\'s number is priced on that same basis, so the comparison is apples-to-apples: its damage counts hits and damage-over-time together (party damage auras included), expressed on the recommendation\'s hit scale, and its HP is credited for your own healer trickle and holds — up to the reference party\'s rates (the standard trickle, 80% hold coverage) — so a healer or control party reads as strong as it plays instead of weaker on paper. Healing and holds beyond those rates, shields, lifesteal, and the Roar / Aegis / Second Act windows still only make a real run kinder than the number. It is always the party you have right now — swap the team and every card\'s number, bar, and percentage move with it. A party with no healer and no holds will want noticeably more raw power than the number; treat it as a comfortable target, not a hard gate. (The quest board prices plain Battle Power instead — every hero\'s battle DPS plus 5% of their HP.)</p>', "0.5rem");
 
       } /* end dungeon view */
       if (dungeonTab === "forge") {
@@ -10032,6 +10074,7 @@
       if (dungeonTimer) { window.clearInterval(dungeonTimer); dungeonTimer = null; }
       if (forgeTimer) { window.clearInterval(forgeTimer); forgeTimer = null; }
       dungeonBattle = null;
+      dungeonSpeed = 1;
       forgeGame = null;
       lastDungeonReward = null;
       lastDungeonLuck = null;
@@ -11394,6 +11437,9 @@
       main.querySelectorAll("[data-dungeon-run]").forEach(function (el) {
         el.addEventListener("click", function () { startDungeonRun(el.getAttribute("data-dungeon-run")); });
       });
+      main.querySelectorAll("[data-dungeon-skip]").forEach(function (el) {
+        el.addEventListener("click", function () { skipDungeon(el.getAttribute("data-dungeon-skip")); });
+      });
       main.querySelectorAll("[data-dungeon-diff]").forEach(function (el) {
         el.addEventListener("click", function () {
           var parts = el.getAttribute("data-dungeon-diff").split(":");
@@ -11426,6 +11472,8 @@
       main.querySelectorAll("[data-quest-collect]").forEach(function (el) {
         el.addEventListener("click", function () { collectQuest(el.getAttribute("data-quest-collect")); });
       });
+      var dgSpeed = document.getElementById("dg-speed-toggle");
+      if (dgSpeed) dgSpeed.addEventListener("click", function () { dungeonSpeed = dungeonSpeed === 2 ? 1 : 2; renderMain(); });
       var dgOk = document.getElementById("dg-reward-ok");
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
       var dgLost = document.getElementById("dg-lost-ok");
@@ -14535,12 +14583,84 @@
          no per-hero HP, no fallen heroes, no revives — the tower's
          split-HP state does not live on this object. */
       dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), partyHp: partyMaxHp(save), shield: 0, status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
+      dungeonSpeed = 1;
       lastDungeonReward = null;
       lastDungeonLuck = null;
       lastDungeonLost = null;
       renderMain();
       if (dungeonTimer) window.clearInterval(dungeonTimer);
       dungeonTimer = window.setInterval(dungeonTick, 120);
+    }
+    /* ⏩ SKIP (sweep): an instant clear of a dungeon at a difficulty the
+       player has ALREADY cleared there (dungeonDiffClears). Mirrors
+       startDungeonRun's guards exactly — tower-floor lock, difficulty
+       gate, daily runs left — plus the recorded-clear requirement, then
+       consumes exactly one daily run and rolls the clear exactly as
+       finishDungeonRun does (same reward-multiplier fold-in, same luck
+       roll, same pinned jackpot gems), landing on the same "Dungeon
+       cleared!" spoils card. No battle plays. No Grave Tithe feed — no
+       wave kills happened. */
+    function skipDungeon(dgId) {
+      if (dungeonBattle && dungeonBattle.status === "fighting") return;
+      normalizeDungeon();
+      var dg = dungeonById(dgId);
+      if (save.floor < dg.unlock) { setNotice("🔒 " + dg.name + " unlocks at Tower Floor " + dg.unlock + "."); return; }
+      var diff = dungeonDiffSel[dgId] || "normal";
+      if (!dungeonDifficultyUnlocked(diff, save, dgId)) {
+        setNotice(diff === "hard"
+          ? "🔒 " + dungeonDifficultyDef(diff).label + " is sealed for " + dg.name + " — " + dungeonDifficultyLockReason(diff, dg.name) + " (no Normal clear here yet)."
+          : "🔒 " + dungeonDifficultyDef(diff).label + " is sealed — " + dungeonDifficultyLockReason(diff, dg.name) + " (you're at Floor " + save.floor + ").");
+        return;
+      }
+      if (((save.dungeonDiffClears || {})[dgId + ":" + diff] || 0) <= 0) {
+        setNotice("⏩ " + dg.name + " can't be skipped on " + dungeonDifficultyDef(diff).label + " yet — clear it on " + dungeonDifficultyDef(diff).label + " once first, then the depths will let you sweep it.");
+        return;
+      }
+      var usedRuns = (save.dungeonRuns[dgId] || 0);
+      var allowedRuns = dungeonRunsAllowed(save, dgId);
+      if (usedRuns >= allowedRuns) {
+        var extraLeftNow = dungeonExtraLeft(save, dgId);
+        setNotice(extraLeftNow > 0
+          ? "🌙 " + dg.name + " has used all " + allowedRuns + " of today's runs — buy an extra run below for " + dungeonExtraPrice(dgId).toLocaleString("en-US") + "💎 (" + extraLeftNow + " left to buy today), or come back tomorrow!"
+          : "🌙 " + dg.name + " is exhausted for today — " + allowedRuns + " runs a day (including every extra run), and the depths need their rest. Come back tomorrow!");
+        return;
+      }
+      /* Charge exactly one run, exactly as startDungeonRun does. */
+      var chargedSave = JSON.parse(JSON.stringify(save));
+      if (!chargedSave.dungeonRuns) chargedSave.dungeonRuns = { ember: 0, frost: 0, star: 0 };
+      chargedSave.dungeonRuns[dgId] = usedRuns + 1;
+      persist(chargedSave);
+      writeSave();
+      /* Roll the clear exactly as finishDungeonRun does: the reward
+         multiplier folds into the base first, the luck roll applies on
+         top, and jackpot gems stay pinned per difficulty. */
+      var runDiff = dungeonDifficultyDef(diff);
+      var luck = rollLuckTier();
+      var drops = dungeonDrops(dgId, luck, runDiff.rewardMult);
+      var luckGold = Math.round(dg.gold * runDiff.rewardMult * LUCK_INFO[luck].mult);
+      var luckGems = luck === "jackpot" ? runDiff.jackpotGems : 0;
+      var next = JSON.parse(JSON.stringify(save));
+      if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
+      for (var k in drops) next.materials[k] = (next.materials[k] || 0) + drops[k];
+      next.gold = (next.gold || 0) + luckGold;
+      next.gems = (next.gems || 0) + luckGems;
+      /* A skipped clear records exactly like a played one: a Normal skip
+         still counts toward dungeonClears (Hard's gate reads it), and
+         the per-difficulty record grows either way. */
+      if (diff === "normal") {
+        if (!next.dungeonClears) next.dungeonClears = {};
+        next.dungeonClears[dgId] = (next.dungeonClears[dgId] || 0) + 1;
+      }
+      if (!next.dungeonDiffClears) next.dungeonDiffClears = {};
+      next.dungeonDiffClears[dgId + ":" + diff] = (next.dungeonDiffClears[dgId + ":" + diff] || 0) + 1;
+      persist(next);
+      writeSave();
+      dungeonSpeed = 1;
+      lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
+      lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
+      lastDungeonLost = null;
+      playClearSfx();
+      renderMain();
     }
     /* Buy one extra run of a dungeon for gems: +1 to today's allowed runs
        for that dungeon only, capped at 3 extra per dungeon per day. The
@@ -14574,7 +14694,9 @@
     function dungeonTick() {
       if (!dungeonBattle || !save || dungeonBattle.status !== "fighting") { if (dungeonTimer) window.clearInterval(dungeonTimer); dungeonTimer = null; return; }
       var now = performance.now();
-      var dt = Math.min(1.5, (now - dungeonBattle.lastTick) / 1000);
+      /* The capped real dt is multiplied by the dungeon speed AFTER the
+         1.5s cap, so 2x truly doubles the fight's pace. */
+      var dt = Math.min(1.5, (now - dungeonBattle.lastTick) / 1000) * dungeonSpeed;
       dungeonBattle.lastTick = now;
       var dg = dungeonById(dungeonBattle.dungeonId);
       var s = save;
@@ -14992,6 +15114,7 @@
         dungeonTimer = null;
         lastDungeonLost = dg.name;
         dungeonBattle = null;
+        dungeonSpeed = 1;
         renderMain();
         return;
       } else if (dungeonBattle.enemyHp <= 0) {
@@ -15036,6 +15159,7 @@
       var dg = dungeonById(dgId);
       var runDiff = dungeonDifficultyDef(dungeonBattle.diff || "normal");
       dungeonBattle = null;
+      dungeonSpeed = 1;
       /* 🍀 The run's luck is rolled once, here at the clear: it scales
          every material line and the gold together, and a Jackpot adds
          its gem bonus on top. (The run itself was already charged when
@@ -15065,6 +15189,10 @@
         if (!next.dungeonClears) next.dungeonClears = {};
         next.dungeonClears[dgId] = (next.dungeonClears[dgId] || 0) + 1;
       }
+      /* ⏩ Every played clear also stamps the per-difficulty record —
+         this is what unlocks that dungeon + difficulty's SKIP sweep. */
+      if (!next.dungeonDiffClears) next.dungeonDiffClears = {};
+      next.dungeonDiffClears[dgId + ":" + runDiff.id] = (next.dungeonDiffClears[dgId + ":" + runDiff.id] || 0) + 1;
       lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
       lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
       persist(next);
