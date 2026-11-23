@@ -236,11 +236,20 @@
         100% { opacity: 0; transform: translateX(120%) scaleY(0.9) rotate(0deg); }
       }
       .anim-wave-crash { animation: wave-crash 0.9s ease-out forwards; }
+      /* The tutorial screen (run 1 → run 2 only): the one line fades up out
+         of the black slowly, and the way onward fades in later still —
+         a held silence, not a flourish. (Mirrors main theme.css.) */
+      @keyframes tutorial-fade {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .anim-tutorial-fade { animation: tutorial-fade 2.2s ease-out both; }
+      .anim-tutorial-fade-late { animation: tutorial-fade 1.4s ease-out both; }
       .wave-crash-span { position: absolute; left: 50%; top: 33%; z-index: 20; white-space: nowrap; font-size: 3rem; pointer-events: none; text-shadow: 0 0 18px rgba(45,212,191,0.9); }
       .timestop-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f59e0b, #fbbf24); color: #451a03; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(251,191,36,0.65); }
       .silence-badge { margin: 0.375rem 0 0; display: inline-block; border-radius: 999px; background: linear-gradient(92deg, #f472b6, #ec4899); color: #500724; padding: 0.25rem 0.625rem; font-size: 11px; font-weight: 900; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(244,114,182,0.65); }
       @media (prefers-reduced-motion: reduce) {
-        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl, .anim-wave-crash, .anim-unmaking-breathe, .anim-unmaking-lean, .anim-unmaking-flinch, .anim-ribbon-drift, .anim-town-wander, .anim-town-step { animation: none; }
+        .anim-float-dmg, .anim-summon-pop, .anim-bob, .anim-glow, .anim-lunge, .anim-lunge-l, .anim-hitshake, .anim-proj, .anim-spark, .anim-twinkle, .anim-wiggle, .anim-proj-v, .anim-cast, .cast-swirl, .anim-wave-crash, .anim-unmaking-breathe, .anim-unmaking-lean, .anim-unmaking-flinch, .anim-ribbon-drift, .anim-town-wander, .anim-town-step, .anim-tutorial-fade, .anim-tutorial-fade-late { animation: none; }
       }
 
       /* ---------- layout ---------- */
@@ -1573,6 +1582,8 @@
         floorMemory: {},
         run: 1,
         heirloom: null,
+        heirloomSwapDecided: false, /* 🏺 one-time swap (Nov 23, 2026): an existing run-2+ save with a sub-7★ heirloom sealed under the OLD rule is offered ONE trade — the sealed piece for the tower's random 7★. Taking it OR declining it sets this true forever (carried across run resets); while false and the heirloom is sub-7★, the offer stands in the sealed-relic card */
+        runStartResetMigrated: false, /* 🔁 one-time migration stamp (Nov 23, 2026): the run-start resets (daily-login stamp + built-in redeem codes) have been applied to this save — set by doRunReset at every run start, and by the one-time load migration in init for saves already in run 2+ when the rule landed; while false on a run-2+ save, the load migration still owes it its one reset */
         /* ---- Run 2 system, Phase 1 (ported from main) ---- */
         bossFates: {}, bossKind: {}, dialogueLog: [], kindChoices: 0,
         legacyBonus: {},
@@ -1640,6 +1651,11 @@
         } else {
           merged.heirloom = null;
         }
+        /* Migration stamps (Nov 23, 2026): older saves predate both flags —
+           the heirloom swap is still on offer to them, and the one-time
+           run-start-reset migration is still owed to run-2+ saves. */
+        merged.heirloomSwapDecided = merged.heirloomSwapDecided === true;
+        merged.runStartResetMigrated = merged.runStartResetMigrated === true;
         /* Run 2, Phase 1: sanitize the run-2 records. Fates survive only
            for real run-2 bosses with a real verdict; the dialogue log keeps
            only well-formed entries, capped at the last 100; pendingEnding
@@ -3073,6 +3089,33 @@
     }
     /* The sealed heirloom from the previous run opens when the new climb reaches this floor. The number is deliberately NEVER shown in the UI — the seal simply breaks when it breaks. */
     var HEIRLOOM_UNLOCK_FLOOR = 50;
+    /* The natural 7★ heroes — the only heroes a 7★ piece can be fated for
+       when the tower itself grants one (see randomSevenStarHeirloom). */
+    var NATURAL_SEVEN_HERO_IDS = ["luna", "aurelia", "aldric"];
+    /* 🏺 The heirloom upgrade (Rachel's call, Nov 23, 2026): when a finished
+       run's strongest piece falls short of 7★, the tower answers with a 7★
+       of its own INSTEAD — a real forge-grade piece (Starlight set, exactly
+       what a flawless Starlight forge makes), in a random slot, fated to a
+       random natural 7★ hero (Luna, Aurelia Vey, or Aldric). It REPLACES the
+       sub-7★ heirloom: the one-heirloom rule stands, so exactly one piece is
+       ever sealed, and in this case that piece is this one. It is kept for
+       good once it unseals at Floor 50, like any heirloom. A genuine 7★
+       strongest piece is sealed untouched and never reaches this helper. */
+    /* 🏺 The one-time swap's gate (Rachel, Nov 23, 2026): an existing
+       run-2+ save whose sealed heirloom is a sub-7★ piece sealed under
+       the old rule — and which has never been offered the decision — may
+       trade it once for the tower's random 7★. A save whose heirloom was
+       sealed by the current rule already holds a 7★ (or a genuine one),
+       so it never qualifies; taking OR declining the offer stamps
+       heirloomSwapDecided and the gate closes forever. */
+    function heirloomSwapEligible(s) {
+      return (s.run || 1) >= 2 && !!s.heirloom && s.heirloom.stars < 7 && !s.heirloomSwapDecided;
+    }
+    function randomSevenStarHeirloom() {
+      var slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)] || "weapon";
+      var fatedHero = NATURAL_SEVEN_HERO_IDS[Math.floor(Math.random() * NATURAL_SEVEN_HERO_IDS.length)] || "luna";
+      return { uid: gearUidNew(), slot: slot, stars: 7, recipe: "essence", fatedHero: fatedHero };
+    }
     /* Gear grows with its wearer: a weapon's ATK bonus and an armor's HP
        bonus multiply by (1 + wearer level / 100) — ×1.6 at Lv 60, ×2.2 at
        Lv 120 — so a piece keeps pace as its hero climbs instead of fading
@@ -5870,16 +5913,37 @@
        gold and gems return to their starting amounts, materials, gear,
        pity, dungeons, quests, Tower Memory and the Grave Tithe all wipe.
        What carries over: the run counter (+1), the run's single strongest
-       gear piece sealed as the heirloom, the account-level record of
-       redeem/gift codes already claimed, today's daily-login claim stamp,
-       and — run 2's ledger — the dialogue log, the kind-word count, the
-       shards, the remembered damage on the Unmaking, the protect-ending
-       count, the First Echo's companionship, and the hidden route's
-       lifetime redemption ledger. Run 2+ also grants Luna at Lv 1, from
-       Floor 1, remembering. */
+       gear piece sealed as the heirloom (or, when that piece falls short
+       of 7★, the tower's random 7★ sealed in its place — see
+       randomSevenStarHeirloom), the account-level record of gift codes
+       already claimed, and — run 2's ledger — the dialogue log, the
+       kind-word count, the shards, the remembered damage on the
+       Unmaking, the protect-ending count, the First Echo's companionship,
+       and the hidden route's lifetime redemption ledger. Run 2+ also
+       grants Luna at Lv 1, from Floor 1, remembering.
+       RUN-START RESETS (Rachel, Nov 23, 2026): two things that used to
+       carry over now restart with the run — the daily-login claim stamp
+       clears (the free daily 10-pull is claimable again right away in
+       the new run), and the built-in redeem codes reset (the save's
+       claimed list empties AND the once-per-browser store is cleared
+       here, at the run start, so WELCOME / MOONLIGHT / ECHORIA100 /
+       ECHORIA1M / ECHORIA5M / ECHORIA100SUMMONS can each be claimed
+       once in the new run). Friend gift codes are NOT part of this:
+       redeemedGiftIds carries over untouched, so an ECHOGIFT stays
+       single-use forever. FORWARD-ONLY: all of this fires here, at a
+       run start — an account already mid-run keeps its stamp and its
+       claimed codes until its next run begins; nothing on load resets
+       them. Start Over never passes through here, so the browser
+       store's anti-farming wall stands exactly where it was built. */
     function doRunReset(s, opts) {
       opts = opts || {};
       var runHeir = strongestGearPiece(s.gearInv);
+      // 🏺 Heirloom upgrade (Rachel's call, Nov 23, 2026): a strongest piece
+      // short of 7★ is NOT sealed — the tower's random 7★ takes its place as
+      // the one sealed piece (see randomSevenStarHeirloom). A genuine 7★
+      // strongest piece seals exactly as before, and a run with no gear at
+      // all still seals nothing.
+      var sealedHeirloom = !runHeir ? null : runHeir.stars >= 7 ? JSON.parse(JSON.stringify(runHeir)) : randomSevenStarHeirloom();
       var freshRun = freshSave(Date.now());
       var startRank = Math.random() < 0.5 ? 3 : 4;
       var runStartHero = rollHero(startRank);
@@ -5910,10 +5974,23 @@
       freshRun.starterSeen = true;
       freshRun.run = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1) + 1;
       freshRun.legacyBonus = legacyBonus;
-      freshRun.heirloom = runHeir ? JSON.parse(JSON.stringify(runHeir)) : null;
-      freshRun.redeemedCodes = (s.redeemedCodes || []).slice();
+      freshRun.heirloom = sealedHeirloom;
+      freshRun.heirloomSwapDecided = s.heirloomSwapDecided === true;
+      /* 🔁 RUN-START RESETS (Rachel, Nov 23, 2026; see the header above):
+         the built-in redeem codes reset and the daily login restarts
+         with the new run. The browser store is cleared in this function
+         just below, so the codes are genuinely claimable again. */
+      freshRun.redeemedCodes = [];
+      freshRun.runStartResetMigrated = true;
+      /* 🚫 BOUNDARY: friend gift codes do NOT reset — the claimed-gift
+         record carries over untouched, so an ECHOGIFT stays single-use. */
       freshRun.redeemedGiftIds = (s.redeemedGiftIds || []).slice();
-      freshRun.dailyLastClaim = s.dailyLastClaim;
+      freshRun.dailyLastClaim = null;
+      /* 🔁 The redeem-code reset's browser half (see the header above):
+         the once-per-browser store empties as the new run begins. This
+         function is the single choke point every run start passes
+         through, so the clear can never be missed by an ending path. */
+      clearBrowserClaimedCodes();
       freshRun.dialogueLog = (s.dialogueLog || []).slice(-100);
       freshRun.kindChoices = s.kindChoices || 0;
       freshRun.unmakingShards = (s.unmakingShards || 0) + (opts.shard ? 1 : 0);
@@ -5953,6 +6030,34 @@
       heroHps = heroMaxHpList(next);
       persist(next);
       if (typeof tab !== "undefined" && tab === "battle") renderMain();
+    }
+    /* 🏺 The one-time heirloom swap, taken: the sealed sub-7★ relic is
+       surrendered unopened and the tower's random 7★ is sealed in its
+       place — same piece the forward rule grants at a reset, same
+       Floor-50 unseal through the standing paths. The decision stamp
+       lands in the same write, so the offer can never be taken twice. */
+    function acceptHeirloomSwap() {
+      var s = save;
+      if (!s || !heirloomSwapEligible(s)) return;
+      var next = JSON.parse(JSON.stringify(s));
+      next.heirloom = randomSevenStarHeirloom();
+      next.heirloomSwapDecided = true;
+      persist(next);
+      writeSave();
+      setNotice("🌀 The trade is made. The old relic is gone — unopened, unmourned — and the seal closes over something new: a 7★ piece, fated to one of the three born at the tower's peak. What form it takes, the seal will say when it breaks. The offer will not come again.");
+      renderMain();
+    }
+    /* 🏺 The one-time heirloom swap, declined: the relic stays exactly
+       as it was — and the offer, made once, is spent all the same. */
+    function declineHeirloomSwap() {
+      var s = save;
+      if (!s || !heirloomSwapEligible(s)) return;
+      var next = JSON.parse(JSON.stringify(s));
+      next.heirloomSwapDecided = true;
+      persist(next);
+      writeSave();
+      setNotice("🗝️ You turn the tower's offer away. Your relic sleeps on, exactly as it was — and the offer, made once, will not be made again.");
+      renderMain();
     }
     /* ------- The save / kill verdict (main resolveSave) ------- One
        chance per boss per round, spent either way: killing records the
@@ -7704,6 +7809,9 @@
     var saveScene = null; /* run-2 boss id whose SAVE/KILL scene is open, or null */
     var saveRefused = false; /* an unmatched line in the save scene blocks SAVE for this opening */
     var tragedyStep = 0; /* run-1 tragedy modal: 0 = the reveal, 1 = the shard */
+    var tutorialScreen = false; /* 🕯 THE TUTORIAL SCREEN (Rachel, Nov 23, 2026): once, at the very end of run 1 — after the tragedy's forced loss has played out, before the reset into run 2 — a stark black screen bearing one line: "Congratulations on passing the tutorial." Ominous, never celebratory: no color, no fanfare, no ornament. Session-only state, reachable only from the tragedy's last step, and the tragedy exists only in run 1 — so this screen can never appear at any other run transition. */
+    var tutorialReady = false; /* the way onward arms only after a beat of silence (~2.6s): the line is left to sit in the dark before the player can continue into run 2. */
+    var tutorialTimer = null;
     var theEndDismissed = false; /* 🌅 THE END page: shown whenever the story is complete until the player steps past it into their world; the Tower tab can re-open it. Session-only — the save's storyComplete flag is what persists */
     var unwindingQueue = []; /* heroes waiting to step in, strongest first */
     var unwindingWave = 1;
@@ -8943,7 +9051,17 @@
       h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell prices: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667 · 👑 7★ can never be sold</p></div>';
       h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
       if (s.heirloom) {
-        h += '<div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.75rem;border-radius:16px;border:2px dashed rgba(167,139,250,0.55);background:rgba(167,139,250,0.08);padding:0.75rem" role="region" aria-label="Sealed relic — contents unknown"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:rgba(167,139,250,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#c4b5fd">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">Something from a climb half-remembered sleeps inside, sealed tight. It cannot be equipped, sold, or pried open — the tower will decide when, or whether, it wakes.</span></span><span style="font-size:1.5rem" aria-hidden="true">🗝️</span></div>';
+        h += '<div style="margin-top:0.75rem;border-radius:16px;border:2px dashed rgba(167,139,250,0.55);background:rgba(167,139,250,0.08);padding:0.75rem" role="region" aria-label="Sealed relic — contents unknown">';
+        h += '<div style="display:flex;align-items:center;gap:0.75rem"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:rgba(167,139,250,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#c4b5fd">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">Something from a climb half-remembered sleeps inside, sealed tight. It cannot be equipped, sold, or pried open — the tower will decide when, or whether, it wakes.</span></span><span style="font-size:1.5rem" aria-hidden="true">🗝️</span></div>';
+        if (heirloomSwapEligible(s)) {
+          h += '<div style="margin-top:0.75rem;border-top:1px solid rgba(167,139,250,0.27);padding-top:0.75rem">';
+          h += '<p style="margin:0;font-size:11px;font-weight:700;color:var(--dim)">🌀 <span style="color:var(--text)">The tower makes an offer — once.</span> Surrender the sealed relic, unopened, and the tower will seal a 7★ piece in its place: fated to Luna, Aurelia Vey, or Aldric, in a form of the tower\'s choosing. Or keep what sleeps here. Either answer is final — the offer comes one time only, and once answered it never returns.</p>';
+          h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.5rem">';
+          h += '<button type="button" class="btn-pill anime-btn-primary" data-heirloom-swap="accept" aria-label="Accept the tower\'s trade — surrender the sealed relic for a random 7-star piece fated to Luna, Aurelia Vey, or Aldric">🌀 ACCEPT THE TRADE</button>';
+          h += '<button type="button" class="btn-pill" data-heirloom-swap="decline" aria-label="Decline the tower\'s trade — keep the sealed relic exactly as it is">Keep my relic</button>';
+          h += '</div></div>';
+        }
+        h += '</div>';
       }
       /* ---- Combine mode toggle + gear sort ---- */
       h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
@@ -9575,6 +9693,12 @@
        load or a redeemed gift — replacing the local one wholesale. */
     function applyLoadedSave(res) {
       var imp = res.save;
+      /* 🔁 One-time run-start-reset migration (see
+         applyRunStartResetMigration): a run-2+ save that has never had
+         the resets applied gets its one reset here, on load — the same
+         rule as the first load, so a cloud load or a redeemed gift's
+         snapshot is owed the reset just the same. */
+      applyRunStartResetMigration(imp);
       /* 🛍️ Shop daily state rolls fresh for today on a loaded save too
          (same lazy midnight reset as the first load). */
       imp = ensureShopTodayAll(imp, Date.now());
@@ -9693,6 +9817,36 @@
         if (!Array.isArray(arr)) return [];
         return arr.filter(function (c) { return typeof c === "string"; });
       } catch (e) { return []; }
+    }
+    /* Empties the persistent browser store. Called from exactly two
+       places, both of them run-start events (Rachel, Nov 23, 2026):
+       doRunReset, when a new run begins, and the one-time load
+       migration in init / applyLoadedSave for saves already in run 2+
+       when the run-start resets landed. Nothing else ever clears it —
+       Start Over in particular never reaches either place, so the
+       anti-farming wall stands. */
+    function clearBrowserClaimedCodes() {
+      try { localStorage.removeItem(BROWSER_REDEEM_KEY); } catch (e) { /* see browserClaimedCodes */ }
+    }
+    /* 🔁 ONE-TIME MIGRATION (Rachel, Nov 23, 2026): a save already in
+       run 2 OR LATER that has never had the run-start resets applied
+       gets them once, here on load — the daily-login stamp clears and
+       the built-in redeem codes reset (save list AND browser store),
+       so the account does not have to wait for its next run start.
+       Scope is run >= 2, not exactly run 2: a run-3 account passed its
+       run-2 start before the rule existed and is owed the reset just
+       the same. The runStartResetMigrated stamp makes it fire exactly
+       once per save; doRunReset stamps every new run it creates, so a
+       save born from a reset never re-fires this. Friend gift codes
+       are untouched: redeemedGiftIds is not read or written here. */
+    function applyRunStartResetMigration(loaded) {
+      if ((loaded.run || 1) >= 2 && !loaded.runStartResetMigrated) {
+        loaded.dailyLastClaim = null;
+        loaded.redeemedCodes = [];
+        loaded.runStartResetMigrated = true;
+        clearBrowserClaimedCodes();
+      }
+      return loaded;
     }
     function recordBrowserClaimedCode(code) {
       try {
@@ -10815,6 +10969,12 @@
       });
       main.querySelectorAll("[data-unequip-hero]").forEach(function (el) {
         el.addEventListener("click", function () { unequipGear(el.getAttribute("data-unequip-hero"), el.getAttribute("data-unequip-slot")); });
+      });
+      main.querySelectorAll("[data-heirloom-swap]").forEach(function (el) {
+        el.addEventListener("click", function () {
+          if (el.getAttribute("data-heirloom-swap") === "accept") acceptHeirloomSwap();
+          else declineHeirloomSwap();
+        });
       });
       main.querySelectorAll("[data-combine-toggle]").forEach(function (el) {
         el.addEventListener("click", function () {
@@ -14951,13 +15111,50 @@
       if (faceBtn) faceBtn.addEventListener("click", function () { tragedyStep = 1; showTragedyModal(); });
       var againBtn = document.getElementById("tragedy-again");
       if (againBtn) againBtn.addEventListener("click", function () {
-        var next = doRunReset(save, { shard: true });
-        tragedyStep = 0;
-        beginRun(next);
-        setNotice("🌅 A shard falls from the Unmaking — it is 20% weaker already, and the climb begins again. This time, the bosses above are not all monsters.");
-        root.innerHTML = "";
-        maybeShowPendingModals();
+        /* 🕯 The tragedy's last step no longer resets the run directly —
+           it opens the tutorial screen, and only the screen's CONTINUE
+           (once its ~2.6s silence has passed) runs the reset into run 2. */
+        tutorialScreen = true;
+        tutorialReady = false;
+        if (tutorialTimer) window.clearTimeout(tutorialTimer);
+        tutorialTimer = window.setTimeout(function () {
+          tutorialReady = true;
+          if (tutorialScreen) showTutorialScreen();
+        }, 2600);
+        showTutorialScreen();
       });
+    }
+    /* ================= THE TUTORIAL SCREEN (RUN 1 → RUN 2 ONLY) =================
+       The tragedy has played out; run 2 has not yet begun. Nothing
+       here celebrates: a black field, one stark line in a plain
+       serif, and — only after a beat of silence — a quiet way on. */
+    function showTutorialScreen() {
+      var root = document.getElementById("modal-root");
+      var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Congratulations on passing the tutorial" style="background:#000;padding:1.5rem">';
+      h += '<div class="anim-tutorial-fade" style="text-align:center">';
+      h += '<p style="font-family:Georgia,serif;font-size:1.5rem;font-weight:400;line-height:1.6;letter-spacing:0.02em;color:#d8d3e0;margin:0">Congratulations on passing the tutorial.</p>';
+      h += '<div style="margin-top:5rem;display:flex;height:2.5rem;align-items:flex-start;justify-content:center">';
+      if (tutorialReady) h += '<button type="button" class="anim-tutorial-fade-late" id="tutorial-continue" style="padding:0.5rem 1rem;font-family:Georgia,serif;font-size:0.875rem;font-weight:400;letter-spacing:0.3em;color:#8f89a0;background:none;border:none;cursor:pointer" aria-label="Continue into run 2">CONTINUE</button>';
+      h += '</div></div></div>';
+      root.innerHTML = h;
+      var btn = document.getElementById("tutorial-continue");
+      if (btn) btn.addEventListener("click", finishTutorial);
+    }
+    /* 🕯 The tutorial screen's continue: the tragedy has played out and
+       the line has had its silence — only now does the reset into run 2
+       run, exactly as the tragedy's old final button ran it. */
+    function finishTutorial() {
+      tutorialScreen = false;
+      tutorialReady = false;
+      if (tutorialTimer) { window.clearTimeout(tutorialTimer); tutorialTimer = null; }
+      var root = document.getElementById("modal-root");
+      var next = doRunReset(save, { shard: true });
+      tragedyStep = 0;
+      beginRun(next);
+      var startHero = heroById(next.party[0]);
+      setNotice("🌅 The Unmaking could not be beaten — not this time, not by anyone. But facing it still cost it: a shard drops as the tower resets, weakening it by 20% for every run to come. Run " + next.run + " begins with a lone " + startHero.stars + "★ hero — " + startHero.name + " — at level 1, and Luna waiting at Floor 1. She remembers everything. Things will be different this time.");
+      root.innerHTML = "";
+      maybeShowPendingModals();
     }
     /* Floor 100 — the choice (run 2+). Destroy faces the Unmaking (one
        attempt per round); protect takes the Keeper's place and opens
@@ -17171,13 +17368,16 @@
              wipe, Tower Memory forgets, and Ossian's Grave Tithe is 0
              (a fresh save's value). The floor-100 clear's own gold/gems
              are NOT banked — the reset swallows them like everything else.
-             Exactly four things carry over: the run counter (+1), the
+             Exactly three things carry over: the run counter (+1), the
              run's single strongest gear piece sealed away as the heirloom
-             (it unseals at Floor 50 of the new climb, exactly as before),
-             the account-level record of redeem/gift codes already claimed
-             (each code still works once, ever), and today's daily-login
-             claim stamp, so the daily free 10-pull stays on its normal
-             once-per-calendar-day rule across the reset. No ending screen,
+             (it unseals at Floor 50 of the new climb, exactly as before —
+             or the tower's random 7★ in its place, when the strongest
+             piece falls short of 7★), and the account-level record of
+             gift codes already claimed (an ECHOGIFT still works once,
+             ever). The built-in redeem codes and the daily-login stamp
+             do NOT carry over anymore — they restart with the new run
+             (Nov 23, 2026), so the free 10-pull is claimable again right
+             away and every built-in code can be claimed once more. No ending screen,
              no choice — the climb simply begins again. */
           var isRunEnd = f >= 100;
           var runEnded = false; /* true only when a reset actually happened this clear */
@@ -17316,6 +17516,10 @@
         loaded = freshSave(now);
         isNew = true;
       }
+      /* 🔁 One-time run-start-reset migration (see
+         applyRunStartResetMigration): a run-2+ save that has never had
+         the resets applied gets its one reset here, on load. */
+      applyRunStartResetMigration(loaded);
       /* 🛍️ Shop daily state: a save crossing local midnight gets its fresh
          10% 6★-ticket roll, fresh material caps, a fresh 20% Starlight
          stock roll, a freshly rolled named-gear shelf, and — rolled last,
