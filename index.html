@@ -1540,7 +1540,7 @@
     function freshParadise() {
       return {
         treePlanted: false, fragments: 0, buildings: {}, training: {}, trainingActive: null,
-        breakthroughUnlocked: false, firstBreakthroughDone: false, breakthroughStones: 0,
+        breakthroughUnlocked: false, firstBreakthroughDone: false, breakthroughStones: 0, lastStoneBuy: "",
         happiness: {}, happinessAt: 0, foodUntil: 0, foodKind: "",
         residents: [], shelterOffer: null, invasionStage: 1, paradiseTier: 0,
         concertReady: false, redeemedEver: [], homesClaimAt: 0, lunaGoddessSeen: false
@@ -1697,11 +1697,12 @@
             if (rp.trainingActive && typeof rp.trainingActive === "object" && typeof rp.trainingActive.heroId === "string"
               && (rp.trainingActive.aspect === "atk" || rp.trainingActive.aspect === "def" || rp.trainingActive.aspect === "skill")
               && typeof rp.trainingActive.endsAt === "number") {
-              clean.trainingActive = { heroId: rp.trainingActive.heroId, aspect: rp.trainingActive.aspect, endsAt: rp.trainingActive.endsAt };
+              clean.trainingActive = { heroId: rp.trainingActive.heroId, aspect: rp.trainingActive.aspect, endsAt: rp.trainingActive.endsAt, ...(rp.trainingActive.attempt === true ? { attempt: true } : {}) };
             }
             clean.breakthroughUnlocked = rp.breakthroughUnlocked === true;
             clean.firstBreakthroughDone = rp.firstBreakthroughDone === true;
             clean.breakthroughStones = typeof rp.breakthroughStones === "number" && rp.breakthroughStones > 0 ? Math.floor(rp.breakthroughStones) : 0;
+            clean.lastStoneBuy = typeof rp.lastStoneBuy === "string" ? rp.lastStoneBuy.slice(0, 10) : "";
             if (rp.happiness && typeof rp.happiness === "object") {
               for (var hhid in rp.happiness) {
                 var hv = rp.happiness[hhid];
@@ -5237,6 +5238,24 @@
     function heroFullPotential(s, id) {
       return heroAtMaxStat(s, id) && trainingCourseDone(s, id);
     }
+    /* Breakthrough attempts (Rachel's rules, 2026-11-22): a Training Hall
+       session for a hero at max stat with the full course done — and the
+       instant stone use in the hall — is a BREAKTHROUGH ATTEMPT, and an
+       attempt costs 10 Breakthrough stones, paid when the attempt is made
+       (charged in startTraining / useBreakthroughStone; a session begun
+       as an attempt carries attempt: true and is the only kind that rolls
+       in settleParadise). The CHANCES are unchanged: the first attempt in
+       the town's history is guaranteed, afterwards 10% per session — the
+       stones are the cost of the attempt, never the odds. Stones come
+       from the shop's "???" shelf: 50,000 💎, ONE per day, run 2 onward
+       only, and they are kept across run resets (paradise persists). */
+    var BREAKTHROUGH_ATTEMPT_STONES = 10;
+    /* Starting a session for this hero right now would be a BREAKTHROUGH
+       ATTEMPT: max stat, full course done, not yet broken through. */
+    function isBreakthroughAttempt(s, id) {
+      var o = s.heroes[id];
+      return !!o && !o.breakthrough && heroAtMaxStat(s, id) && trainingCourseDone(s, id);
+    }
     /* THE HIDDEN ROUTE: Luna becomes fully herself. The conditions:
        Luna at her absolute max, wearing a full set of gear FATED for
        her — gear that can only be forged once all seven bosses have
@@ -5340,6 +5359,7 @@
       /* 🎓 A finished session lands. */
       if (par.trainingActive && now >= par.trainingActive.endsAt) {
         var ta = par.trainingActive;
+        var wasAttempt = ta.attempt === true; // a paid BREAKTHROUGH ATTEMPT (10 stones charged when it began) — the only sessions that roll
         var rec = Object.assign({ atk: 0, def: 0, skill: 0 }, par.training[ta.heroId] || {});
         var wasCourse = rec.atk >= 3 && rec.def >= 3 && rec.skill >= 3; // already 3/3/3 BEFORE this session — the only sessions that can break through
         if (ta.aspect === "atk") rec.atk += 1;
@@ -5356,12 +5376,15 @@
         var o = next.heroes[ta.heroId];
         if (o) { var nh = Object.assign({}, next.heroes); nh[ta.heroId] = Object.assign({}, o, { trainAtk: rec.atk, trainDef: rec.def, trainSkill: rec.skill }); next = Object.assign({}, next, { heroes: nh }); }
         /* ✨ BREAKTHROUGH: only a hero at MAX STAT, put through AGAIN
-           after completing 3/3/3, can unleash their potential. The
-           FIRST such session in the town's history is GUARANTEED, so
-           the player learns it can happen; after that, 10% per
-           session. Sessions before 3/3/3 never roll. */
+           after completing 3/3/3, can unleash their potential — and only
+           when the session was begun as a BREAKTHROUGH ATTEMPT (10 stones
+           paid up front in startTraining; a session that cost nothing
+           never rolls). The FIRST attempt in the town's history is
+           GUARANTEED, so the player learns it can happen; after that,
+           10% per session. Sessions before 3/3/3 never roll — they
+           change nothing about the timing. */
         var o2 = next.heroes[ta.heroId];
-        if (wasCourse && o2 && !o2.breakthrough && heroAtMaxStat(next, ta.heroId)) {
+        if (wasCourse && wasAttempt && o2 && !o2.breakthrough && heroAtMaxStat(next, ta.heroId)) {
           var guaranteed = !par.firstBreakthroughDone;
           if (guaranteed || Math.random() < 0.10) {
             var nh2 = Object.assign({}, next.heroes); nh2[ta.heroId] = Object.assign({}, o2, { breakthrough: true }); next = Object.assign({}, next, { heroes: nh2 });
@@ -5417,24 +5440,45 @@
       if (!s || !shardUnlocks(s).training || !s.paradise.treePlanted) return;
       if (s.paradise.trainingActive) { setNotice("🎓 The Training Hall runs one session at a time — the current session is still underway."); return; }
       if (!s.heroes[heroId]) return;
+      /* ✨ A session for a hero at max stat with the full course done is
+         a BREAKTHROUGH ATTEMPT: 10 Breakthrough stones, paid NOW, when
+         the attempt is made. Without the stones there is no attempt —
+         and no session; the hall will not pretend otherwise. */
+      var attempt = isBreakthroughAttempt(s, heroId);
+      if (attempt && s.paradise.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES) {
+        setNotice("✨ " + heroById(heroId).name + " stands at the very edge of a breakthrough — but an attempt takes " + BREAKTHROUGH_ATTEMPT_STONES + " Breakthrough stones, and you hold " + s.paradise.breakthroughStones + ". The shop sells one a day for 50,000 💎, and stones are kept across run resets. Gather them first, Master.");
+        return;
+      }
       var next = JSON.parse(JSON.stringify(s));
+      if (attempt) next.paradise.breakthroughStones -= BREAKTHROUGH_ATTEMPT_STONES;
       next.paradise.trainingActive = { heroId: heroId, aspect: aspect, endsAt: Date.now() + 3 * 3600 * 1000 };
+      if (attempt) next.paradise.trainingActive.attempt = true;
       persist(next);
       renderMain();
-      setNotice("🎓 " + heroById(heroId).name + " begins a " + (aspect === "atk" ? "Attack" : aspect === "def" ? "Defense" : "Skill") + " session at the Training Hall. Three hours, the way all real growth takes three hours at a time. The hall keeps its own clock — the session lands whether you watch it or not.");
+      if (attempt) {
+        setNotice("✨ Ten Breakthrough stones crumble to warm dust in the hall's brazier — the attempt is paid for. " + heroById(heroId).name + " trains at the very edge of themselves for three hours. " + (s.paradise.firstBreakthroughDone ? "One session in ten finds the way through." : "The town has never seen a breakthrough: its first attempt cannot fail.") + " The hall keeps its own clock — the session lands whether you watch it or not.");
+      } else {
+        setNotice("🎓 " + heroById(heroId).name + " begins a " + (aspect === "atk" ? "Attack" : aspect === "def" ? "Defense" : "Skill") + " session at the Training Hall. Three hours, the way all real growth takes three hours at a time. The hall keeps its own clock — the session lands whether you watch it or not.");
+      }
     }
     function useBreakthroughStone(heroId) {
       var s = save;
-      if (!s || !s.paradise.breakthroughUnlocked || s.paradise.breakthroughStones <= 0) return;
+      if (!s || !s.paradise.breakthroughUnlocked) return;
       var o = s.heroes[heroId];
       if (!o || o.breakthrough || !heroAtMaxStat(s, heroId) || !trainingCourseDone(s, heroId)) return;
+      /* Making it certain is still a breakthrough ATTEMPT — the same 10
+         stones an attempt by session costs, consumed as it is made. */
+      if (s.paradise.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES) {
+        setNotice("✨ Certainty costs the same as hope: " + BREAKTHROUGH_ATTEMPT_STONES + " Breakthrough stones, and you hold " + s.paradise.breakthroughStones + ". The shop sells one a day for 50,000 💎, and stones are kept across run resets.");
+        return;
+      }
       var next = JSON.parse(JSON.stringify(s));
       next.heroes[heroId].breakthrough = true;
-      next.paradise.breakthroughStones -= 1;
+      next.paradise.breakthroughStones -= BREAKTHROUGH_ATTEMPT_STONES;
       next.paradise.firstBreakthroughDone = true;
       persist(next);
       renderMain();
-      setNotice("✨ The stone was never a stone. It breaks like a shell in " + heroById(heroId).name + "'s hands — and what was inside was theirs all along. BREAKTHROUGH: " + heroById(heroId).name + " stands one rank beyond their ceiling, level cap and skill grown with them. Potential, unleashed.");
+      setNotice("✨ The stones were never stones. They break like shells in " + heroById(heroId).name + "'s hands — and what was inside was theirs all along. BREAKTHROUGH: " + heroById(heroId).name + " stands one rank beyond their ceiling, level cap and skill grown with them. Potential, unleashed.");
     }
     function visitHappyPlace(heroId) {
       var s = save;
@@ -5631,11 +5675,13 @@
     }
     function buyMysteryStone() {
       var s = save;
-      if (!s) return;
+      if (!s || s.run < 2) return; // the mystery shelf only exists from run 2 onward — in run 1 the card is not even rendered
+      if (s.paradise.lastStoneBuy === dailyDateStr(new Date())) { setNotice("❔ The shelf is empty. The shopkeeper gets exactly one of these a day — and today's is gone. Tomorrow, perhaps."); return; }
       if (s.gems < 50000) { setNotice("❔ The shopkeeper shakes their head, gently. 50,000 💎. Whatever it is, it is not cheap — and they will not say what it is."); return; }
       var next = JSON.parse(JSON.stringify(s));
       next.gems -= 50000;
       next.paradise.breakthroughStones += 1;
+      next.paradise.lastStoneBuy = dailyDateStr(new Date());
       persist(next);
       renderMain();
       setNotice(s.paradise.breakthroughUnlocked
@@ -10443,7 +10489,7 @@
       } else {
         h += '<p class="small dim" style="margin-top:0.25rem;font-weight:500">Sessions run 3 hours and raise a hero\'s potential — steady stat boosts, NOT a star-cap raise. Three aspects, three sessions each: 9 sessions, 27 hours, a full course. Each session in an aspect: +16.67% (×1.17, ×1.33, ×1.50 across the course); beyond the third, much smaller gains (+2%).</p>';
         if (par.trainingActive) {
-          h += '<p class="small" style="margin-top:0.5rem;font-weight:800">🎓 ' + esc(heroById(par.trainingActive.heroId).name) + " is training (" + (par.trainingActive.aspect === "atk" ? "Attack" : par.trainingActive.aspect === "def" ? "Defense" : "Skill") + ") — done at " + new Date(par.trainingActive.endsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + ". The hall keeps its own clock; the session lands on load and on your next visit here.</p>";
+          h += '<p class="small" style="margin-top:0.5rem;font-weight:800">🎓 ' + esc(heroById(par.trainingActive.heroId).name) + " is training (" + (par.trainingActive.aspect === "atk" ? "Attack" : par.trainingActive.aspect === "def" ? "Defense" : "Skill") + ") — done at " + new Date(par.trainingActive.endsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." + (par.trainingActive.attempt ? " ✨ This session is a breakthrough attempt — ten stones paid, potential on the line." : "") + " The hall keeps its own clock; the session lands on load and on your next visit here.</p>";
         } else {
           h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
           h += '<label class="small" style="font-weight:700" for="paradise-hero-select">Hero</label>';
@@ -10454,16 +10500,19 @@
           h += "</select></div>";
           if (selDef && selOwned) {
             h += '<p class="small" style="margin-top:0.5rem;font-weight:600">Course: Attack ' + selTrain.atk + "/3 · Defense " + selTrain.def + "/3 · Skill " + selTrain.skill + "/3 → boosts ×" + trainMult(selTrain.atk).toFixed(2) + " ATK · ×" + trainMult(selTrain.def).toFixed(2) + " HP · ×" + trainMult(selTrain.skill).toFixed(2) + " skill" + (heroAtMaxStat(s, selHero) ? " · at MAX STAT" : " · max stat at Lv " + maxLevel(selDef, selOwned) + " with " + maxAsc(selDef) + " syntheses") + (selOwned.breakthrough ? " · ✨ BROKEN THROUGH" : "") + "</p>";
+            if (isBreakthroughAttempt(s, selHero)) {
+              h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">✨ ' + esc(selDef.name) + " stands at max stat with the full course done — a session now is a BREAKTHROUGH ATTEMPT: " + BREAKTHROUGH_ATTEMPT_STONES + " Breakthrough stones (you hold " + par.breakthroughStones + "), paid when the session begins." + (par.firstBreakthroughDone ? " One session in ten finds the way through." : " The town's first attempt cannot fail.") + (par.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES ? " The hall needs the stones in hand before it will begin." : "") + "</p>";
+            }
             h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.5rem">';
             [["atk", "⚔️ Attack"], ["def", "🛡️ Defense"], ["skill", "✨ Skill"]].forEach(function (pair) {
-              h += '<button type="button" class="btn-pill anime-btn-sky" data-train-aspect="' + pair[0] + '" aria-label="Start a 3-hour ' + pair[1] + ' training session for ' + esc(selDef.name) + '">' + pair[1] + " — 3h</button>";
+              h += '<button type="button" class="btn-pill anime-btn-sky" data-train-aspect="' + pair[0] + '" ' + (isBreakthroughAttempt(s, selHero) && par.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES ? "disabled " : "") + 'aria-label="Start a 3-hour ' + pair[1] + ' training session for ' + esc(selDef.name) + '">' + pair[1] + " — 3h</button>";
             });
             h += "</div>";
             if (par.breakthroughUnlocked && heroAtMaxStat(s, selHero) && trainingCourseDone(s, selHero) && !selOwned.breakthrough) {
               h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;border-radius:1rem;background:var(--surface2);padding:0.75rem">';
               h += '<p class="small" style="font-weight:700;margin:0">✨ Breakthrough stands revealed for ' + esc(selDef.name) + ".</p>";
-              h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:500">A hero at max stat, put through the hall AGAIN after the full course, can unleash their potential — one rank beyond their ceiling. The first such session in the town\'s history is guaranteed; after that, one session in ten. Or spend a Breakthrough stone (' + par.breakthroughStones + " held) and make it certain, now.</p>";
-              h += '<button type="button" class="btn-pill anime-btn-gold" id="breakthrough-stone-btn" ' + (par.breakthroughStones <= 0 ? "disabled" : "") + ' aria-label="Use a Breakthrough stone on ' + esc(selDef.name) + '" style="margin-top:0.5rem">✨ Use a Breakthrough Stone</button>';
+              h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:500">A hero at max stat, put through the hall AGAIN after the full course, can unleash their potential — one rank beyond their ceiling. Each such session is a breakthrough attempt: ' + BREAKTHROUGH_ATTEMPT_STONES + ' Breakthrough stones, paid when the session begins. The first attempt in the town\'s history is guaranteed; after that, one session in ten. Or spend ' + BREAKTHROUGH_ATTEMPT_STONES + ' Breakthrough stones (' + par.breakthroughStones + " held) and make it certain, now.</p>";
+              h += '<button type="button" class="btn-pill anime-btn-gold" id="breakthrough-stone-btn" ' + (par.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES ? "disabled" : "") + ' aria-label="Use ' + BREAKTHROUGH_ATTEMPT_STONES + ' Breakthrough stones on ' + esc(selDef.name) + ' for a certain breakthrough" style="margin-top:0.5rem">✨ Use ' + BREAKTHROUGH_ATTEMPT_STONES + " Breakthrough Stones</button>";
               h += "</div>";
             }
           }
@@ -11740,20 +11789,26 @@
       h += '<p class="small" style="margin-top:0.75rem;font-weight:800">💎 ' + s.gems.toLocaleString("en-US") + " gems · 🔷 " + (s.shards || 0).toLocaleString("en-US") + " Universal Shards</p>";
       h += "</div>";
       /* ---------- The mystery item (Phase 2): a "???" for 50,000 💎.
-         It reveals itself only to a Master whose hero has reached max
-         stat — until then the shopkeeper will not say what it is, and
-         neither will this card. ---------- */
+         RUN 2 ONWARD ONLY — the shelf does not exist in run 1 —
+         and the shop stocks ONE a day (lastStoneBuy stamps the
+         day). It reveals itself only to a Master whose hero has
+         reached max stat — until then the shopkeeper will not
+         say what it is, and neither will this card. ---------- */
+      if (s.run >= 2) {
+      var stoneSoldOut = s.paradise.lastStoneBuy === dailyDateStr(new Date());
       h += '<div class="anime-card mt4 card-pad">';
       h += '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem">';
       h += '<div style="min-width:0;flex:1 1 16rem">';
       h += '<h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">' + (s.paradise.breakthroughUnlocked ? "✨ Breakthrough Stone" : "❔ ???") + "</h3>";
       h += '<p class="small dim" style="margin:0.125rem 0 0;font-weight:500">' + (s.paradise.breakthroughUnlocked
-        ? "It was never a stone. Fed to a hero at their absolute max who has finished the Training Hall's full course, it unleashes their potential — one rank beyond their ceiling. Use it from the Paradise tab's Training Hall."
-        : "Heavy. Warm. The shopkeeper wraps it without a word and will not meet your eye. Whatever it is, it costs 50,000 💎 — and it seems to be waiting for someone who has reached the very top of something.") + "</p>";
-      if (s.paradise.breakthroughStones > 0) h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#ffd94d">You hold ' + s.paradise.breakthroughStones + " — use " + (s.paradise.breakthroughStones === 1 ? "it" : "them") + " in the Paradise tab's Training Hall.</p>";
+        ? "It was never a stone. A hero at their absolute max who has finished the Training Hall's full course spends them there: 10 stones a breakthrough attempt — one rank beyond their ceiling. The shop stocks one a day, and stones are kept across run resets."
+        : "Heavy. Warm. The shopkeeper wraps it without a word and will not meet your eye. Whatever it is, it costs 50,000 💎 — and it seems to be waiting for someone who has reached the very top of something. One a day, no more: the shopkeeper is firm about that.") + "</p>";
+      if (s.paradise.breakthroughStones > 0) h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#ffd94d">You hold ' + s.paradise.breakthroughStones + " — a breakthrough attempt in the Training Hall takes " + BREAKTHROUGH_ATTEMPT_STONES + ".</p>";
+      if (stoneSoldOut) h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">🕐 Today\'s stone is sold — the shopkeeper restocks one tomorrow.</p>';
       h += "</div>";
-      h += '<button type="button" class="btn-pill anime-btn-gold" id="mystery-stone-btn" aria-label="' + (s.paradise.breakthroughUnlocked ? "Buy a Breakthrough Stone for 50,000 gems" : "Buy the mystery item for 50,000 gems") + '">Buy — 50,000 💎</button>';
+      h += '<button type="button" class="btn-pill anime-btn-gold" id="mystery-stone-btn" ' + (stoneSoldOut ? "disabled " : "") + 'aria-label="' + (stoneSoldOut ? "The mystery item is sold out for today" : s.paradise.breakthroughUnlocked ? "Buy a Breakthrough Stone for 50,000 gems" : "Buy the mystery item for 50,000 gems") + '">' + (stoneSoldOut ? "Sold out — back tomorrow" : "Buy — 50,000 💎") + "</button>";
       h += "</div></div>";
+      }
       if (shopView === "hub") {
         /* ---------- Shop hub: Today's Deal + category tiles ---------- */
         var sale = shopSaleFor(s, now);
