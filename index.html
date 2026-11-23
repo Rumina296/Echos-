@@ -11137,6 +11137,9 @@
       main.querySelectorAll("[data-shop-mat]").forEach(function (el) {
         el.addEventListener("click", function () { buyShopMaterial(el.getAttribute("data-shop-mat")); });
       });
+      main.querySelectorAll("[data-shop-mat-qty]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShopMaterialQty(el.getAttribute("data-shop-mat-qty"), qtyFromInput("shopmat:" + el.getAttribute("data-shop-mat-qty"))); });
+      });
       main.querySelectorAll("[data-shop-gear]").forEach(function (el) {
         el.addEventListener("click", function () { buyRandomGear(el.getAttribute("data-shop-gear")); });
       });
@@ -11226,11 +11229,33 @@
       main.querySelectorAll("[data-convert-all]").forEach(function (el) {
         el.addEventListener("click", function () { convertSpares(el.getAttribute("data-convert-all"), true); });
       });
+      main.querySelectorAll("[data-convert-qty]").forEach(function (el) {
+        el.addEventListener("click", function () { convertSparesQty(el.getAttribute("data-convert-qty"), qtyFromInput("convert:" + el.getAttribute("data-convert-qty"))); });
+      });
       main.querySelectorAll("[data-shard-copy]").forEach(function (el) {
         el.addEventListener("click", function () { buyShardCopy(el.getAttribute("data-shard-copy")); });
       });
+      main.querySelectorAll("[data-shard-copy-qty]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShardCopyQty(el.getAttribute("data-shard-copy-qty"), qtyFromInput("copy:" + el.getAttribute("data-shard-copy-qty"))); });
+      });
       main.querySelectorAll("[data-shard-mat]").forEach(function (el) {
         el.addEventListener("click", function () { buyShardMaterial(el.getAttribute("data-shard-mat")); });
+      });
+      main.querySelectorAll("[data-shard-mat-qty]").forEach(function (el) {
+        el.addEventListener("click", function () { buyShardMaterialQty(el.getAttribute("data-shard-mat-qty"), qtyFromInput("shardmat:" + el.getAttribute("data-shard-mat-qty"))); });
+      });
+      /* Typed-quantity inputs: every keystroke stores the clamped text
+         and refreshes the paired button's live total — no re-render,
+         so the field never loses focus mid-type. */
+      main.querySelectorAll("[data-qty-input]").forEach(function (el) {
+        el.addEventListener("input", function () {
+          var key = el.getAttribute("data-qty-key");
+          var max = Math.max(1, parseInt(el.getAttribute("max"), 10) || 1);
+          var v = qtyInputValue(el.value, max);
+          typedQtys[key] = v;
+          if (el.value !== v) el.value = v;
+          refreshQtyButton(key);
+        });
       });
     }
 
@@ -11246,6 +11271,36 @@
        daily discount is applied, so the displayed sale price and the
        charged price can never disagree. */
     function shopClone(s) { return JSON.parse(JSON.stringify(s)); }
+    /* Typed quantities (Rachel, Nov 23): the raw text per shop /
+       Exchange row, keyed by row ("shopmat:iron", "convert:orien",
+       "copy:orien", "shardmat:iron") — "1" by default, blank while
+       the player clears the field (read as 1). Every button reads
+       through typedQty, so an out-of-range entry can never buy. */
+    var typedQtys = {};
+    /** The quantity a typed input means right now: blank/invalid → 1,
+        below 1 → 1, above `max` → `max`. `max` is always >= 1 here. */
+    function typedQty(raw, max) {
+      var n = Math.floor(Number(raw));
+      if (!isFinite(n) || n < 1) return 1;
+      return Math.min(n, Math.max(1, max));
+    }
+    /** What a quantity input stores on each keystroke: blank stays blank
+        (so the player can clear the field and retype — the button reads
+        a blank as 1), anything else clamps to `max` right away. */
+    function qtyInputValue(raw, max) {
+      if (String(raw).trim() === "") return "";
+      var n = Math.floor(Number(raw));
+      if (!isFinite(n)) return "";
+      return String(Math.min(Math.max(1, n), Math.max(1, max)));
+    }
+    /** The display value of a row's quantity input: the stored text,
+        clamped to the row's current max (a stale value left over from
+        before a purchase shrinks back to what is buyable now). */
+    function qtyDisplay(key, max) {
+      var raw = typedQtys[key];
+      if (raw === undefined) return "1";
+      return qtyInputValue(raw, max);
+    }
 
     /* ============================== OFFLINE BOOST ==============================
        +50% offline gold AND +50% offline gems for 4 hours, bought on the
@@ -11472,6 +11527,37 @@
       next.materials[id] = (next.materials[id] || 0) + 1;
       var bought = sameDay ? JSON.parse(JSON.stringify(s.shopMaterials.bought)) : {};
       bought[id] = shopMaterialBoughtToday(s, id, now) + 1;
+      next.shopMaterials = {
+        date: today,
+        bought: bought,
+        starlightStocked: sameDay ? s.shopMaterials.starlightStocked : false
+      };
+      return next;
+    }
+    /** Pure purchase: `qty` units of `id` — null when Starlight is not
+        stocked today, when today's cap cannot cover `qty`, or when gems
+        are short for the whole total (qty × the tier's price right now,
+        sale price included, exactly as the single-unit price shows).
+        Otherwise deducts exactly qty × unit price, adds exactly `qty`
+        units to the material inventory, and counts them against today's
+        cap. A quantity the player cannot afford or that busts the cap is
+        refused whole — never partially filled. */
+    function applyShopMaterialPurchaseQty(s, id, qty, now) {
+      var n = Math.max(0, Math.floor(qty) || 0);
+      if (n <= 0) return null;
+      var tier = shopMaterialTier(id);
+      if (!shopMaterialInStock(s, id, now)) return null;
+      if (shopMaterialLeft(s, id, now) < n) return null;
+      var cost = shopPriceNow(s, now, "mat:" + id, tier.cost) * n;
+      if (s.gems < cost) return null;
+      var today = dailyDateStr(new Date(now));
+      var sameDay = !!s.shopMaterials && s.shopMaterials.date === today;
+      var next = shopClone(s);
+      next.gems = s.gems - cost;
+      if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 };
+      next.materials[id] = (next.materials[id] || 0) + n;
+      var bought = sameDay ? JSON.parse(JSON.stringify(s.shopMaterials.bought)) : {};
+      bought[id] = shopMaterialBoughtToday(s, id, now) + n;
       next.shopMaterials = {
         date: today,
         bought: bought,
@@ -11887,6 +11973,51 @@
       next.shards = s.shards - price;
       return next;
     }
+    /** Pure targeted-copy purchase: `qty` copies of `heroId` — null when
+        the hero is not sold here (7★s, bosses, unknown ids), when this
+        period's per-hero cap cannot cover `qty`, or when shards are short
+        for the whole total (qty × the rank's price). Otherwise deducts
+        exactly qty × price, grants exactly `qty` copies (ticket grant
+        rules: new hero joins at Lv 1 with 0 dupes and takes a party slot
+        if one is free, the extra copies bank as dupes; owned hero gains
+        dupes +qty), and counts the copies against the current week
+        (1★–5★) or month (6★), restamping that period when it rolled
+        over. A quantity over the cap or the balance is refused whole —
+        never partially filled. Pity, pity4 and totalSummons are never
+        touched. */
+    function applyShardCopyPurchaseQty(s, heroId, qty, now) {
+      var n = Math.max(0, Math.floor(qty) || 0);
+      if (n <= 0) return null;
+      var def = exchangeHeroDef(heroId);
+      if (!def) return null;
+      if (exchangeHeroLeft(s, def, now) < n) return null;
+      var price = shardCopyPrice(def.stars);
+      if (price <= 0 || (s.shards || 0) < price * n) return null;
+      var next = shopClone(s);
+      var owned = next.heroes[heroId];
+      if (!owned) {
+        var fresh = freshOwnedHero(next, heroId);
+        if (n > 1) fresh = Object.assign({}, fresh, { dupes: n - 1 });
+        next.heroes[heroId] = fresh;
+        if (partyHasRoomFor(next.party, heroId)) seatHeroInParty(next.party, heroId);
+      } else {
+        next.heroes[heroId] = Object.assign({}, owned, { dupes: owned.dupes + n });
+      }
+      var d = new Date(now);
+      var ex = next.dupeExchange;
+      var bought = exchangeHeroBought(s, def, now) + n;
+      if (def.stars >= 6) {
+        var hero6Buys = ex.month === monthKeyOf(d) ? ex.hero6Buys : {};
+        hero6Buys[heroId] = bought;
+        next.dupeExchange = { week: ex.week, heroBuys: ex.heroBuys, month: monthKeyOf(d), hero6Buys: hero6Buys, matBuys: ex.matBuys };
+      } else {
+        var heroBuys = ex.week === weekKeyOf(d) ? ex.heroBuys : {};
+        heroBuys[heroId] = bought;
+        next.dupeExchange = { week: weekKeyOf(d), heroBuys: heroBuys, month: ex.month, hero6Buys: ex.hero6Buys, matBuys: ex.matBuys };
+      }
+      next.shards = s.shards - price * n;
+      return next;
+    }
     /** Units of `id` already bought from the exchange shelf in the week
         containing `now` (0 on a stale week stamp). */
     function shardMaterialBought(s, id, now) {
@@ -11915,6 +12046,37 @@
       next.materials[id] = (s.materials[id] || 0) + 1;
       var matBuys = sameWeek ? ex.matBuys : {};
       matBuys[id] = shardMaterialBought(s, id, now) + 1;
+      next.dupeExchange = {
+        week: wk,
+        heroBuys: sameWeek ? ex.heroBuys : {},
+        month: ex.month,
+        hero6Buys: ex.hero6Buys,
+        matBuys: matBuys
+      };
+      return next;
+    }
+    /** Pure exchange-material purchase: `qty` units of `id` — null when
+        this week's cap cannot cover `qty` or shards are short for the
+        whole total (qty × the tier's shard price). Otherwise deducts
+        exactly qty × price, adds exactly `qty` units to the material
+        inventory, and counts them against this week (restamping the week
+        when it rolled over, which also resets the weekly hero counts
+        stamped under the old week). Over-cap or over-balance quantities
+        are refused whole — never partially filled. */
+    function applyShardMaterialPurchaseQty(s, id, qty, now) {
+      var n = Math.max(0, Math.floor(qty) || 0);
+      if (n <= 0) return null;
+      var tier = shardMaterialTier(id);
+      if (shardMaterialLeft(s, id, now) < n) return null;
+      if ((s.shards || 0) < tier.cost * n) return null;
+      var wk = weekKeyOf(new Date(now));
+      var sameWeek = s.dupeExchange.week === wk;
+      var next = shopClone(s);
+      var ex = next.dupeExchange;
+      next.shards = s.shards - tier.cost * n;
+      next.materials[id] = (s.materials[id] || 0) + n;
+      var matBuys = sameWeek ? ex.matBuys : {};
+      matBuys[id] = shardMaterialBought(s, id, now) + n;
       next.dupeExchange = {
         week: wk,
         heroBuys: sameWeek ? ex.heroBuys : {},
@@ -11954,6 +12116,38 @@
     // equivalent of the main game's ring-4 ring-[#ffd94d] + glow).
     function shopSaleRing(key) {
       return saleHighlight === key ? ";box-shadow:0 0 0 4px #ffd94d,0 0 20px rgba(255,217,77,0.55)" : "";
+    }
+    /** The label of a typed-quantity buy button, from its kind and unit
+        price — the single place the live totals are worded, so the
+        render and the keystroke refresh can never disagree. Kinds:
+        "shopmat" (gems, no space before 💎), "shardmat" / "copy" /
+        "convert" (shards, space before 🔷). */
+    function qtyButtonLabel(kind, q, unit) {
+      var total = (unit * q).toLocaleString("en-US");
+      if (kind === "convert") return "Convert " + q + " → " + total + " 🔷";
+      if (kind === "copy") return "Buy " + q + " " + (q === 1 ? "copy" : "copies") + " — " + total + " 🔷";
+      if (kind === "shardmat") return "Buy " + q + " — " + total + " 🔷";
+      return "Buy " + q + " — " + total + "💎";
+    }
+    /** Refresh one typed-quantity button's label from its paired input's
+        current text (clamped to the input's max). Called on every
+        keystroke, so the total updates live without a re-render. */
+    function refreshQtyButton(key) {
+      var input = document.querySelector('[data-qty-key="' + key + '"]');
+      var btn = document.querySelector('[data-qty-btn="' + key + '"]');
+      if (!input || !btn) return;
+      var max = Math.max(1, parseInt(input.getAttribute("max"), 10) || 1);
+      var q = typedQty(input.value, max);
+      btn.textContent = qtyButtonLabel(btn.getAttribute("data-qty-kind"), q, Number(btn.getAttribute("data-qty-unit")) || 0);
+    }
+    /** The quantity a typed-quantity button means when tapped: the
+        paired input's text, read through typedQty against the input's
+        max — the same clamp the label shows. */
+    function qtyFromInput(key) {
+      var input = document.querySelector('[data-qty-key="' + key + '"]');
+      if (!input) return 1;
+      var max = Math.max(1, parseInt(input.getAttribute("max"), 10) || 1);
+      return typedQty(input.value, max);
     }
     // Back to the hub from any shelf (also clears the sale highlight).
     function shopBackToHub() { shopView = "hub"; saleHighlight = null; renderMain(); }
@@ -12131,7 +12325,7 @@
       h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Shop materials">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
       h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Materials</h3>';
-      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials, one at a time, straight into your stores. The daily caps keep dungeons the main faucet — and Starlight Essence only shows up about 1–2 days a week.</p>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials, straight into your stores — one at a time, or type a quantity to buy several at once. The daily caps keep dungeons the main faucet — and Starlight Essence only shows up about 1–2 days a week.</p>';
       h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
       SHOP_MATERIAL_TIERS.forEach(function (tier) {
         var m = materialById(tier.id);
@@ -12141,6 +12335,8 @@
         var price = shopPriceNow(s, now, "mat:" + tier.id, tier.cost);
         var short = s.gems < price;
         var blocked = !inStock || soldOut || short;
+        var shopMatMax = Math.max(0, Math.min(left, Math.floor(s.gems / price)));
+        var shopMatQ = typedQty(typedQtys["shopmat:" + tier.id], Math.max(1, shopMatMax));
         h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left' + (!inStock ? ";opacity:.6" : "") + shopSaleRing("mat:" + tier.id) + '">';
         h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(m.name) + "</p>";
         h += '<p class="xs dim" style="margin:0.125rem 0 0">You hold ' + (s.materials[tier.id] || 0) + " · max " + tier.cap + " per day</p>";
@@ -12148,6 +12344,10 @@
         else if (soldOut) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out today — caps reset at midnight.</p>';
         else h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">' + left + " left today</p>";
         h += '<button type="button" class="btn-pill anime-btn-sky" data-shop-mat="' + tier.id + '" style="margin-top:0.5rem;width:100%" ' + (blocked ? "disabled" : "") + ' aria-label="' + (!inStock ? esc(m.name) + " — not in stock today" : soldOut ? esc(m.name) + " — sold out today, daily cap reached" : short ? "Buy 1 " + esc(m.name) + " for " + price + " gems — you only have " + s.gems + " gems" : "Buy 1 " + esc(m.name) + " for " + price + " gems — " + left + " left today") + '">Buy 1 — ' + shopPriceHTML(s, now, "mat:" + tier.id, tier.cost) + "</button>";
+        h += '<span style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">';
+        h += '<input id="shop-mat-qty-' + tier.id + '" type="number" inputmode="numeric" min="1" max="' + Math.max(1, shopMatMax) + '" value="' + qtyDisplay("shopmat:" + tier.id, Math.max(1, shopMatMax)) + '" data-qty-input data-qty-key="shopmat:' + tier.id + '" ' + (blocked ? "disabled" : "") + ' aria-label="Quantity of ' + esc(m.name) + ' to buy — ' + shopMatMax + ' buyable right now" style="width:4rem;flex:none;border-radius:999px;border:2px solid var(--border);background:var(--surface);color:var(--text);padding:0.5rem 0.25rem;text-align:center;font-size:0.875rem;font-weight:700" />';
+        h += '<button type="button" class="btn-pill anime-btn-sky" data-shop-mat-qty="' + tier.id + '" data-qty-btn="shopmat:' + tier.id + '" data-qty-kind="shopmat" data-qty-unit="' + price + '" style="flex:1;min-width:0" ' + (blocked ? "disabled" : "") + ' aria-label="' + (!inStock ? esc(m.name) + " — not in stock today" : soldOut ? esc(m.name) + " — sold out today, daily cap reached" : short ? "Buy " + shopMatQ + " " + esc(m.name) + " for " + (price * shopMatQ).toLocaleString("en-US") + " gems — you only have " + s.gems + " gems" : "Buy " + shopMatQ + " " + esc(m.name) + " for " + (price * shopMatQ).toLocaleString("en-US") + " gems — " + left + " left today") + '">' + qtyButtonLabel("shopmat", shopMatQ, price) + "</button>";
+        h += "</span>";
         h += "</div>";
       });
       h += "</div>";
@@ -12233,6 +12433,7 @@
         spareHeroes.forEach(function (def) {
           var owned = s.heroes[def.id];
           var rate = shardConvertRate(def.stars);
+          var convQ = typedQty(typedQtys["convert:" + def.id], owned.dupes);
           h += '<li style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
           h += '<span style="display:flex;align-items:center;gap:0.625rem"><span style="display:block;flex:none;width:40px;height:40px;overflow:hidden;border-radius:12px;border:2px solid ' + def.color + '"><img src="' + heroPortrait(def) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 16%;display:block" /></span>';
           h += '<span style="min-width:0"><span style="display:block" class="small bold">' + esc(def.name) + ' <span style="' + starTextStyle(def.stars) + '">' + starsStr(def.stars) + '</span></span>';
@@ -12242,6 +12443,10 @@
           if (owned.dupes > 1) {
             h += '<button type="button" class="btn-pill" data-convert-all="' + def.id + '" style="border:2px solid #7dd3fc;background:rgba(125,211,252,0.15);color:#7dd3fc" aria-label="Convert all ' + owned.dupes + " spare copies of " + esc(def.name) + " into " + (rate * owned.dupes) + ' Universal Shards">Convert All → ' + (rate * owned.dupes).toLocaleString("en-US") + " 🔷</button>";
           }
+          h += '<span style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin-top:0.5rem">';
+          h += '<input id="convert-qty-' + def.id + '" type="number" inputmode="numeric" min="1" max="' + owned.dupes + '" value="' + qtyDisplay("convert:" + def.id, owned.dupes) + '" data-qty-input data-qty-key="convert:' + def.id + '" aria-label="Quantity of spare ' + esc(def.name) + ' copies to convert — ' + owned.dupes + ' spares banked" style="width:4rem;flex:none;border-radius:999px;border:2px solid var(--border);background:var(--surface);color:var(--text);padding:0.5rem 0.25rem;text-align:center;font-size:0.875rem;font-weight:700" />';
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-convert-qty="' + def.id + '" data-qty-btn="convert:' + def.id + '" data-qty-kind="convert" data-qty-unit="' + rate + '" aria-label="Convert ' + convQ + ' spare ' + (convQ === 1 ? "copy" : "copies") + ' of ' + esc(def.name) + ' into ' + (rate * convQ).toLocaleString("en-US") + ' Universal Shards — ' + owned.dupes + ' spares banked">' + qtyButtonLabel("convert", convQ, rate) + "</button>";
+          h += "</span>";
           h += "</span></li>";
         });
         h += "</ul>";
@@ -12267,6 +12472,8 @@
           var left = exchangeHeroLeft(s, def, now);
           var capped = left <= 0;
           var short = (s.shards || 0) < price;
+          var copyMax = Math.max(0, Math.min(left, Math.floor((s.shards || 0) / price)));
+          var copyQ = typedQty(typedQtys["copy:" + def.id], Math.max(1, copyMax));
           h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.75rem">';
           h += '<span style="display:block;flex:none;width:40px;height:40px;overflow:hidden;border-radius:12px;border:2px solid ' + def.color + '"><img src="' + heroPortrait(def) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center 16%;display:block" /></span>';
           h += '<span style="min-width:0;flex:1"><span style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" class="small bold">' + esc(def.name) + ' <span class="xs dim" style="font-weight:700">· ' + esc(def.cls) + "</span></span>";
@@ -12278,6 +12485,10 @@
             : short
               ? "Buy a copy of " + esc(def.name) + " for " + price + " shards — you only have " + (s.shards || 0) + " shards"
               : "Buy one duplicate copy of " + esc(def.name) + " for " + price + " Universal Shards — " + left + " left " + (stars >= 6 ? "this month" : "this week")) + '">Buy copy — ' + price.toLocaleString("en-US") + " 🔷</button>";
+          h += '<span style="display:flex;width:100%;align-items:center;gap:0.5rem">';
+          h += '<input id="copy-qty-' + def.id + '" type="number" inputmode="numeric" min="1" max="' + Math.max(1, copyMax) + '" value="' + qtyDisplay("copy:" + def.id, Math.max(1, copyMax)) + '" data-qty-input data-qty-key="copy:' + def.id + '" ' + (capped || short ? "disabled" : "") + ' aria-label="Quantity of ' + esc(def.name) + ' copies to buy — ' + left + ' left ' + (stars >= 6 ? "this month" : "this week") + '" style="width:4rem;flex:none;border-radius:999px;border:2px solid var(--border);background:var(--surface);color:var(--text);padding:0.5rem 0.25rem;text-align:center;font-size:0.875rem;font-weight:700" />';
+          h += '<button type="button" class="btn-pill anime-btn-sky" data-shard-copy-qty="' + def.id + '" data-qty-btn="copy:' + def.id + '" data-qty-kind="copy" data-qty-unit="' + price + '" style="flex:1;min-width:0" ' + (capped || short ? "disabled" : "") + ' aria-label="' + (capped ? "Buy copies of " + esc(def.name) + " — allowance used up, " + (stars >= 6 ? "resets on the 1st of the month" : "resets Monday") : short ? "Buy " + copyQ + " " + (copyQ === 1 ? "copy" : "copies") + " of " + esc(def.name) + " for " + (price * copyQ).toLocaleString("en-US") + " shards — you only have " + (s.shards || 0) + " shards" : "Buy " + copyQ + " " + (copyQ === 1 ? "copy" : "copies") + " of " + esc(def.name) + " for " + (price * copyQ).toLocaleString("en-US") + " Universal Shards — " + left + " left " + (stars >= 6 ? "this month" : "this week")) + '">' + qtyButtonLabel("copy", copyQ, price) + "</button>";
+          h += "</span>";
           h += "</li>";
         });
         h += "</ul></div>";
@@ -12289,13 +12500,15 @@
       h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Dupe Exchange — materials for Universal Shards">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🧰</p>';
       h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Materials Shelf</h3>';
-      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials for shards, one at a time. This shelf has its own weekly caps (reset Monday) — separate from the Materials shelf\'s daily material caps.</p>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Forge materials for shards — one at a time, or type a quantity to buy several at once. This shelf has its own weekly caps (reset Monday) — separate from the Materials shelf\'s daily material caps.</p>';
       h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">';
       SHARD_MATERIAL_TIERS.forEach(function (tier) {
         var m = materialById(tier.id);
         var left = shardMaterialLeft(s, tier.id, now);
         var soldOut = left <= 0;
         var short = (s.shards || 0) < tier.cost;
+        var shardMatMax = Math.max(0, Math.min(left, Math.floor((s.shards || 0) / tier.cost)));
+        var shardMatQ = typedQty(typedQtys["shardmat:" + tier.id], Math.max(1, shardMatMax));
         h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left">';
         h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(m.name) + "</p>";
         h += '<p class="xs dim" style="margin:0.125rem 0 0">You hold ' + (s.materials[tier.id] || 0) + " · max " + tier.cap + " per week</p>";
@@ -12306,6 +12519,10 @@
           : short
             ? "Buy 1 " + esc(m.name) + " for " + tier.cost + " shards — you only have " + (s.shards || 0) + " shards"
             : "Buy 1 " + esc(m.name) + " for " + tier.cost + " Universal Shards — " + left + " left this week") + '">Buy 1 — ' + tier.cost.toLocaleString("en-US") + " 🔷</button>";
+        h += '<span style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem">';
+        h += '<input id="shard-mat-qty-' + tier.id + '" type="number" inputmode="numeric" min="1" max="' + Math.max(1, shardMatMax) + '" value="' + qtyDisplay("shardmat:" + tier.id, Math.max(1, shardMatMax)) + '" data-qty-input data-qty-key="shardmat:' + tier.id + '" ' + (soldOut || short ? "disabled" : "") + ' aria-label="Quantity of ' + esc(m.name) + ' to buy with shards — ' + shardMatMax + ' buyable right now" style="width:4rem;flex:none;border-radius:999px;border:2px solid var(--border);background:var(--surface);color:var(--text);padding:0.5rem 0.25rem;text-align:center;font-size:0.875rem;font-weight:700" />';
+        h += '<button type="button" class="btn-pill anime-btn-sky" data-shard-mat-qty="' + tier.id + '" data-qty-btn="shardmat:' + tier.id + '" data-qty-kind="shardmat" data-qty-unit="' + tier.cost + '" style="flex:1;min-width:0" ' + (soldOut || short ? "disabled" : "") + ' aria-label="' + (soldOut ? esc(m.name) + " — sold out this week, weekly cap reached" : short ? "Buy " + shardMatQ + " " + esc(m.name) + " for " + (tier.cost * shardMatQ).toLocaleString("en-US") + " shards — you only have " + (s.shards || 0) + " shards" : "Buy " + shardMatQ + " " + esc(m.name) + " for " + (tier.cost * shardMatQ).toLocaleString("en-US") + " Universal Shards — " + left + " left this week") + '">' + qtyButtonLabel("shardmat", shardMatQ, tier.cost) + "</button>";
+        h += "</span>";
         h += "</div>";
       });
       h += "</div>";
@@ -12430,6 +12647,19 @@
       var m = materialById(id);
       renderMain();
     }
+    /* Shop materials — typed quantity: `qty` units at qty × the unit
+       price right now (sale price included, exactly as Buy 1 shows),
+       refused whole when the daily cap, the Starlight stock, or the gem
+       balance cannot cover the full quantity. */
+    function buyShopMaterialQty(id, qty) {
+      var s = save;
+      if (!s) return;
+      var next = applyShopMaterialPurchaseQty(s, id, qty, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      renderMain();
+    }
 
     /* Shop random gear: one tap buys one instant random piece from the
        tier (no mini-game, no daily cap). The pure helper rolls the slot
@@ -12481,6 +12711,20 @@
       var keeps = next.heroes[heroId].dupes;
       renderMain();
     }
+    /* Dupe Exchange — typed conversion: the player types how many spare
+       copies to convert. The count is clamped to the spares banked by
+       the pure helper, so it can never touch the first copy. */
+    function convertSparesQty(heroId, count) {
+      var s = save;
+      if (!s) return;
+      var owned = s.heroes[heroId];
+      if (!owned || owned.dupes <= 0) return;
+      var next = applyConvertSpares(s, heroId, count);
+      if (!next) return;
+      persist(next);
+      writeSave();
+      renderMain();
+    }
 
     /* Dupe Exchange — targeted copy: one tap buys exactly one duplicate
        copy of the chosen hero at the rank's shard price, under the
@@ -12499,6 +12743,18 @@
       var left = exchangeHeroLeft(next, def, Date.now());
       renderMain();
     }
+    /* Dupe Exchange — typed targeted copies: `qty` copies at qty × the
+       rank's price, refused whole by the pure helper when the cap or
+       the shard balance cannot cover the full quantity. */
+    function buyShardCopyQty(heroId, qty) {
+      var s = save;
+      if (!s) return;
+      var next = applyShardCopyPurchaseQty(s, heroId, qty, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      renderMain();
+    }
 
     /* Dupe Exchange — materials shelf: one unit per tap at the tier's
        exact shard price, under the shelf's own weekly caps (separate
@@ -12513,6 +12769,18 @@
       var charged = s.shards - next.shards;
       var left = shardMaterialLeft(next, id, Date.now());
       var m = materialById(id);
+      renderMain();
+    }
+    /* Dupe Exchange — typed materials: `qty` units at qty × the tier's
+       shard price, refused whole when the weekly cap or the shard
+       balance cannot cover the full quantity. */
+    function buyShardMaterialQty(id, qty) {
+      var s = save;
+      if (!s) return;
+      var next = applyShardMaterialPurchaseQty(s, id, qty, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
       renderMain();
     }
 
