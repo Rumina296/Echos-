@@ -1557,6 +1557,7 @@
         treePlanted: false, fragments: 0, buildings: {}, training: {}, trainingActive: null,
         breakthroughUnlocked: false, firstBreakthroughDone: false, breakthroughStones: 0, lastStoneBuy: "",
         happiness: {}, happinessAt: 0, foodUntil: 0, foodKind: "",
+        restDay: "", restCounts: {},
         residents: [], shelterOffer: null, invasionStage: 1, paradiseTier: 0,
         concertReady: false, redeemedEver: [], homesClaimAt: 0, lunaGoddessSeen: false
       };
@@ -1732,6 +1733,13 @@
               }
             }
             clean.happinessAt = typeof rp.happinessAt === "number" && rp.happinessAt > 0 ? rp.happinessAt : 0;
+            clean.restDay = typeof rp.restDay === "string" ? rp.restDay.slice(0, 10) : "";
+            if (rp.restCounts && typeof rp.restCounts === "object") {
+              for (var rcid in rp.restCounts) {
+                var rcv = rp.restCounts[rcid];
+                if (typeof rcv === "number" && isFinite(rcv) && rcv > 0) clean.restCounts[rcid] = Math.min(99, Math.floor(rcv));
+              }
+            }
             clean.foodUntil = typeof rp.foodUntil === "number" && rp.foodUntil > 0 ? rp.foodUntil : 0;
             clean.foodKind = typeof rp.foodKind === "string" ? rp.foodKind.slice(0, 40) : "";
             if (Array.isArray(rp.residents)) {
@@ -5364,20 +5372,31 @@
     function fatedForgeOpen(s) {
       return RUN2_HEROES.every(function (h) { return s.paradise.redeemedEver.indexOf(h.id) >= 0; });
     }
-    /* Each hero's happy place (Phase 2): where rest finds them fastest.
-       Torin's is the Training Hall; Luna's is the Music Hall AND the
-       town square — never the Training Hall. Everyone else's follows
-       their calling. "square" is always open once the tree stands; the
-       halls need their shard unlocks. */
-    function happyPlaceOf(def) {
-      if (def.id === "velkist") return { id: "training", name: "the Training Hall" }; // Torin Kade
-      if (def.id === "luna") return { id: "musichall", name: "the Music Hall and the town square" };
-      switch (def.cls) {
-        case "Bard": return { id: "musichall", name: "the Music Hall" };
-        case "Warrior": case "Guardian": case "Paladin": case "Scout": return { id: "training", name: "the Training Hall" };
-        default: return { id: "square", name: "the town square" };
-      }
-    }
+    /* Each hero's happy places (Phase 2, rebalanced): every hero has
+       two or three happy places of their own, spread all across the
+       town, and a place that opens later restores more — the
+       always-open Town Square gives +20, the World Tree +30, the built
+       places +35–40, and the shard halls the most (Training Hall +55,
+       Enchantment Hall +65, Music Hall +75). Rest is a rhythm, not a
+       refill: each hero may rest at most 3 times a day, across all
+       their places together. Luna's are the Music Hall, the Town
+       Square and the World Tree — never the Training Hall; Torin's
+       include the Training Hall. "square" and "tree" are always open
+       once the tree stands; the built places need their buildings and
+       the halls need their shard unlocks. */
+    function dateKey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+    function todayKey() { return dateKey(new Date()); }
+    var HAPPY_PLACES = [ { id: "square", name: "the Town Square", short: "Town Square", icon: "⛲", points: 20 }, { id: "tree", name: "the World Tree", short: "World Tree", icon: "🌳", points: 30 }, { id: "homes", name: "Homes & Businesses", short: "Homes", icon: "🏠", points: 35 }, { id: "restaurant", name: "the Restaurant", short: "Restaurant", icon: "🍜", points: 40 }, { id: "blacksmith", name: "the Blacksmith", short: "Blacksmith", icon: "🔨", points: 40 }, { id: "training", name: "the Training Hall", short: "Training Hall", icon: "🎓", points: 55 }, { id: "gearhall", name: "the Enchantment Hall", short: "Enchantment Hall", icon: "✨", points: 65 }, { id: "musichall", name: "the Music Hall", short: "Music Hall", icon: "🎵", points: 75 } ];
+    var HAPPY_PLACE_BY_ID = {}; HAPPY_PLACES.forEach(function (p) { HAPPY_PLACE_BY_ID[p.id] = p; });
+    var RESTS_PER_DAY = 3;
+    var HAPPY_POOLS = { Warrior: ["training", "blacksmith", "restaurant", "square", "homes", "tree"], Guardian: ["training", "homes", "square", "tree", "blacksmith"], Paladin: ["training", "tree", "square", "homes", "musichall"], Swordsman: ["training", "blacksmith", "square", "restaurant", "tree"], Scout: ["tree", "homes", "square", "restaurant", "training"], Archer: ["tree", "square", "homes", "restaurant", "training"], Rogue: ["restaurant", "homes", "square", "blacksmith", "musichall", "tree"], Mage: ["gearhall", "tree", "musichall", "square", "homes"], Priest: ["tree", "square", "homes", "restaurant", "musichall"], Bard: ["musichall", "restaurant", "square", "homes", "tree"], Puppeteer: ["musichall", "gearhall", "restaurant", "square", "homes", "tree"], Arachne: ["gearhall", "homes", "musichall", "tree", "square"], "Oathbound King": ["training", "tree", "square", "homes", "restaurant"], "Hollow Cantor": ["musichall", "tree", "square", "gearhall", "homes"], Necromancer: ["tree", "gearhall", "square", "homes", "musichall"] };
+    var HAPPY_POOL_DEFAULT = ["square", "tree", "homes", "restaurant", "musichall"];
+    var HAPPY_PRIMARY_OVERRIDE = { dun: "blacksmith", nia: "restaurant", hilda: "restaurant", iris: "tree", eldric: "gearhall", rook: "gearhall", ilya: "tree", bram: "tree", hugo: "tree", straw: "tree", marlo: "tree", agatha: "homes", odo: "homes", petra: "gearhall", yara: "gearhall", aurelia: "homes" };
+    function happyHash(id) { var h = 0; for (var i = 0; i < id.length; i++) h += (i + 1) * id.charCodeAt(i); return h; }
+    var HAPPY_PLACES_BY_HERO = (function () { var counts = {}; HAPPY_PLACES.forEach(function (p) { counts[p.id] = 0; }); var out = {}; var defs = allHeroDefs(); for (var di = 0; di < defs.length; di++) { var def = defs[di]; if (def.id === "luna") { var lunaPlaces = ["musichall", "square", "tree"]; out[def.id] = lunaPlaces; for (var li = 0; li < lunaPlaces.length; li++) counts[lunaPlaces[li]]++; continue; } var pool = HAPPY_POOLS[def.cls] || HAPPY_POOL_DEFAULT; var n = happyHash(def.id) % 3 !== 0 ? 3 : 2; var chosen = []; var take = function (id) { chosen.push(id); counts[id] = (counts[id] || 0) + 1; }; take(HAPPY_PRIMARY_OVERRIDE[def.id] || pool[0] || "square"); while (chosen.length < n) { var candPool = (def.cls2 && chosen.length === n - 1 && n === 3) ? pool.concat(HAPPY_POOLS[def.cls2] || []).filter(function (v, i, a) { return a.indexOf(v) === i; }) : pool; var cands = candPool.filter(function (p) { return chosen.indexOf(p) < 0; }); if (cands.length === 0) break; var pick = cands[0]; for (var ci = 0; ci < cands.length; ci++) if ((counts[cands[ci]] || 0) < (counts[pick] || 0)) pick = cands[ci]; take(pick); } if (chosen.indexOf("tree") < 0 && chosen.indexOf("square") < 0) { var old = chosen[chosen.length - 1]; counts[old]--; var rep = (counts["tree"] || 0) <= (counts["square"] || 0) ? "tree" : "square"; chosen[chosen.length - 1] = rep; counts[rep]++; } if (def.id === "velkist" && chosen.indexOf("training") < 0) { var old2 = chosen[chosen.length - 1]; counts[old2]--; chosen[chosen.length - 1] = "training"; counts["training"]++; } out[def.id] = chosen; } return out; })();
+    function happyPlacesOf(def) { var ids = HAPPY_PLACES_BY_HERO[def.id] || ["square", "tree"]; return ids.map(function (id) { return HAPPY_PLACE_BY_ID[id]; }).filter(function (p) { return !!p; }); }
+    function happyPlaceOpen(s, placeId) { var un = shardUnlocks(s); switch (placeId) { case "square": case "tree": return true; case "training": return un.training; case "gearhall": return un.gearHall; case "musichall": return un.musicHall; default: return (s.paradise.buildings[placeId] || 0) > 0; } }
+    function restsLeftToday(s, heroId) { if (s.paradise.restDay !== todayKey()) return RESTS_PER_DAY; return Math.max(0, RESTS_PER_DAY - (s.paradise.restCounts[heroId] || 0)); }
     /* The fragment-built buildings of paradise (Phase 2): built with
        fragments, upgraded with gems AND fragments (250 💎 × current
        level plus 1 🧩 × current level, cap 10).
@@ -5387,7 +5406,7 @@
       { id: "blacksmith", name: "Blacksmith", icon: "🔨", buildFragments: 5, desc: "The smith's craft improves every piece of gear in the town's keeping (+2% item stats per level, priced in gearPieceMult) and teaches the forge to know a hero's hands (+1% Fated chance per level at the Dungeon Forge)." },
       { id: "restaurant", name: "Restaurant", icon: "🍜", buildFragments: 5, desc: "Meals lend the whole party +10% damage while they last (priced in partyMods) — and a better kitchen keeps them warm longer (+1 hour per level above 1). Nia insists the secret is patience. The other secret is butter." },
       { id: "homes", name: "Homes & Businesses", icon: "🏠", buildFragments: 5, desc: "Roofs and livelihoods. Each level houses 3 residents and earns gold by the hour (400 🪙 × level per hour, more with residents under the roofs) — and now and then a business pays its tithe in gems instead." },
-      { id: "square", name: "Town Square", icon: "⛲", buildFragments: 5, desc: "Rest, and only rest: the square breathes happiness back into everyone (+0.4 per level per hour, and decay slows) — and it is one of Luna's two happy places, the one that is always open." }
+      { id: "square", name: "Town Square", icon: "⛲", buildFragments: 5, desc: "Rest, and only rest: the square breathes happiness back into everyone (+0.4 per level per hour, and decay slows) — and it is one of Luna's happy places, the one that is always open. Resting here restores the least happiness (+20); places that open later restore more." }
     ];
     function paradiseBuildingById(id) { for (var i = 0; i < PARADISE_BUILDINGS.length; i++) if (PARADISE_BUILDINGS[i].id === id) return PARADISE_BUILDINGS[i]; return null; }
     /* Restaurant meals (Phase 2): gold for hours of +10% party damage. */
@@ -5564,19 +5583,27 @@
       renderMain();
       setNotice("✨ The stones were never stones. They break like shells in " + heroById(heroId).name + "'s hands — and what was inside was theirs all along. BREAKTHROUGH: " + heroById(heroId).name + " stands one rank beyond their ceiling, level cap and skill grown with them. Potential, unleashed.");
     }
-    function visitHappyPlace(heroId) {
+    function visitHappyPlace(heroId, placeId) {
       var s = save;
       if (!s || !s.paradise.treePlanted) return;
       var def = heroById(heroId);
-      var place = happyPlaceOf(def);
-      var un = shardUnlocks(s);
-      var open = place.id === "square" ? true : place.id === "training" ? un.training : un.musicHall || def.id === "luna"; // Luna's place is the Music Hall AND the square — the square is always open to her
-      if (!open) { setNotice("💛 " + def.name + "'s happy place is " + place.name + " — and it isn't open yet. Some rest has to be built before it can be taken."); return; }
+      var place = HAPPY_PLACE_BY_ID[placeId];
+      if (!place) return;
+      var isHappy = happyPlacesOf(def).some(function (p) { return p.id === placeId; });
+      if (!isHappy) return;
+      if (!happyPlaceOpen(s, placeId)) { setNotice("💛 " + def.name + "'s happy place is " + place.name + " — and it isn't open yet. Some rest has to be built before it can be taken."); return; }
+      var left = restsLeftToday(s, heroId);
+      if (left <= 0) { setNotice("💛 " + def.name + " has rested 3 times today — that is the day's share, however happy the places. Rest is a rhythm, not a refill; tomorrow the town opens its doors again."); return; }
+      var cur = typeof s.paradise.happiness[heroId] === "number" ? s.paradise.happiness[heroId] : 80;
+      if (cur >= 100) { setNotice("💛 " + def.name + " is already as happy as a hero gets — save the rest for when it counts. (No rest spent.)"); return; }
+      var gained = Math.min(place.points, 100 - cur);
       var next = JSON.parse(JSON.stringify(s));
-      next.paradise.happiness[heroId] = 100;
+      if (next.paradise.restDay !== todayKey()) { next.paradise.restDay = todayKey(); next.paradise.restCounts = {}; }
+      next.paradise.restCounts[heroId] = (next.paradise.restCounts[heroId] || 0) + 1;
+      next.paradise.happiness[heroId] = cur + gained;
       persist(next);
       renderMain();
-      setNotice("💛 " + def.name + " spends real time at " + place.name + " — not resting for the climb, just… living. Happiness restored, all the way. (A party at full happiness fights +20% harder; a party under half fights weaker. Rest is a strategy here, Master. It is also just nice.)");
+      setNotice("💛 " + def.name + " spends real time at " + place.name + " — not resting for the climb, just… living. +" + gained + " happiness (now " + Math.round(cur + gained) + "%), and " + (left - 1) + " of today's 3 rests left. Places that open later restore more — the square gives +20, the Music Hall +75. (A party at full happiness fights +20% harder; a party under half fights weaker.)");
     }
     function buildOrUpgrade(buildingId) {
       var s = save;
@@ -10542,10 +10569,9 @@
       var ownedIds = Object.keys(s.heroes);
       var walkerIds = s.party.filter(function (id) { return s.heroes[id]; }).concat(ownedIds.filter(function (id) { return s.party.indexOf(id) < 0; })).slice(0, 7);
       function anchorFor(def) {
-        var place = happyPlaceOf(def);
-        if (place.id === "training" && un.training) return spot("training");
-        if (place.id === "musichall" && (un.musicHall || def.id === "luna")) return def.id === "luna" && !un.musicHall ? spot("square") : spot("musichall");
-        return spot("square");
+        var open = happyPlacesOf(def).filter(function (p) { return happyPlaceOpen(s, p.id); });
+        if (open.length === 0) return spot("square");
+        return spot(open[happyHash(def.id) % open.length].id);
       }
       var residentFigures = par.residents.slice(0, 3);
       var h = '<div class="anime-card mt4" style="overflow:hidden">';
@@ -10767,20 +10793,29 @@
       /* ---------- Happiness & lives ---------- */
       h += '<div class="anime-card mt4 card-pad">';
       h += '<h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">💛 The Heroes, At Home</h3>';
-      h += '<p class="small dim" style="margin-top:0.25rem;font-weight:500">They have lives here — some ordinary, some adventuring. Happiness fades with time (slower for higher stars and levels) and rest restores it: send each hero to their own happy place. A party at full happiness fights +20% harder; below half, weaker. Rest is just happiness — and happiness, here, is enough.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem;font-weight:500">They have lives here — some ordinary, some adventuring. Happiness fades with time (slower for higher stars and levels) and rest restores it: every hero has two or three happy places of their own, spread all across the town. A place that opens later restores more — the always-open Town Square gives +20, the World Tree +30, the built places +35–40, and the shard halls the most: Training Hall +55, Enchantment Hall +65, Music Hall +75. And rest is a rhythm, not a refill: each hero may rest at most 3 times a day, across all their places together. A party at full happiness fights +20% harder; below half, weaker. Rest is just happiness — and happiness, here, is enough.</p>';
       h += '<ul style="margin:0.75rem 0 0;padding:0;list-style:none;display:grid;gap:0.5rem">';
       heroIds.forEach(function (id) {
         var def = heroById(id);
         var o = s.heroes[id];
         var happyRaw = par.happiness[id];
         var happy = Math.round(typeof happyRaw === "number" ? happyRaw : 80);
-        var place = happyPlaceOf(def);
+        var places = happyPlacesOf(def);
+        var left = restsLeftToday(s, id);
         h += '<li style="display:flex;flex-wrap:wrap;align-items:center;gap:0.25rem 0.75rem;border:2px solid var(--border);border-radius:1rem;background:var(--surface);padding:0.5rem 0.75rem">';
         h += '<span class="font-display small" style="font-weight:700">' + esc(def.name) + "</span>";
         h += '<span class="xs dim" style="font-weight:600">' + effRank(def, o) + "★ · Lv " + o.level + (o.goddess ? " · 🌙 GODDESS" : "") + (o.breakthrough ? " · ✨ broken through" : "") + "</span>";
         h += '<span style="min-width:6rem;flex:1"><span style="display:block;height:0.625rem;overflow:hidden;border-radius:999px;background:var(--surface2)"><span style="display:block;height:100%;border-radius:999px;width:' + happy + "%;background:" + (happy >= 99 ? "#ffd94d" : happy < 50 ? "#fb7185" : "#8be0a4") + '"></span></span></span>';
         h += '<span class="xs" style="font-weight:800">' + happy + "%</span>";
-        h += '<button type="button" class="btn-pill btn-ghost" data-visit-place="' + id + '" aria-label="Send ' + esc(def.name) + " to rest at " + esc(place.name) + '" style="padding:0.25rem 0.75rem;font-size:0.75rem">Rest at ' + esc(place.name) + "</button>";
+        h += '<span class="xs" style="font-weight:800">💛 ' + left + "/3 rests left today</span>";
+        h += '<span style="display:flex;flex-wrap:wrap;gap:0.25rem;width:100%">';
+        places.forEach(function (pl) {
+          var open = happyPlaceOpen(s, pl.id);
+          var disabled = !open || left <= 0 || happy >= 100;
+          var label = open ? pl.icon + " Rest at " + pl.short + " · +" + pl.points : "🔒 " + pl.short + " · +" + pl.points;
+          h += '<button type="button" class="btn-pill btn-ghost" data-visit-place="' + id + '" data-visit-where="' + pl.id + '"' + (disabled ? " disabled" : "") + ' aria-label="Send ' + esc(def.name) + " to rest at " + esc(pl.name) + " (+" + pl.points + ' happiness)" style="padding:0.25rem 0.75rem;font-size:0.75rem">' + esc(label) + "</button>";
+        });
+        h += "</span>";
         h += '<span class="xs dim" style="width:100%;font-weight:500">Off-duty: ' + esc(def.name.split(" ")[0]) + " " + paradiseLifeLine(def) + ".</span>";
         h += "</li>";
       });
@@ -11201,7 +11236,7 @@
         el.addEventListener("click", function () { buyMeal(el.getAttribute("data-buy-meal")); });
       });
       main.querySelectorAll("[data-visit-place]").forEach(function (el) {
-        el.addEventListener("click", function () { visitHappyPlace(el.getAttribute("data-visit-place")); });
+        el.addEventListener("click", function () { visitHappyPlace(el.getAttribute("data-visit-place"), el.getAttribute("data-visit-where")); });
       });
       main.querySelectorAll("[data-fated-slot]").forEach(function (el) {
         el.addEventListener("click", function () { fatedSlot = el.getAttribute("data-fated-slot"); renderMain(); });
