@@ -14509,20 +14509,31 @@
       if (forgeTimer) window.clearInterval(forgeTimer);
       forgeTimer = window.setInterval(forgeTick, 30);
     }
-    function forgeTick() {
-      if (!forgeGame || forgeGame.done) return;
-      var now = performance.now();
-      var dt = Math.min(0.1, (now - forgeGame.lastTick) / 1000);
-      forgeGame.lastTick = now;
+    /* Advance the sweep to an absolute timestamp and paint it. Shared by
+       the animation loop and forgeStrike(), so a tap is judged at the
+       position the marker truly occupies at that instant — not the last
+       30 ms tick. (The marker is already painted straight to the DOM
+       here — no re-render — so this is the only half of main's fix
+       shared was missing.) The dt cap, bounce clamp, speeds, and zones
+       are unchanged from the old forgeTick. */
+    function forgeAdvanceTo(t) {
+      if (!forgeGame || forgeGame.done) return forgeGame ? forgeGame.pos : 0;
+      var dt = Math.min(0.1, Math.max(0, (t - forgeGame.lastTick) / 1000));
+      forgeGame.lastTick = t;
       forgeGame.pos += forgeGame.dir * forgeGame.speed * dt;
       if (forgeGame.pos >= 100) { forgeGame.pos = 100; forgeGame.dir = -1; }
       if (forgeGame.pos <= 0) { forgeGame.pos = 0; forgeGame.dir = 1; }
       var m = document.getElementById("forge-marker");
       if (m) m.style.left = forgeGame.pos + "%";
+      return forgeGame.pos;
+    }
+    function forgeTick() {
+      if (!forgeGame || forgeGame.done) return;
+      forgeAdvanceTo(performance.now());
     }
     function forgeStrike() {
       if (!forgeGame || forgeGame.done) return;
-      var p = forgeGame.pos;
+      var p = forgeAdvanceTo(performance.now());
       var kind, pts;
       if (p >= FORGE_PERFECT.lo && p <= FORGE_PERFECT.hi) { kind = "perfect"; pts = 2; }
       else if (p >= FORGE_GOOD.lo && p <= FORGE_GOOD.hi) { kind = "good"; pts = 1; }
