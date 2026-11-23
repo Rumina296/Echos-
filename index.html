@@ -1589,6 +1589,9 @@
         floorMemory: {},
         run: 1,
         heirloom: null,
+        sealedOok: [], /* 👑 CARRIED-OVER ONE OF A KIND (Nov 23, 2026): EVERY One-of-a-Kind piece the player owns carries over across a run reset, sealed here in acquisition order (ookSeq), each stamped with its own sealFloor — the first wakes at Floor 25 of the new climb, the second at 50, the third at 70. Unsealing moves a piece into gearInv and strips its sealFloor. Empty in run 1 and whenever nothing is sealed */
+        ookSeqCounter: 0, /* 👑 the highest One-of-a-Kind acquisition sequence handed out so far — climbs forever, carried across run resets untouched */
+        forgedSevenCount: 0, /* 👑 how many 7★ pieces the player has forged THIS RUN — doRunReset zeroes it, so each run's first forged 7★ is guaranteed One of a Kind again */
         heirloomSwapDecided: false, /* 🏺 one-time swap (Nov 23, 2026): an existing run-2+ save with a sub-7★ heirloom sealed under the OLD rule is offered ONE trade — the sealed piece for the tower's random 7★. Taking it OR declining it sets this true forever (carried across run resets); while false and the heirloom is sub-7★, the offer stands in the sealed-relic card */
         runStartResetMigrated: false, /* 🔁 one-time migration stamp (Nov 23, 2026): the run-start resets (daily-login stamp + built-in redeem codes) have been applied to this save — set by doRunReset at every run start, and by the one-time load migration in init for saves already in run 2+ when the rule landed; while false on a run-2+ save, the load migration still owes it its one reset */
         /* ---- Run 2 system, Phase 1 (ported from main) ---- */
@@ -1654,6 +1657,8 @@
           if (typeof rawHeir.attunedClass === "string" && rawHeir.attunedClass.trim()) heirPiece.attunedClass = remapLegacyAttunedClass(rawHeir.attunedClass.trim().slice(0, 30));
           if (typeof rawHeir.fatedHero === "string" && HEROES.some(function (hd) { return hd.id === rawHeir.fatedHero; })) heirPiece.fatedHero = rawHeir.fatedHero;
           if (typeof rawHeir.enhance === "number" && rawHeir.enhance > 0) heirPiece.enhance = Math.min(10, Math.floor(rawHeir.enhance));
+          if (rawHeir.oneOfAKind === true) heirPiece.oneOfAKind = true;
+          if (typeof rawHeir.ookSeq === "number" && rawHeir.ookSeq > 0) heirPiece.ookSeq = Math.floor(rawHeir.ookSeq);
           merged.heirloom = heirPiece;
         } else {
           merged.heirloom = null;
@@ -2057,6 +2062,9 @@
               if (typeof g.fatedHero === "string" && HEROES.some(function (hd) { return hd.id === g.fatedHero; })) piece.fatedHero = g.fatedHero;
               /* Enchantment Hall enhancement (Phase 2): +1..+10 rides along. */
               if (typeof g.enhance === "number" && g.enhance > 0) piece.enhance = Math.min(10, Math.floor(g.enhance));
+              if (g.oneOfAKind === true) piece.oneOfAKind = true;
+              if (typeof g.ookSeq === "number" && g.ookSeq > 0) piece.ookSeq = Math.floor(g.ookSeq);
+              if (typeof g.sealFloor === "number") piece.sealFloor = g.sealFloor;
               inv.push(piece);
             }
           });
@@ -2193,6 +2201,99 @@
            stripped boss cannot survive in a quest run (in main the strip
            is the last quest mutation; here the rebuild is). */
         merged.quests = merged.quests.map(function (r) { return Object.assign({}, r, { heroIds: (r.heroIds || []).filter(function (id) { return lockedIds.indexOf(id) < 0; }) }); }).filter(function (r) { return r.heroIds.length > 0; });
+        /* 👑 One of a Kind (Nov 23, 2026): the sealed-carryover rebuild,
+           the grandfathering migration, and the carryover migration —
+           ported from the main game's parseSave. sealedOok is rebuilt
+           field-by-field like the bag (a malformed entry is dropped,
+           never guessed at), with sealFloor clamped to the three
+           stagger floors (25 / 50 / 70, default 50). */
+        (function () {
+          var rawOok = Array.isArray(p.sealedOok) ? p.sealedOok : [];
+          var cleanOok = [];
+          rawOok.forEach(function (g) {
+            if (!g || typeof g.uid !== "string" || (g.slot !== "weapon" && g.slot !== "armor" && g.slot !== "accessory") || typeof g.stars !== "number" || g.stars < 1 || g.stars > 7) return;
+            var pc = { uid: g.uid, slot: g.slot, stars: Math.floor(g.stars) };
+            var rc2 = g.recipe;
+            if (rc2 === "dragon") rc2 = "scale";
+            else if (rc2 === "star") rc2 = "essence";
+            if (typeof rc2 === "string" && ["iron", "moon", "scale", "essence"].indexOf(rc2) >= 0) pc.recipe = rc2;
+            if (typeof g.name === "string" && g.name.trim() && pc.stars >= 5) pc.name = g.name.trim().slice(0, 40);
+            if (typeof g.attunedClass === "string" && g.attunedClass.trim()) pc.attunedClass = remapLegacyAttunedClass(g.attunedClass.trim().slice(0, 30));
+            if (typeof g.fatedHero === "string" && (HEROES.some(function (hd) { return hd.id === g.fatedHero; }) || RUN2_HEROES.some(function (hd) { return hd.id === g.fatedHero; }))) pc.fatedHero = g.fatedHero;
+            if (typeof g.enhance === "number" && g.enhance > 0) pc.enhance = Math.min(10, Math.floor(g.enhance));
+            if (g.oneOfAKind === true) pc.oneOfAKind = true;
+            if (typeof g.ookSeq === "number" && g.ookSeq > 0) pc.ookSeq = Math.floor(g.ookSeq);
+            pc.sealFloor = OOK_UNLOCK_FLOORS.indexOf(g.sealFloor) >= 0 ? g.sealFloor : 50;
+            cleanOok.push(pc);
+          });
+          merged.sealedOok = cleanOok;
+          /* Grandfathering: saves predating forgedSevenCount have EVERY
+             7★ marked One of a Kind (forged ones by grandfathering —
+             under the old rule every forged 7★ was OoK; the granted
+             heirloom 7★ by the same call). Only new forges after this
+             change can produce a regular 7★. The counter counts forges
+             only. A save that already carries the counter keeps its
+             markers exactly as stored and is never re-marked, so a
+             regular 7★ from a lost 30% roll can never gain the marker
+             on a later load. */
+          var rawCount = p.forgedSevenCount;
+          if (typeof rawCount === "number" && isFinite(rawCount) && rawCount >= 0) {
+            merged.forgedSevenCount = Math.floor(rawCount);
+          } else {
+            var provablyForged = function (g) {
+              if (g.attunedClass) return true;
+              if (g.fatedHero) return NATURAL_SEVEN_HERO_IDS.indexOf(g.fatedHero) < 0;
+              return true; /* neither field — a granted heirloom always carries a fatedHero */
+            };
+            var grantedSlotTaken = !!merged.heirloom || merged.run < 2;
+            var forged = 0;
+            merged.gearInv = merged.gearInv.map(function (g) {
+              if (g.stars < 7) return g;
+              if (provablyForged(g) || grantedSlotTaken) forged += 1;
+              return g.oneOfAKind ? g : Object.assign({}, g, { oneOfAKind: true });
+            });
+            if (merged.heirloom && merged.heirloom.stars >= 7) {
+              if (provablyForged(merged.heirloom)) forged += 1;
+              if (!merged.heirloom.oneOfAKind) merged.heirloom = Object.assign({}, merged.heirloom, { oneOfAKind: true });
+            }
+            merged.sealedOok = merged.sealedOok.map(function (g) {
+              if (g.stars < 7) return g;
+              if (provablyForged(g)) forged += 1;
+              return g.oneOfAKind ? g : Object.assign({}, g, { oneOfAKind: true });
+            });
+            merged.forgedSevenCount = forged;
+          }
+          /* Carryover migration (1): a One-of-a-Kind piece still sitting
+             in the heirloom slot — the tower's granted 7★, or a genuine
+             forged 7★ that was the old rule's single survivor — belongs
+             to the carryover now: it moves to the FRONT of sealedOok
+             with the first stagger floor, 25, so the original granted
+             piece wakes at Floor 25. A NON-One-of-a-Kind heirloom is
+             untouched: it keeps its slot and its Floor-50 unseal, and
+             the swap offer with it. */
+          if (merged.heirloom && merged.heirloom.oneOfAKind) {
+            var movedOok = Object.assign({}, merged.heirloom, { sealFloor: OOK_UNLOCK_FLOORS[0] });
+            merged.sealedOok = [movedOok].concat(merged.sealedOok);
+            merged.heirloom = null;
+          }
+          /* Carryover migration (2): acquisition sequences — every marked
+             piece that predates the ookSeq field is stamped in ownership
+             order (sealed pieces first, then the bag in its stored
+             order), continuing from the highest sequence already stamped
+             or the save's stored counter, whichever is further along.
+             The counter itself is then exactly that high-water mark. */
+          var rawCounter = p.ookSeqCounter;
+          var seq = typeof rawCounter === "number" && isFinite(rawCounter) && rawCounter > 0 ? Math.floor(rawCounter) : 0;
+          var markedAll = merged.sealedOok.filter(function (g) { return g.oneOfAKind; })
+            .concat(merged.gearInv.filter(function (g) { return g.oneOfAKind; }))
+            .concat(merged.heirloom && merged.heirloom.oneOfAKind ? [merged.heirloom] : []);
+          markedAll.forEach(function (g) { if (typeof g.ookSeq === "number" && g.ookSeq > seq) seq = g.ookSeq; });
+          var stampMissing = function (g) { return (g.oneOfAKind && typeof g.ookSeq !== "number") ? Object.assign({}, g, { ookSeq: ++seq }) : g; };
+          merged.sealedOok = merged.sealedOok.map(stampMissing);
+          merged.gearInv = merged.gearInv.map(stampMissing);
+          if (merged.heirloom && merged.heirloom.oneOfAKind) merged.heirloom = stampMissing(merged.heirloom);
+          merged.ookSeqCounter = seq;
+        })();
         return merged;
       } catch (e) {
         return null;
@@ -3091,8 +3192,21 @@
     function gearAtkBonus(stars) { return stars * 14; }
     function gearHpBonus(stars) { return stars * 90; }
     function gearCritBonus(stars) { return stars * 0.015; }
+    /* 👑 One of a Kind (Nov 23, 2026): a 7★ piece stamped oneOfAKind —
+       Seraphina's set from the forge, or the tower's granted heirloom 7★ —
+       has its base bonuses DOUBLED — weapon 196 ATK, armor 1260 HP,
+       accessory 21% crit. A regular 7★ (a forged 7★ that lost the 30%
+       roll) stays on the linear per-star formula above (98 / 630 / 10.5%),
+       and ranks 1★–6★ never change. EVERY consumer of the per-star rates —
+       card display, battle ATK/HP, the party crit path, gearBonusValue —
+       goes through these piece-aware helpers; the raw star-only functions
+       remain only as the linear base they double from. */
+    function gearKindMult(p) { return p && p.oneOfAKind && p.stars >= 7 ? 2 : 1; }
+    function gearPieceAtkBonus(p) { return gearAtkBonus(p.stars) * gearKindMult(p); }
+    function gearPieceHpBonus(p) { return gearHpBonus(p.stars) * gearKindMult(p); }
+    function gearPieceCritBonus(p) { return gearCritBonus(p.stars) * gearKindMult(p); }
     /* The raw size of a piece's stat bonus, for comparing pieces across slots (accessory crit is counted in percentage points). */
-    function gearBonusValue(p) { return p.slot === "weapon" ? gearAtkBonus(p.stars) : p.slot === "armor" ? gearHpBonus(p.stars) : gearCritBonus(p.stars) * 100; }
+    function gearBonusValue(p) { return p.slot === "weapon" ? gearPieceAtkBonus(p) : p.slot === "armor" ? gearPieceHpBonus(p) : gearPieceCritBonus(p) * 100; }
     /* The single strongest piece in a collection: highest stars first, ties broken by the largest stat bonus. Null when the collection is empty. */
     function strongestGearPiece(inv) {
       var best = null;
@@ -3103,6 +3217,41 @@
     }
     /* The sealed heirloom from the previous run opens when the new climb reaches this floor. The number is deliberately NEVER shown in the UI — the seal simply breaks when it breaks. */
     var HEIRLOOM_UNLOCK_FLOOR = 50;
+    /* 👑 Carried-over One of a Kind pieces wake on a stagger by acquisition
+       rank: the first at Floor 25 of the new climb, the second at 50, the
+       third at 70. A rank past the third clamps to 70. Like the heirloom
+       floor, these numbers are never shown in the UI. */
+    var OOK_UNLOCK_FLOORS = [25, 50, 70];
+    function ookUnlockFloor(rank) {
+      var r = Math.max(0, Math.min(rank, OOK_UNLOCK_FLOORS.length - 1));
+      return OOK_UNLOCK_FLOORS[r] !== undefined ? OOK_UNLOCK_FLOORS[r] : 70;
+    }
+    /* 🔓 The one unsealing pass, shared by the battle loop (the moment a
+       clear lands the climb on a new floor) and the load path (belt and
+       braces, for a save whose climb is already past a seal's floor).
+       Mutates the draft it is handed: every due sealed piece moves into
+       the bag — the non-One-of-a-Kind heirloom at HEIRLOOM_UNLOCK_FLOOR,
+       each carried-over One of a Kind at its own stamped sealFloor — and
+       an unsealed piece's sealFloor is stripped as it lands. Run 1 has no
+       seals to break. */
+    function unsealDueRelics(draft) {
+      if (!draft || (draft.run || 1) < 2) return;
+      if (draft.heirloom && draft.floor >= HEIRLOOM_UNLOCK_FLOOR) {
+        draft.gearInv = (draft.gearInv || []).concat([draft.heirloom]);
+        draft.heirloom = null;
+      }
+      if (Array.isArray(draft.sealedOok) && draft.sealedOok.length > 0) {
+        var due = draft.sealedOok.filter(function (g) { return draft.floor >= (typeof g.sealFloor === "number" ? g.sealFloor : HEIRLOOM_UNLOCK_FLOOR); });
+        if (due.length > 0) {
+          draft.gearInv = (draft.gearInv || []).concat(due.map(function (g) {
+            var clean = {};
+            for (var ck in g) if (ck !== "sealFloor") clean[ck] = g[ck];
+            return clean;
+          }));
+          draft.sealedOok = draft.sealedOok.filter(function (g) { return draft.floor < (typeof g.sealFloor === "number" ? g.sealFloor : HEIRLOOM_UNLOCK_FLOOR); });
+        }
+      }
+    }
     /* The natural 7★ heroes — the only heroes a 7★ piece can be fated for
        when the tower itself grants one (see randomSevenStarHeirloom). */
     var NATURAL_SEVEN_HERO_IDS = ["luna", "aurelia", "aldric"];
@@ -3128,7 +3277,12 @@
     function randomSevenStarHeirloom() {
       var slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)] || "weapon";
       var fatedHero = NATURAL_SEVEN_HERO_IDS[Math.floor(Math.random() * NATURAL_SEVEN_HERO_IDS.length)] || "luna";
-      return { uid: gearUidNew(), slot: slot, stars: 7, recipe: "essence", fatedHero: fatedHero };
+      /* 👑 The tower's granted 7★ IS One of a Kind (Rachel's call, Nov 23,
+         2026): it carries the stamp and the doubled stats like a forged
+         one. It is still GRANTED, not forged — it never advances the
+         forged-7★ counter, so a player's first actual forge keeps its
+         always-One-of-a-Kind guarantee. Callers stamp ookSeq / sealFloor. */
+      return { uid: gearUidNew(), slot: slot, stars: 7, recipe: "essence", fatedHero: fatedHero, oneOfAKind: true };
     }
     /* Gear grows with its wearer: a weapon's ATK bonus and an armor's HP
        bonus multiply by (1 + wearer level / 100) — ×1.6 at Lv 60, ×2.2 at
@@ -3155,7 +3309,7 @@
     /* The one-of-a-kind rule: a slot's 7★ can only ever exist once. */
     function gearSevenExists(inv, slot) { return (inv || []).some(function (g) { return g.slot === slot && g.stars >= 7; }); }
     /* The one-set rule spans runs: a 7★ sealed away as the heirloom still counts — its slot can never produce a second 7★. */
-    function slotHasSevenStar(s, slot) { return gearSevenExists(s ? s.gearInv : [], slot) || (!!s && !!s.heirloom && s.heirloom.slot === slot && s.heirloom.stars >= 7); }
+    function slotHasSevenStar(s, slot) { return gearSevenExists(s ? s.gearInv : [], slot) || (!!s && !!s.heirloom && s.heirloom.slot === slot && s.heirloom.stars >= 7) || (!!s && Array.isArray(s.sealedOok) && s.sealedOok.some(function (g) { return g.slot === slot && g.stars >= 7; })); }
     var MATERIALS = [
       { id: "iron", name: "Iron Shard", icon: "🔩" },
       { id: "moon", name: "Moonstone", icon: "🌙" },
@@ -3352,7 +3506,7 @@
       { id: "iron", name: "Iron Forge", mat: "iron", matCount: 5, gold: 500, floor: 1, speed: 65, speedLabel: "Slow", blurb: "Humble stock — but strike a perfect game (all 3 Perfect) and even scrap comes out 4★." },
       { id: "moon", name: "Moonstone Forge", mat: "moon", matCount: 3, gold: 2000, floor: 2, speed: 95, speedLabel: "Steady", blurb: "Moonstone holds an edge beautifully. Guaranteed 2★ or better — and a perfect game (all 3 Perfect) forges 5★." },
       { id: "scale", name: "Dragonscale Forge", mat: "scale", matCount: 2, gold: 5000, floor: 3, speed: 125, speedLabel: "Fast", blurb: "Scale-forged gear never comes out dull. Guaranteed 3★ or better — and a perfect game (all 3 Perfect) forges 6★." },
-      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Pure condensed starlight. Guaranteed 4★ — a perfect game forges 6★ at worst, and the one-of-a-kind 7★ when the gate is met (Floor 70+, once per slot)." }
+      { id: "essence", name: "Starlight Forge", mat: "essence", matCount: 1, gold: 10000, floor: 4, speed: 170, speedLabel: "Very Fast", blurb: "Pure condensed starlight. Guaranteed 4★, and 5 points forges a full 5★ — a perfect game forges 6★ at worst, and the 7★ when the gate is met (Floor 70+, once per slot). The first 7★ you forge in each run is always 👑 One of a Kind — its stats are doubled; every later forged 7★ that run has a 30% chance to be One of a Kind." }
     ];
     function recipeById(id) { for (var i = 0; i < FORGE_RECIPES.length; i++) if (FORGE_RECIPES[i].id === id) return FORGE_RECIPES[i]; return FORGE_RECIPES[0]; }
     function gearByUid(uid, ctx) {
@@ -3384,9 +3538,9 @@
       return custom || gearDefaultName(g);
     }
     function gearBonusText(g) {
-      if (g.slot === "weapon") return "+" + gearAtkBonus(g.stars) + " ATK";
-      if (g.slot === "armor") return "+" + gearHpBonus(g.stars) + " HP";
-      return "+" + Math.round(gearCritBonus(g.stars) * 1000) / 10 + "% crit chance";
+      if (g.slot === "weapon") return "+" + gearPieceAtkBonus(g) + " ATK";
+      if (g.slot === "armor") return "+" + gearPieceHpBonus(g) + " HP";
+      return "+" + Math.round(gearPieceCritBonus(g) * 1000) / 10 + "% crit chance";
     }
     /* gearBonusText as a wearer of the given level actually receives it:
        weapon ATK and armor HP show the level-scaled value (the set and
@@ -3394,8 +3548,8 @@
        separately, as before); crit reads the same as the base text because
        it never scales with level. */
     function gearBonusTextFor(g, level) {
-      if (g.slot === "weapon") return "+" + fmt(Math.round(gearAtkBonus(g.stars) * gearLevelMult(level))) + " ATK";
-      if (g.slot === "armor") return "+" + fmt(Math.round(gearHpBonus(g.stars) * gearLevelMult(level))) + " HP";
+      if (g.slot === "weapon") return "+" + fmt(Math.round(gearPieceAtkBonus(g) * gearLevelMult(level))) + " ATK";
+      if (g.slot === "armor") return "+" + fmt(Math.round(gearPieceHpBonus(g) * gearLevelMult(level))) + " HP";
       return gearBonusText(g);
     }
     function gearUidNew() { return "g" + Date.now().toString(36) + Math.floor(Math.random() * 1e9).toString(36); }
@@ -3538,6 +3692,31 @@
       var pool = [];
       HEROES.forEach(function (hd) { if (pool.indexOf(hd.cls) < 0) pool.push(hd.cls); });
       return { attunedClass: pool[Math.floor(Math.random() * pool.length)] };
+    }
+    /* The combine fresh roll (Nov 23, 2026, matching the main game): when
+       NO fodder piece is fated, the result's bonus rolls fresh at a FLAT
+       10% fated — the combine roll does NOT take the Blacksmith lift that
+       rollGearAttunement carries for the forge — otherwise a random class
+       attunement from the deduped pool of every hero's classes (primary
+       AND second classes of dual-class heroes). */
+    function rollCombineAttunement() {
+      if (Math.random() < 0.1) {
+        var fated = HEROES[Math.floor(Math.random() * HEROES.length)];
+        return { fatedHero: fated.id };
+      }
+      var pool = [];
+      HEROES.forEach(function (hd) { heroClasses(hd).forEach(function (c) { if (pool.indexOf(c) < 0) pool.push(c); }); });
+      return { attunedClass: pool[Math.floor(Math.random() * pool.length)] };
+    }
+    /* Fated inheritance (Nov 23, 2026): if any fodder piece is fated, the
+       result inherits the FIRST fated piece's hero (in pick / tray order)
+       and no fresh roll happens. Attunement on the fodder never carries
+       over. With no fated fodder, the bonus rolls fresh (see above). */
+    function combineBonusFor(pieces) {
+      for (var i = 0; i < pieces.length; i++) {
+        if (pieces[i] && pieces[i].fatedHero) return { fatedHero: pieces[i].fatedHero };
+      }
+      return rollCombineAttunement();
     }
     function normalizeDungeon() {
       if (!save) return;
@@ -3865,7 +4044,7 @@
          number: ×1.03 per credited completed run, compounding — 3% of the
          hero's final attack, whatever level, rank, and gear have grown
          it to. */
-      return (base + (g ? gearAtkBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * trainMult(o.trainAtk) * (def.id === "luna" && o.goddess ? 1.5 : 1) * legacyMult(o);
+      return (base + (g ? gearPieceAtkBonus(g) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * trainMult(o.trainAtk) * (def.id === "luna" && o.goddess ? 1.5 : 1) * legacyMult(o);
     }
     function heroHp(def, o, ctx) {
       var grownHp = def.baseHp * (1 + 0.12 * (o.level - 1)) * (1 + 0.30 * o.asc) - def.baseHp;
@@ -3875,7 +4054,7 @@
          HP; goddess Luna stands ×1.5 beyond even that. Run legacy: the
          same multiplier as heroAtk — ×1.03 per credited completed run,
          compounding, on the hero's final HP. */
-      return (base + (g ? gearHpBonus(g.stars) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * trainMult(o.trainDef) * (def.id === "luna" && o.goddess ? 1.5 : 1) * legacyMult(o);
+      return (base + (g ? gearPieceHpBonus(g) * gearLevelMult(o.level) * gearPieceMult(def.id, g, ctx) : 0)) * trainMult(o.trainDef) * (def.id === "luna" && o.goddess ? 1.5 : 1) * legacyMult(o);
     }
     function heroDps(def, o, ctx) { return heroAtk(def, o, ctx) * def.atkSpeed * selfSkillMult(def, o); }
     function maxLevel(def, o) { return 10 * effRank(def, o); }
@@ -4153,7 +4332,7 @@
         var o = s.heroes[id];
         if (!o) return;
         var acc = equippedGear(id, "accessory", s);
-        if (acc) crit += gearCritBonus(acc.stars) * gearPieceMult(id, acc, s);
+        if (acc) crit += gearPieceCritBonus(acc) * gearPieceMult(id, acc, s);
         var lv = skillLevel(o);
         switch (id) {
           case "jenna": crit += 0.03 * lv; def += 0.02 * lv; break;
@@ -5945,10 +6124,16 @@
        the entire roster goes back to ONE RANDOM 3★ or 4★ hero at Lv1,
        gold and gems return to their starting amounts, materials, gear,
        pity, dungeons, quests, Tower Memory and the Grave Tithe all wipe.
-       What carries over: the run counter (+1), the run's single strongest
-       gear piece sealed as the heirloom (or, when that piece falls short
-       of 7★, the tower's random 7★ sealed in its place — see
-       randomSevenStarHeirloom), the account-level record of gift codes
+       What carries over: the run counter (+1), EVERY One-of-a-Kind piece
+       the player owns, sealed into the carryover (sealedOok) in
+       acquisition order — they wake on the stagger, Floor 25 / 50 / 70 —
+       plus the run's strongest NON-One-of-a-Kind piece sealed as the
+       Floor-50 heirloom when it is a regular 7★ (when the strongest
+       falls short of 7★, the tower's random 7★ — itself One of a Kind —
+       joins the carryover in its place; see randomSevenStarHeirloom),
+       and the forge counter restarts with the run, so the new climb's
+       first forged 7★ is guaranteed One of a Kind again. Also carried:
+       the account-level record of gift codes
        already claimed, and — run 2's ledger — the dialogue log, the
        kind-word count, the shards, the remembered damage on the
        Unmaking, the protect-ending count, the First Echo's companionship,
@@ -5971,12 +6156,45 @@
     function doRunReset(s, opts) {
       opts = opts || {};
       var runHeir = strongestGearPiece(s.gearInv);
-      // 🏺 Heirloom upgrade (Rachel's call, Nov 23, 2026): a strongest piece
-      // short of 7★ is NOT sealed — the tower's random 7★ takes its place as
-      // the one sealed piece (see randomSevenStarHeirloom). A genuine 7★
-      // strongest piece seals exactly as before, and a run with no gear at
-      // all still seals nothing.
-      var sealedHeirloom = !runHeir ? null : runHeir.stars >= 7 ? JSON.parse(JSON.stringify(runHeir)) : randomSevenStarHeirloom();
+      /* 👑 One-of-a-Kind carryover (Rachel, Nov 23, 2026): EVERY marked
+         piece the player owns survives the reset, sealed — the ones still
+         sealed from the run before, a marked piece sitting in the
+         heirloom slot, and every marked piece in the bag. They are
+         ordered by acquisition sequence (ookSeq); a piece without one
+         falls back to that same order: sealed heirloom first, then the
+         previously sealed, then bag order. Each is stamped with its
+         stagger floor by rank: first 25, second 50, third 70. */
+      var ookSeqCounter = (typeof s.ookSeqCounter === "number" && s.ookSeqCounter > 0) ? Math.floor(s.ookSeqCounter) : 0;
+      var ookPool = [];
+      if (s.heirloom && s.heirloom.oneOfAKind) ookPool.push(JSON.parse(JSON.stringify(s.heirloom)));
+      (Array.isArray(s.sealedOok) ? s.sealedOok : []).forEach(function (g) { if (g.oneOfAKind) ookPool.push(JSON.parse(JSON.stringify(g))); });
+      (s.gearInv || []).forEach(function (g) { if (g.oneOfAKind) ookPool.push(JSON.parse(JSON.stringify(g))); });
+      var sealedOok = ookPool.map(function (g, i) { return { g: g, i: i }; })
+        .sort(function (a, b) { return ((typeof a.g.ookSeq === "number" ? a.g.ookSeq : Number.MAX_SAFE_INTEGER) - (typeof b.g.ookSeq === "number" ? b.g.ookSeq : Number.MAX_SAFE_INTEGER)) || a.i - b.i; })
+        .map(function (e, rank) { var c = e.g; c.sealFloor = ookUnlockFloor(rank); return c; });
+      /* 🏺 The heirloom rule for NON-One-of-a-Kind pieces is untouched:
+         the run's strongest piece seals as the Floor-50 heirloom when it
+         is a regular 7★; when it falls short of 7★ it is NOT sealed —
+         the tower's random 7★ takes its place, and because that granted
+         piece is One of a Kind it joins the carryover instead: stamped
+         with the next acquisition sequence (acquired at this transition,
+         after everything the finished run forged) and sealed at the rank
+         its place in the order earns — the first piece's Floor 25 when
+         it stands alone, as it does on the run-2 grant. A strongest
+         piece that is itself One of a Kind is already in the carryover
+         pool above, and a run with no gear at all still seals nothing. */
+      var sealedHeirloom = null;
+      if (runHeir) {
+        if (runHeir.stars >= 7) {
+          if (!runHeir.oneOfAKind) sealedHeirloom = JSON.parse(JSON.stringify(runHeir));
+        } else {
+          ookSeqCounter += 1;
+          var grantedOok = randomSevenStarHeirloom();
+          grantedOok.ookSeq = ookSeqCounter;
+          grantedOok.sealFloor = ookUnlockFloor(sealedOok.length);
+          sealedOok.push(grantedOok);
+        }
+      }
       var freshRun = freshSave(Date.now());
       var startRank = Math.random() < 0.5 ? 3 : 4;
       var runStartHero = rollHero(startRank);
@@ -6008,6 +6226,15 @@
       freshRun.run = (typeof s.run === "number" && s.run >= 1 ? Math.floor(s.run) : 1) + 1;
       freshRun.legacyBonus = legacyBonus;
       freshRun.heirloom = sealedHeirloom;
+      freshRun.sealedOok = sealedOok;
+      /* 👑 The acquisition-sequence counter climbs across the reset
+         untouched (plus the one stamp a fresh tower grant just took) —
+         it is an ordering ledger, not a per-run allowance. */
+      freshRun.ookSeqCounter = ookSeqCounter;
+      /* 👑 The forged-7★ count RESTARTS with the run — each run's first
+         forged 7★ is guaranteed One of a Kind again. Granted One-of-a-Kind
+         pieces never count toward it. */
+      freshRun.forgedSevenCount = 0;
       freshRun.heirloomSwapDecided = s.heirloomSwapDecided === true;
       /* 🔁 RUN-START RESETS (Rachel, Nov 23, 2026; see the header above):
          the built-in redeem codes reset and the daily login restarts
@@ -6066,14 +6293,23 @@
     }
     /* 🏺 The one-time heirloom swap, taken: the sealed sub-7★ relic is
        surrendered unopened and the tower's random 7★ is sealed in its
-       place — same piece the forward rule grants at a reset, same
-       Floor-50 unseal through the standing paths. The decision stamp
-       lands in the same write, so the offer can never be taken twice. */
+       place — into the One-of-a-Kind carryover rather than the heirloom
+       slot, stamped with the next acquisition sequence and the Floor-25
+       seal of a first piece (a save eligible for the swap holds no other
+       sealed One of a Kind), unsealing through the standing paths. The
+       decision stamp lands in the same write, so the offer can never be
+       taken twice. */
     function acceptHeirloomSwap() {
       var s = save;
       if (!s || !heirloomSwapEligible(s)) return;
       var next = JSON.parse(JSON.stringify(s));
-      next.heirloom = randomSevenStarHeirloom();
+      if (!Array.isArray(next.sealedOok)) next.sealedOok = [];
+      var grantedSwap = randomSevenStarHeirloom();
+      grantedSwap.ookSeq = (typeof next.ookSeqCounter === "number" ? next.ookSeqCounter : 0) + 1;
+      grantedSwap.sealFloor = ookUnlockFloor(next.sealedOok.length);
+      next.sealedOok.push(grantedSwap);
+      next.ookSeqCounter = grantedSwap.ookSeq;
+      next.heirloom = null;
       next.heirloomSwapDecided = true;
       persist(next);
       writeSave();
@@ -7906,6 +8142,10 @@
       return '<div' + (mt ? ' style="margin-top:' + mt + '"' : '') + '><button type="button" class="expander-btn" data-expander="' + key + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Hide ' : 'Show ') + esc(label) + '">' + (open ? '▾ ' : '▸ ') + esc(label) + '</button>' + (open ? body : '') + '</div>';
     }
     var combineQuickPlan = null;
+    /* Manual-tray special-piece confirmation — Nov 23, 2026: armed when the
+       player taps Combine with a fated / attuned piece in the tray, so
+       the fuse is gated behind the same warning Quick combine shows. */
+    var combineConfirmPending = false;
     /* Gear list sort (matching the main game): "stars" highest first,
        "matches" groups pieces sharing a slot and star rank, "newest"
        newest first. Entering combine mode switches to "matches". */
@@ -9096,6 +9336,15 @@
         }
         h += '</div>';
       }
+      /* 👑 One card per sealed carried-over One of a Kind piece, after
+         the heirloom card — gold dashed, contents unknown. The seal
+         floors are never shown (the tower returns them as the climb
+         deepens: first at Floor 25, then 50, then 70). */
+      (s.sealedOok || []).forEach(function (relic) {
+        h += '<div style="margin-top:0.75rem;border-radius:16px;border:2px dashed rgba(255,217,77,0.55);background:rgba(255,217,77,0.07);padding:0.75rem" role="region" aria-label="Sealed One of a Kind relic — contents unknown">';
+        h += '<div style="display:flex;align-items:center;gap:0.75rem"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.125rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span> <span style="border-radius:999px;background:rgba(255,217,77,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#ffd94d">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">A One of a Kind piece from a climb half-remembered sleeps inside, sealed tight — yours forever, as its name promises. It cannot be equipped, sold, or pried open — the tower will return it as the climb deepens.</span></span><span style="font-size:1.5rem" aria-hidden="true">👑</span></div>';
+        h += '</div>';
+      });
       /* ---- Combine mode toggle + gear sort ---- */
       h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
       h += '<button type="button" class="' + (combineMode ? "btn-pill anime-btn-primary" : "btn-pill") + '" data-combine-toggle aria-pressed="' + combineMode + '" aria-label="' + (combineMode ? "Exit combine mode" : "Enter combine mode — fuse 3 matching gear pieces into 1 of the next star rank") + '" style="' + (combineMode ? "" : "border:2px solid #ff7eb6;background:rgba(255,126,182,0.1);color:#ff9ecf") + '">' + (combineMode ? "✕ Done combining" : "🔀 Combine gear") + "</button>";
@@ -9114,7 +9363,7 @@
         var nameValue = combineName !== null ? combineName : defaultName;
         h += '<div style="margin-top:0.75rem;border:2px solid #ff7eb6;background:rgba(255,126,182,0.07);border-radius:16px;padding:0.75rem" role="region" aria-label="Combine gear — pick 3 matching pieces">';
         h += '<p class="small" style="font-weight:900;margin:0">🔀 Combine tray — ' + picked.length + ' of 3 picked</p>';
-        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Tap pieces below to fill the tray. All 3 must share a slot and a star rank; the FIRST piece picked lends its recipe (set) to the result, and the result rolls a fresh attunement. Equipped pieces can\'t be fodder — unequip them first. Combining tops out at 6★ (3× 5★ → 1× 6★): 6★ pieces can\'t be combined further, and 7★ pieces are never fodder — 7★ still comes only from a flawless Starlight forge.</p>';
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Tap pieces below to fill the tray. All 3 must share a slot and a star rank; the FIRST piece picked lends its recipe (set) to the result. A 🌟 fated link on any picked piece carries over — the result is fated for the first fated piece\'s hero; an attunement does not survive the fuse, and with no fated pick the result rolls a fresh attunement. Equipped pieces can\'t be fodder — unequip them first. Combining tops out at 6★ (3× 5★ → 1× 6★): 6★ pieces can\'t be combined further, and 7★ pieces are never fodder — 7★ still comes only from a flawless Starlight forge.</p>';
         /* READY SETS — grouped by slot & rank: one card per slot + rank
            group holding 3+ pieces (free/equipped split, triples counted),
            with one-tap Fill tray and Combine all per group. Slots in forge
@@ -9161,13 +9410,26 @@
           h += '<div style="margin-top:0.75rem;border:2px solid var(--border);background:var(--surface);border-radius:16px;padding:0.75rem">';
           h += '<p class="xs bold dim" style="margin:0;letter-spacing:0.15em">RESULT PREVIEW</p>';
           h += '<p class="font-display" style="margin-top:0.25rem;font-size:1.125rem;font-weight:600">' + GEAR_SLOT_ICON[first.slot] + " " + esc(resultStars >= 5 ? (nameValue.trim() || defaultName) : defaultName) + ' <span style="' + starTextStyle(resultStars) + '">' + starsStr(resultStars) + "</span></p>";
-          h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#5eead4">' + gearBonusText({ slot: first.slot, stars: resultStars }) + " · " + GEAR_SLOT_LABEL[first.slot] + (first.recipe ? " · " + esc(recipeSetName(first.recipe)) + " set (from the first piece)" : " · No set (first piece has no recipe)") + " · attunement rolls fresh</p>";
+          var fatedSrc = null;
+          picked.forEach(function (pp) { if (!fatedSrc && pp.fatedHero) fatedSrc = pp; });
+          h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#5eead4">' + gearBonusText({ slot: first.slot, stars: resultStars }) + " · " + GEAR_SLOT_LABEL[first.slot] + (first.recipe ? " · " + esc(recipeSetName(first.recipe)) + " set (from the first piece)" : " · No set (first piece has no recipe)") + (fatedSrc ? " · 🌟 Fated: " + esc(heroById(fatedSrc.fatedHero).name) + " (carried over from pick " + (picked.indexOf(fatedSrc) + 1) + ")" : " · attunement rolls fresh") + "</p>";
           if (resultStars >= 5) {
             h += '<div style="margin-top:0.75rem;text-align:left"><label for="combine-name" class="xs bold dim" style="letter-spacing:0.15em">✒️ NAME THE RESULT, MASTER (OPTIONAL)</label>';
             h += '<input id="combine-name" type="text" maxlength="40" value="' + esc(nameValue) + '" placeholder="' + esc(defaultName) + '" aria-label="Name for your combined ' + resultStars + '-star ' + first.slot + ' (optional)" style="margin-top:0.375rem;width:100%;border-radius:16px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.875rem;font-size:0.875rem;font-weight:700;color:var(--text)" />';
             h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:600">Pieces of 5★ and above may carry a name of your choosing, just like at the forge.</p></div>';
           }
           h += '<button type="button" class="btn-wide anime-btn-primary" data-combine-go style="margin-top:0.75rem" ' + (picked.length === 3 ? "" : "disabled") + ' aria-label="' + (picked.length === 3 ? "Combine the 3 picked pieces into a " + resultStars + "-star " + first.slot : "Combine — pick " + (3 - picked.length) + " more matching piece" + (3 - picked.length === 1 ? "" : "s") + " first") + '">🔀 Combine into ' + resultStars + "★ " + GEAR_SLOT_LABEL[first.slot] + "</button>";
+          if (combineConfirmPending) {
+            var cSpecials = picked.filter(function (pp) { return gearPieceIsSpecial(pp); });
+            h += '<div style="margin-top:0.75rem;border:2px solid #fda4af;background:rgba(251,113,133,0.07);border-radius:16px;padding:0.75rem" role="alertdialog" aria-label="Confirm combine — this eats special pieces">';
+            h += '<p class="small" style="font-weight:900;margin:0">⚠️ This eats special pieces</p>';
+            h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">A 🌟 fated link carries over — the result will be fated for the first fated piece\'s hero below. An attunement does not survive the fuse, and if no fodder piece is fated the result rolls a fresh bonus instead:</p>';
+            h += '<ul style="margin-top:0.5rem;display:grid;gap:0.25rem;list-style:none;padding:0">';
+            cSpecials.forEach(function (pp) { h += '<li class="small" style="font-weight:700">' + esc(gearName(pp)) + " " + starsStr(pp.stars) + " — " + (pp.fatedHero ? "🌟 Fated: " + esc(heroById(pp.fatedHero).name) : "Attuned: " + esc(pp.attunedClass)) + "</li>"; });
+            h += '</ul>';
+            h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem"><button type="button" class="btn-wide anime-btn-primary" data-combine-confirm aria-label="Combine anyway — fuse the picked pieces">Combine anyway</button><button type="button" class="btn-wide btn-ghost" data-combine-keep>Keep them</button></div>';
+            h += '</div>';
+          }
           h += "</div>";
         }
         /* Quick combine: fuse every ready triple at once from plain bag
@@ -9178,14 +9440,14 @@
         if (combineQuickPlan) {
           h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;background:rgba(255,217,77,0.07);border-radius:16px;padding:0.75rem" role="alertdialog" aria-label="Confirm quick combine — review the full plan before anything is fused">';
           h += '<p class="small" style="font-weight:900;margin:0">⚡ Quick combine — here\'s the whole plan</p>';
-          h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + (combineQuickPlan.specials && combineQuickPlan.specials.length ? "Plain pieces first — but this plan also eats the special pieces named below. Each result keeps the set of its triple's recipe donor, and rolls a fresh attunement." : "Bag pieces only, plain pieces first. Each result keeps the set of its triple's first piece, and rolls a fresh attunement.") + '</p>';
+          h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + (combineQuickPlan.specials && combineQuickPlan.specials.length ? "Plain pieces first — but this plan also eats the special pieces named below. A 🌟 fated link carries over to its result; an attunement does not survive the fuse, and a result with no fated fodder rolls a fresh attunement. Each result keeps the set of its triple's recipe donor." : "Bag pieces only, plain pieces first. Each result keeps the set of its triple's first piece. A 🌟 fated link would carry over to its result; attunement never survives — with no fated fodder the result rolls a fresh attunement.") + '</p>';
           h += '<ul style="margin-top:0.5rem;display:grid;gap:0.25rem;list-style:none;padding:0">';
           combineQuickPlan.lines.forEach(function (l) {
             h += '<li class="small" style="font-weight:700">' + GEAR_SLOT_ICON[l.slot] + " " + l.stars + "★ " + GEAR_SLOT_LABEL[l.slot] + "s: " + l.inCount + " in → " + l.outCount + " × " + (l.stars + 1) + "★</li>";
           });
           h += "</ul>";
           if (combineQuickPlan.skippedTriples > 0) h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:#fda4af">⚠ ' + combineQuickPlan.skippedTriples + " triple" + (combineQuickPlan.skippedTriples === 1 ? "" : "s") + ' left out — ' + (combineQuickPlan.skippedTriples === 1 ? "it" : "they") + ' would need a fated or attuned piece, and Quick combine never eats those.</p>';
-          if (combineQuickPlan.specials && combineQuickPlan.specials.length > 0) h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:#fda4af">⚠ ' + combineQuickPlan.specials.length + ' special piece' + (combineQuickPlan.specials.length === 1 ? '' : 's') + ' in this plan — fated / attuned pieces are eaten last, and fusing one destroys it: ' + combineQuickPlan.specials.map(function (x) { return esc(x); }).join('; ') + '</p>';
+          if (combineQuickPlan.specials && combineQuickPlan.specials.length > 0) h += '<p class="xs" style="margin-top:0.5rem;font-weight:700;color:#fda4af">⚠ ' + combineQuickPlan.specials.length + ' special piece' + (combineQuickPlan.specials.length === 1 ? '' : 's') + ' in this plan — fated / attuned pieces are eaten last: a fated link carries over to its result, but an attunement is lost in the fuse: ' + combineQuickPlan.specials.map(function (x) { return esc(x); }).join('; ') + '</p>';
           h += '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem"><button type="button" class="btn-wide anime-btn-primary" data-quick-combine-confirm aria-label="Fuse all ' + combineQuickPlan.runs.length + ' planned triples now — ' + combineQuickPlan.lines.map(function (l) { return l.outCount + " × " + (l.stars + 1) + "★ " + GEAR_SLOT_LABEL[l.slot] + "s"; }).join(", ") + '">⚡ Fuse all ' + combineQuickPlan.runs.length + " triple" + (combineQuickPlan.runs.length === 1 ? "" : "s") + '</button><button type="button" class="btn-wide btn-ghost" data-quick-combine-cancel>Cancel</button></div>';
           h += "</div>";
         }
@@ -9213,14 +9475,14 @@
           var holder = gearHolder(g.uid);
           var pickIdx = combineMode ? combineSel.indexOf(g.uid) : -1;
           var attState = holder ? gearAttuneState(holder, g) : null;
-          h += '<li class="gear-item"' + (pickIdx >= 0 ? ' style="border-color:#ff7eb6;box-shadow:0 0 14px rgba(255,126,182,0.35)"' : (g.uid === justBoughtGearUid ? ' style="border-color:#2dd4bf;box-shadow:0 0 14px rgba(45,212,191,0.35)"' : "")) + '><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + "</span>" + (g.stars >= 7 ? ' <span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span>' : "") + (g.uid === justBoughtGearUid ? ' <span style="border-radius:999px;background:#2dd4bf;color:#06283d;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">🆕 JUST BOUGHT</span>' : "") + '</p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + (holder ? gearBonusTextFor(g, (s.heroes[holder] || {}).level || 1) : gearBonusText(g)) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : " · No set") + gearAttuneSuffix(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) + (attState === "fated" ? " · 🌟 Fated bonus active" : attState === "attuned" ? " · ✨ Attuned bonus active" : "") : " · In bag") + '</p></span><span class="gi-actions">';
+          h += '<li class="gear-item"' + (pickIdx >= 0 ? ' style="border-color:#ff7eb6;box-shadow:0 0 14px rgba(255,126,182,0.35)"' : (g.uid === justBoughtGearUid ? ' style="border-color:#2dd4bf;box-shadow:0 0 14px rgba(45,212,191,0.35)"' : "")) + '><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + "</span>" + (g.oneOfAKind ? ' <span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">👑 ONE OF A KIND</span>' : "") + (g.uid === justBoughtGearUid ? ' <span style="border-radius:999px;background:#2dd4bf;color:#06283d;padding:0.0625rem 0.5rem;font-size:9px;font-weight:900">🆕 JUST BOUGHT</span>' : "") + '</p><p class="gi-meta">' + GEAR_SLOT_LABEL[g.slot] + " · " + (holder ? gearBonusTextFor(g, (s.heroes[holder] || {}).level || 1) : gearBonusText(g)) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : " · No set") + gearAttuneSuffix(g) + (holder ? " · ⚔ Equipped by " + esc(heroById(holder).name) + (attState === "fated" ? " · 🌟 Fated bonus active" : attState === "attuned" ? " · ✨ Attuned bonus active" : "") : " · In bag") + '</p></span><span class="gi-actions">';
           if (combineMode) {
             if (pickIdx >= 0) {
               h += '<button type="button" class="btn-mini anime-btn-primary" data-combine-pick="' + g.uid + '" aria-label="Remove ' + esc(gearName(g)) + ' from the combine tray — it is pick ' + (pickIdx + 1) + ' of 3">✓ Pick ' + (pickIdx + 1) + " — tap to remove</button>";
             } else if (holder) {
               h += '<span class="xs bold dim" aria-label="' + esc(gearName(g)) + ' is equipped — unequip it before it can be combined">Equipped — unequip first</span>';
             } else if (g.stars >= 7) {
-              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is one of a kind and can never be combine fodder">👑 Never fodder</span>';
+              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is 7 stars and can never be combine fodder">' + (g.oneOfAKind ? "👑 " : "") + 'Never fodder</span>';
             } else if (g.stars >= 6) {
               h += '<span class="xs bold dim" aria-label="' + esc(gearName(g)) + ' is 6 stars — combining tops out at 6 stars, so it cannot be combined further">6★ — combine cap</span>';
             } else {
@@ -9238,7 +9500,7 @@
           } else {
             h += '<button type="button" class="btn-mini anime-btn-sky" data-equip-pick="' + g.uid + '">Equip</button>';
             if (g.stars >= 7) {
-              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is one of a kind and cannot be sold">👑 Cannot be sold</span>';
+              h += '<span class="xs" style="font-weight:800;color:#ffd94d" aria-label="' + esc(gearName(g)) + ' is 7 stars and cannot be sold">' + (g.oneOfAKind ? "👑 " : "") + 'Cannot be sold</span>';
             } else {
               h += '<button type="button" class="btn-mini anime-btn-gold" data-sell-gear="' + g.uid + '" aria-label="Sell ' + esc(gearName(g)) + ' for ' + gearSellGold(g.stars) + ' gold">Sell 🪙 ' + gearSellGold(g.stars).toLocaleString("en-US") + "</button>";
             }
@@ -9247,7 +9509,7 @@
         });
         h += "</ul>";
       }
-      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Sell prices by star level: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667. Equipped pieces must be unequipped before they can be sold. 👑 7★ pieces are one of a kind — they can never be sold. 🔀 Combining: 3 unequipped pieces of the same slot &amp; rank fuse into 1 of the next rank (up to 6★) — no gold cost.</p>';
+      h += '<p class="xs dim" style="margin-top:0.5rem;font-weight:600">Sell prices by star level: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667. Equipped pieces must be unequipped before they can be sold. 7★ pieces can never be sold — and a 👑 One of a Kind 7★ carries doubled stats. 🔀 Combining: 3 unequipped pieces of the same slot &amp; rank fuse into 1 of the next rank (up to 6★) — no gold cost.</p>';
       h += "</div>";
       return h;
     }
@@ -9396,16 +9658,18 @@
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
+      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. One exception: Starlight pays a full 5★ for a 5-point game, so its loot steps with your accuracy (5 pts 5★; 4 pts or less lands on its 4★ floor). And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
       /* 👑 The 7★ set tracker — also the locked hint that tells players
          the tier exists and exactly how it unlocks, long before Floor 70. */
       h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
-      h += expanderHTML("sevenstar", "👑 The 7★ Set", '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. A flawless Starlight game whose gate isn\'t met still forges <span style="color:var(--text)">6★</span>; every non-perfect result tops out at 5★.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>", "");
+      h += expanderHTML("sevenstar", "👑 The 7★ Set", '<p class="small" style="font-weight:900;margin:0">👑 The 7★ Set — <span class="dim" style="font-weight:700">only one set can ever be made: one 7★ per slot, forged by landing <span style="color:var(--text)">all 3 Perfect</span> on Starlight Forging, the <span style="color:var(--text)">Very Fast</span> hammer, once the climb has reached <span style="color:var(--text)">Floor ' + SEVEN_STAR_MIN_FLOOR + '</span>. A flawless Starlight game whose gate isn\'t met still forges <span style="color:var(--text)">6★</span>; every non-perfect result tops out at 5★.</span> <span style="font-weight:700">A forged 7★ can come out 👑 One of a Kind — its stats are doubled: the first 7★ you forge in a run always is, and every later forged 7★ that run has a 30% chance. A regular 7★ follows the normal per-star formula instead. A One of a Kind piece also fates itself to whoever wears it — equipping it links it to that hero, replacing its attunement, and equipping it on someone else moves the link to them.</span>' + (s.floor < SEVEN_STAR_MIN_FLOOR ? ' <span style="color:#c4b5fd;font-weight:800">🔒 7★ forging unlocks at Floor ' + SEVEN_STAR_MIN_FLOOR + " — you're at Floor " + s.floor + ".</span>" : "") + "</p>", "");
       h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;gap:0.375rem">';
       GEAR_SLOTS.forEach(function (sl) {
         var seven = null;
         s.gearInv.forEach(function (g) { if (g.slot === sl && g.stars >= 7) seven = g; });
-        if (seven) h += '<span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + esc(gearName(seven)) + " ★★★★★★★</span>";
+        var kind = seven && seven.oneOfAKind ? seven : null;
+        if (kind) h += '<span style="border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);color:#3a2403;padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + esc(gearName(kind)) + " ★★★★★★★</span>";
+        else if (seven) h += '<span class="dim" style="border-radius:999px;border:1px solid var(--border);background:var(--surface);padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + esc(gearName(seven)) + " ★★★★★★★ — regular 7★, not One of a Kind</span>";
         else h += '<span class="dim" style="border-radius:999px;border:1px solid var(--border);background:var(--surface);padding:0.125rem 0.625rem;font-size:11px;font-weight:900">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl] + " 7★ — not yet forged</span>";
       });
       h += "</div></div>";
@@ -10436,7 +10700,7 @@
           if (gg) {
             var gAtt = gearAttuneState(def.id, gg);
             h += '<button type="button" class="gear-slot filled" data-gear-slot="' + sl + '" aria-label="Unequip ' + esc(gearName(gg)) + ' from ' + esc(def.name) + '"><p class="gs-label">' + GEAR_SLOT_ICON[sl] + " " + GEAR_SLOT_LABEL[sl].toUpperCase() + '</p><p class="gs-name">' + esc(gearName(gg)) + ' <span style="' + starTextStyle(gg.stars) + '">' + starsStr(gg.stars) + "</span></p>" +
-              (gg.stars >= 7 ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">👑 ONE OF A KIND</p>' : "") +
+              (gg.oneOfAKind ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">👑 ONE OF A KIND</p>' : "") +
               '<p class="gs-bonus">' + gearBonusTextFor(gg, o.level) + "</p>" +
               (gg.recipe ? '<p class="gs-hint">' + esc(recipeSetName(gg.recipe)) + "</p>" : "") +
               (gg.fatedHero ? (gAtt === "fated" ? '<p class="gs-hint" style="color:#ffd94d;font-weight:900">🌟 FATED BONUS ACTIVE — bonuses ×2</p>' : '<p class="gs-hint">🌟 Fated: ' + esc(heroById(gg.fatedHero).name) + "</p>") : gg.attunedClass ? (gAtt === "attuned" ? '<p class="gs-hint" style="color:#5eead4;font-weight:900">✨ ATTUNED BONUS ACTIVE — +50%</p>' : '<p class="gs-hint">Attuned: ' + esc(gg.attunedClass) + "</p>") : "") +
@@ -11022,6 +11286,7 @@
           combineMode = !combineMode;
           combineSel = [];
           combineName = null;
+          combineConfirmPending = false;
           combineShowAll = false;
           combineQuickPlan = null;
           if (combineMode) gearSort = "matches";
@@ -11093,10 +11358,21 @@
         el.addEventListener("click", function () { toggleCombinePick(el.getAttribute("data-combine-pick")); });
       });
       main.querySelectorAll("[data-combine-clear]").forEach(function (el) {
-        el.addEventListener("click", function () { combineSel = []; combineName = null; renderMain(); });
+        el.addEventListener("click", function () { combineSel = []; combineName = null; combineConfirmPending = false; renderMain(); });
       });
       main.querySelectorAll("[data-combine-go]").forEach(function (el) {
-        el.addEventListener("click", function () { combineGear(); });
+        el.addEventListener("click", function () {
+          var pickedSpecial = combineSel.some(function (uid) { var pp = gearByUid(uid); return pp && gearPieceIsSpecial(pp); });
+          if (pickedSpecial && !combineConfirmPending) { combineConfirmPending = true; renderMain(); return; }
+          combineConfirmPending = false;
+          combineGear();
+        });
+      });
+      main.querySelectorAll("[data-combine-confirm]").forEach(function (el) {
+        el.addEventListener("click", function () { combineConfirmPending = false; combineGear(); });
+      });
+      main.querySelectorAll("[data-combine-keep]").forEach(function (el) {
+        el.addEventListener("click", function () { combineConfirmPending = false; renderMain(); });
       });
       main.querySelectorAll("[data-combine-fill]").forEach(function (el) {
         el.addEventListener("click", function () {
@@ -13537,8 +13813,35 @@
       var g = gearByUid(uid);
       if (!g || !save.heroes[heroId]) return;
       var next = JSON.parse(JSON.stringify(save));
+      /* A piece can only be worn by one hero: strip it from every other
+         hero's slots before assigning it (the main game's equip rule). */
+      for (var ehid in next.equipped) {
+        var eslots = next.equipped[ehid];
+        if (!eslots) continue;
+        for (var esl in eslots) if (eslots[esl] === uid) eslots[esl] = null;
+      }
       if (!next.equipped[heroId]) next.equipped[heroId] = { weapon: null, armor: null, accessory: null };
       next.equipped[heroId][g.slot] = uid;
+      /* 👑 Auto-fate (Nov 23, 2026): a marked One-of-a-Kind piece fates
+         itself to whoever wears it — equipping one sets its fatedHero to
+         the wearer and drops any attunedClass (fated replaces attunement,
+         the same one-or-the-other model the forge uses). Re-equipping it
+         on a different hero moves the fate to the new wearer; unequipping
+         leaves the last fate in place (unequipGear never touches the
+         piece). Unmarked pieces — regular 7★, 6★ and below — are never
+         auto-fated: their fated/attuned state is untouched here. Sealed
+         pieces live outside gearInv until they unlock, so they can never
+         reach this path. This is the ONLY equip path — both UI equip
+         buttons call equipGearTo — so every equip applies the rule. */
+      if (g.oneOfAKind && g.stars >= 7) {
+        next.gearInv = next.gearInv.map(function (x) {
+          if (x.uid !== uid) return x;
+          var nx = {};
+          for (var xk in x) if (xk !== "attunedClass") nx[xk] = x[xk];
+          nx.fatedHero = heroId;
+          return nx;
+        });
+      }
       persist(next);
       writeSave();
       /* Gear changes a hero's max HP (armor): a hero whose max dropped
@@ -13571,7 +13874,7 @@
       if (!g) return;
       if (gearHolder(uid)) { setNotice("That piece is equipped — unequip it before selling."); return; }
       if (g.stars >= 7) {
-        setNotice("👑 " + gearName(g) + " is one of a kind — the only 7★ " + g.slot + " that can ever exist. It cannot be sold.");
+        setNotice("👑 " + gearName(g) + " is 7★ — the rarest rank there is. 7★ pieces can never be sold.");
         return;
       }
       var val = gearSellGold(g.stars);
@@ -13586,18 +13889,24 @@
        Fuse 3 unequipped pieces of the SAME slot and SAME star rank into
        1 piece of the next rank up (3× 2★ weapons → 1× 3★ weapon). The
        result keeps the slot and takes the recipe of the FIRST piece
-       picked, so set synergy is predictable; its attunement is rolled
-       fresh, exactly like a forge roll (10% fated, otherwise a random
-       class). No gold cost — the 3 pieces are the cost. Hard limits:
+       picked, so set synergy is predictable. If any fodder piece is
+       fated, the result inherits that fated hero — the FIRST fated
+       piece in pick order wins — and no fresh roll happens; otherwise
+       the result's bonus rolls fresh (flat 10% fated, otherwise a
+       random class). Attunement on the fodder never carries over.
+       No gold cost — the 3 pieces are the cost. Hard limits:
        fodder must be 1★–5★, so combining tops out at 6★ (3× 5★ → 1×
        6★); 6★ pieces can never be fodder, and 7★ pieces can never be
        fodder either — 7★ still comes only from a flawless Starlight
        forge. Equipped pieces must be unequipped first. A result of 5★+
        may be named, like a forged piece. */
-    /* A piece carrying a bonus that combining destroys: a fated hero link
-       (×2 on that hero) or a class attunement (+50% on matching heroes).
-       The combine flow warns before eating one of these — and Quick
-       combine never plans one at all. */
+    /* A piece carrying a bonus the combine flow calls out before eating:
+       a fated hero link (×2 on that hero) or a class attunement (+50% on
+       matching heroes). A fated link is NOT destroyed by combining — the
+       fused result inherits it (see combineBonusFor) — but an attunement
+       IS lost to the result's fresh roll, and a second fated link is lost
+       when two fodder pieces are fated to different heroes. The combine
+       flow warns before eating any of these. */
     function gearPieceIsSpecial(p) {
       return !!p.fatedHero || !!p.attunedClass;
     }
@@ -13664,7 +13973,7 @@
         if (pieces.some(function (p) { return p.slot !== first.slot || p.stars !== first.stars; })) return;
         if (first.stars < 1 || first.stars > 5) return;
         if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
-        var att = rollGearAttunement();
+        var att = combineBonusFor(pieces);
         var piece = { uid: gearUidNew(), slot: first.slot, stars: first.stars + 1 };
         var donor = run.recipeId ? gearByUid(run.recipeId) : null;
         if (donor && donor.recipe) piece.recipe = donor.recipe;
@@ -13733,6 +14042,7 @@
       renderMain();
     }
     function toggleCombinePick(uid) {
+      combineConfirmPending = false;
       var idx = combineSel.indexOf(uid);
       if (idx >= 0) { combineSel.splice(idx, 1); renderMain(); return; }
       var g = gearByUid(uid);
@@ -13759,7 +14069,7 @@
       if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
       var stars = first.stars + 1;
       var custom = stars >= 5 && typeof combineName === "string" ? combineName.trim().slice(0, 40) : "";
-      var att = rollGearAttunement();
+      var att = combineBonusFor(pieces);
       var piece = { uid: gearUidNew(), slot: first.slot, stars: stars };
       if (first.recipe) piece.recipe = first.recipe;
       if (custom && custom !== gearDefaultName(piece)) piece.name = custom;
@@ -13773,6 +14083,7 @@
       writeSave();
       combineSel = [];
       combineName = null;
+      combineConfirmPending = false;
       combineMode = false;
       var attuneNote = piece.fatedHero
         ? " 🌟 FATED for " + heroById(piece.fatedHero).name + " — its bonuses DOUBLE on them!"
@@ -13789,7 +14100,7 @@
       } else {
         h += '<ul class="picker-list">';
         avail.forEach(function (g) {
-          h += '<li class="gear-item"><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></p><p class="gi-meta">' + gearBonusText(g) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : "") + gearAttuneSuffix(g) + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-equip="' + g.uid + '">Equip</button></span></li>';
+          h += '<li class="gear-item"><span class="gi-icon" aria-hidden="true">' + GEAR_SLOT_ICON[g.slot] + '</span><span class="gi-main"><p class="gi-name">' + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span>' + (g.oneOfAKind ? ' <span aria-hidden="true">👑</span>' : "") + '</p><p class="gi-meta">' + gearBonusText(g) + (g.recipe ? " · " + esc(recipeSetName(g.recipe)) : "") + gearAttuneSuffix(g) + '</p></span><span class="gi-actions"><button type="button" class="btn-mini anime-btn-primary" data-pick-equip="' + g.uid + '">Equip</button></span></li>';
         });
         h += "</ul>";
       }
@@ -13806,7 +14117,7 @@
       var root = document.getElementById("modal-root");
       var owned = equipHeroOrder(g);
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Choose a hero"><div class="anime-card modal-card" style="max-width:26rem">';
-      h += '<h2 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0">' + GEAR_SLOT_ICON[g.slot] + " " + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span></h2><p class="small dim" style="margin-top:0.25rem">' + gearBonusText(g) + " — who should wear it? (Replaces whatever they have in that slot.)</p>";
+      h += '<h2 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0">' + GEAR_SLOT_ICON[g.slot] + " " + esc(gearName(g)) + ' <span style="' + starTextStyle(g.stars) + '">' + starsStr(g.stars) + '</span>' + (g.oneOfAKind ? ' <span aria-hidden="true">👑</span>' : "") + '</h2><p class="small dim" style="margin-top:0.25rem">' + gearBonusText(g) + " — who should wear it? (Replaces whatever they have in that slot.)</p>";
       h += '<ul class="picker-list">';
       owned.forEach(function (hd) {
         var cur = equippedGear(hd.id, g.slot);
@@ -14801,6 +15112,10 @@
         }
         return recipe.floor + 3;
       }
+      // Starlight's near-perfect step: 5 points (two Perfects and a Good)
+      // forges a full 5★, so Starlight's loot varies with accuracy below
+      // perfection instead of every non-perfect game paying its 4★ floor.
+      if (recipe.id === "essence" && score === 5) return 5;
       return Math.min(5, Math.max(forgePuzzleStars(score), recipe.floor));
     }
     function startForge(recipeId) {
@@ -14849,6 +15164,18 @@
       else { kind = "miss"; pts = 0; }
       forgeGame.strikes.push({ kind: kind, pts: pts });
       forgeGame.score += pts;
+      /* 👑 The final strike has landed: if this forge made a 7★, the
+         One-of-a-Kind roll happens NOW, exactly once. The first 7★
+         forged this run (forgedSevenCount 0 — the counter restarts at
+         every run reset) is always One of a Kind; every later forged
+         7★ this run rolls 30%. The verdict is stored on forgeGame so
+         the result screen and commitForge read it and never re-roll. */
+      if (forgeGame.strikes.length >= 3) {
+        var rcNow = recipeById(forgeGame.recipeId);
+        if (forgeResultStars(forgeGame.score, rcNow, slotHasSevenStar(save, forgeGame.slot), save.floor) >= 7) {
+          forgeGame.sevenKind = (save.forgedSevenCount || 0) <= 0 ? true : Math.random() < 0.3;
+        }
+      }
       if (kind === "perfect") { tone(1568, 0, 0.3, "sine", 0.5); tone(2093, 0.06, 0.35, "sine", 0.4); }
       else if (kind === "good") { tone(1046.5, 0, 0.2, "triangle", 0.45); }
       else { tone(220, 0, 0.18, "triangle", 0.3); }
@@ -14891,6 +15218,7 @@
         } else {
           h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Land <span class="bold" style="color:var(--text)">all 3 Perfect</span> and this forge could reach <span style="' + starTextStyle(7) + '">7★</span> — but <span class="bold" style="color:var(--text)">7★ requires Floor ' + SEVEN_STAR_MIN_FLOOR + "+</span> (you're at Floor " + save.floor + "), so for now a flawless game tops out at " + '<span style="' + starTextStyle(6) + '">6★</span>.</p>';
         }
+        h += '<p class="small" style="margin-top:0.375rem;font-weight:700">And near-perfect counts here: score 5 of 6 and Starlight still forges a full 5★ — only scores of 4 or less settle on the 4★ floor.</p>';
       }
       h += '<p style="margin-top:0.5rem"><span class="speed-badge">⚡ SPEED: ' + esc(rc.speedLabel) + " · " + rc.speed + '%/s</span></p><p class="small bold" style="margin-top:0.375rem">Hammer speed: ' + esc(rc.speedLabel) + " — the marker sweeps at " + rc.speed + "%/s for all 3 strikes. Time your Strike! taps to the gold zone.</p></div>";
       h += '<div class="forge-bar-wrap" aria-hidden="true"><div class="forge-zone-good" style="left:' + FORGE_GOOD.lo + '%;width:' + goodW + '%"></div><div class="forge-zone-perfect" style="left:' + FORGE_PERFECT.lo + '%;width:' + perfW + '%"></div><div class="forge-marker" id="forge-marker" style="left:0%"></div></div>';
@@ -14929,18 +15257,27 @@
       var sevenBlocked = score >= 6 && rc.id === "essence" && hasSeven;
       var sevenFloorBlocked = score >= 6 && rc.id === "essence" && !hasSeven && save.floor < SEVEN_STAR_MIN_FLOOR;
       var defName = gearDefaultName({ slot: forgeGame.slot, stars: stars });
+      /* 👑 The result preview carries the strike's One-of-a-Kind verdict,
+         so its bonus text shows the doubled stats only when the roll
+         says One of a Kind. */
+      var sevenKind = forgeGame.sevenKind === true;
       var piece = { slot: forgeGame.slot, stars: stars };
+      if (isSeven && sevenKind) piece.oneOfAKind = true;
       var root = document.getElementById("modal-root");
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Forging complete"><div class="anime-card modal-card center" style="max-width:24rem;border-color:' + starColor(stars) + '">';
       h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">' + GEAR_SLOT_ICON[piece.slot] + '</p>';
       h += '<h2 class="font-display" style="margin-top:0.5rem;font-size:1.5rem;font-weight:700" id="forge-result-name">' + esc(defName) + '</h2>';
       h += '<p style="' + starTextStyle(stars) + ';font-size:1.125rem;margin:0.125rem 0 0">' + starsStr(stars) + '</p>';
       h += '<p class="small" style="margin-top:0.375rem;font-weight:800;color:#5eead4">' + GEAR_SLOT_LABEL[piece.slot] + " · " + gearBonusText(piece) + "</p>";
-      if (isSeven) {
+      if (isSeven && sevenKind) {
         h += '<p class="small" style="margin-top:0.375rem;font-weight:700">Flawless — all 3 strikes Perfect at Very Fast! The hammer sings…</p>';
         h += '<p style="margin:0.5rem auto 0;width:fit-content;border-radius:999px;background:linear-gradient(90deg,#ffd94d,#ff9ecf);padding:0.25rem 0.75rem;font-size:11px;font-weight:900;color:#3a2403">👑 ONE OF A KIND — THE ONLY 7★ ' + GEAR_SLOT_LABEL[piece.slot].toUpperCase() + " THAT CAN EVER BE FORGED</p>";
+      } else if (isSeven) {
+        h += '<p class="small dim" style="margin-top:0.375rem">Flawless — all 3 strikes Perfect at Very Fast! A true 7★ — but a regular one, not One of a Kind: it follows the normal per-star formula.</p>';
       } else if (score >= 6) {
         h += '<p class="small dim" style="margin-top:0.375rem">PERFECT GAME — all 3 strikes Perfect! The perfect-forge ladder lifts this piece to ' + stars + "★ (recipe minimum " + rc.floor + "★ + 3).</p>";
+      } else if (stars > forgePuzzleStars(score) && stars > rc.floor) {
+        h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + stars + "★ — Starlight rewards a near-perfect game in full.</p>";
       } else {
         h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + forgePuzzleStars(score) + "★ from the hammer" + (rc.floor > forgePuzzleStars(score) ? ", raised to the recipe floor of " + rc.floor + "★" : "") + ".</p>";
       }
@@ -14979,9 +15316,22 @@
       var piece = { uid: gearUidNew(), slot: forgeGame.slot, stars: stars, recipe: rc.id };
       if (custom && custom !== gearDefaultName(piece)) piece.name = custom;
       if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
+      /* 👑 The One-of-a-Kind stamp decided by forgeStrike's single roll
+         when the final strike landed — stamped here, never re-rolled.
+         A marked piece also takes the next acquisition sequence — the
+         order it will wake in after the next run reset is the order it
+         was earned in, and forging is earning. */
+      var stampOok = stars >= 7 && forgeGame.sevenKind === true;
+      if (stampOok) { piece.oneOfAKind = true; piece.ookSeq = (save.ookSeqCounter || 0) + 1; }
       forgeGame = null;
       var next = JSON.parse(JSON.stringify(save));
       next.gearInv.push(piece);
+      /* 👑 Every forged 7★ advances this run's forge count (marked or
+         not) — it is what makes the NEXT forged 7★ this run a 30% roll
+         instead of the guaranteed first. A marked forge also advances
+         the acquisition-sequence counter by the stamp it just took. */
+      if (stars >= 7) next.forgedSevenCount = (next.forgedSevenCount || 0) + 1;
+      if (stampOok) next.ookSeqCounter = (next.ookSeqCounter || 0) + 1;
       persist(next);
       writeSave();
       playClearSfx();
@@ -17746,7 +18096,7 @@
               runEnded = true;
               beginRun(next);
               addFloat("🌅 THE UNMAKING FALLS — RUN " + next.run + " — the climb begins again", true, 55);
-              setNotice("🌙 Luna: \"You did it, Master. The hunger is over — the dark is gone, and the light is ours again. Every memory it tried to eat is still here, because you carried them. The world is yours to create.\" 🌅 You destroyed the Heart, faced the Unmaking — and it FELL. A shard drops from it, weakening it by 20% for every future run, and every point of damage you dealt stays dealt. The tower resets: Run " + next.run + " begins with a lone " + runStartHero.stars + "★ hero — " + runStartHero.name + " at level 1" + (next.run >= 2 ? " and Luna waiting at Floor 1 — she remembers" : "") + ", starting gold and gems, no gear, no materials. One thing survives: your strongest piece of gear sleeps sealed away as a relic, and your account code and already-claimed redeem codes are untouched.");
+              setNotice("🌙 Luna: \"You did it, Master. The hunger is over — the dark is gone, and the light is ours again. Every memory it tried to eat is still here, because you carried them. The world is yours to create.\" 🌅 You destroyed the Heart, faced the Unmaking — and it FELL. A shard drops from it, weakening it by 20% for every future run, and every point of damage you dealt stays dealt. The tower resets: Run " + next.run + " begins with a lone " + runStartHero.stars + "★ hero — " + runStartHero.name + " at level 1" + (next.run >= 2 ? " and Luna waiting at Floor 1 — she remembers" : "") + ", starting gold and gems, no gear, no materials. What survives sleeps sealed away: relic gear the tower will hand back as the climb deepens — and every One of a Kind piece is yours forever. Your account code and already-claimed gift codes are untouched.");
             }
           } else if (isRunEnd) {
             /* 💗 The Heart, reached: the run does NOT reset yet. Run 1
@@ -17765,12 +18115,11 @@
           } else {
             next.floor = f + 1;
             next.fightFloor = f + 1;
-            /* 🔓 The heirloom unseals the moment the climb reaches its floor —
-               quietly, in the same breath as the clear that got them there. */
-            if (next.heirloom && next.run >= 2 && next.floor >= HEIRLOOM_UNLOCK_FLOOR) {
-              next.gearInv = next.gearInv.concat([next.heirloom]);
-              next.heirloom = null;
-            }
+            /* 🔓 Sealed relics unseal the moment the climb reaches their
+               floor — quietly, in the same breath as the clear that got
+               them there: the heirloom at Floor 50, each carried-over
+               One of a Kind at its own stagger floor (25 / 50 / 70). */
+            unsealDueRelics(next);
             if (f === 25 && !next.heroes["luna"]) {
               next.heroes["luna"] = freshOwnedHero(next, "luna");
               if (next.party.length < MAX_PARTY) next.party.push("luna");
@@ -17882,11 +18231,10 @@
         }
       }
       loaded.lastSeen = now;
-      /* 🔓 Belt and braces: a sealed heirloom whose climb is already past its floor unseals on load (the in-loop clear normally catches this first). */
-      if (loaded.run >= 2 && loaded.heirloom && loaded.floor >= HEIRLOOM_UNLOCK_FLOOR) {
-        loaded.gearInv = loaded.gearInv.concat([loaded.heirloom]);
-        loaded.heirloom = null;
-      }
+      /* 🔓 Belt and braces: any sealed relic whose climb is already past
+         its floor unseals on load — the heirloom and every carried-over
+         One of a Kind alike (the in-loop clear normally catches this first). */
+      unsealDueRelics(loaded);
       if (loaded.run >= 2 && !loaded.heroes["luna"]) {
         // 🌙 Run 2+ (Phase 1): Luna joins from Floor 1 — a run-2 save
         // that predates her floor-1 arrival, or reaches this load any
