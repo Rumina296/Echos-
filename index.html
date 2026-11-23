@@ -1206,7 +1206,7 @@
          their damage in through the tidal / comet / floor DoT helpers. */
       ilya: {
         name: "Thornmail",
-        desc: "Whenever the enemy attacks, its own thorns bite back — it takes damage equal to 10% of its own attack per skill level, as every blow it throws comes home through the thorns. The garden wall was planted to guard the paradise; the thorns never learned the difference between a wall and a warning.",
+        desc: "Whenever the enemy attacks, its own thorns bite back — it takes damage equal to 10% of its own attack per skill level, as every blow it throws comes home through the thorns. The garden wall was planted to guard the paradise; the thorns never learned the difference between a wall and a warning. Reflect damage is capped at 25% of the party's damage.",
         more: [
           { name: "Entangle", desc: "On every 12th attack in battle, roots wrap the enemy whole and hold it fast — it cannot attack for 1.5 seconds. The paradise's last garden does not ask permission to grow, and it does not let go once it has hold of something." },
           { name: "Briar Thorns", unlock: 8, desc: "Whenever the enemy attacks, it takes damage equal to 25% of Ilya's attack x skill level. At skill level 4: 100% of Ilya's attack per enemy attack. Thorns that bite back on ILYA's attack, never the enemy's." }]
@@ -5156,10 +5156,10 @@
        can attack; the self-hit is 50% of it once per 5 of Mari's
        attacks, time-averaged to her attack rate / 5 of that per
        second. THE CAP (Rachel, Nov 21 — the overpowered-mechanics
-       audit): each of the two is capped at the party's OWN effective
-       DPS (effectivePartyDps) — enemy-priced damage can match the
-       party's own output but never outrun it, however strong the enemy
-       is. The battle loop applies the identical caps (the reflect
+       audit): Cut Strings is capped at the party's OWN effective
+       DPS (effectivePartyDps), while the Thornmail reflect caps at
+       25% of it (v311) — enemy-priced damage can match the party's
+       own output but never outrun it, however strong the enemy is. The battle loop applies the identical caps (the reflect
        directly, the self-hit as a per-hit cap that time-averages to the
        same ceiling). Display only — the tick applies the real reflect and
        yank, and dungeons / offline earnings never see it. */
@@ -5169,11 +5169,12 @@
       var enemyAtk = monsterAtk(f) * memoryMults(s, f).atk * titheMult(s, f) * rememberMult(f);
       var durnanSlow = s.party.indexOf("durnan") >= 0 ? 0.85 : 1;
       var hoarfrostSteady = s.party.indexOf("nix") >= 0 ? 0.8 : 1;
-      var dpsCap = effectivePartyDps(s); // neither enemy-priced effect may exceed the party's own effective DPS
+      var dpsCap = effectivePartyDps(s); // Cut Strings may match the party's own effective DPS
+      var reflectCap = 0.25 * effectivePartyDps(s); // Thornmail reflect caps at 25% of party DPS — the same ceiling the battle loop applies (v311)
       var total = 0;
       var ilyaO = s.heroes["ilya"];
       if (ilyaO && s.party.indexOf("ilya") >= 0) {
-        total += Math.min(enemyAtk * durnanSlow * hoarfrostSteady * 0.10 * skillLevel(ilyaO), dpsCap);
+        total += Math.min(enemyAtk * durnanSlow * hoarfrostSteady * 0.10 * skillLevel(ilyaO), reflectCap);
       }
       if (s.party.indexOf("mari") >= 0) {
         total += Math.min(enemyAtk * hoarfrostSteady * 0.5 * heroById("mari").atkSpeed / 5, dpsCap);
@@ -17526,11 +17527,11 @@
          it takes damage equal to 10% of its own attack per skill level.
          The enemy only attacks while it can move, so a stunned, frozen,
          rooted, eclipsed, or swallowed enemy grows no thorns that tick.
-         CAP (Nov 21, overpowered-mechanics audit): the reflect can
-         never exceed the party's own effective DPS — the same ceiling
+         CAP (Nov 21 audit; repriced to 25% in v311): the reflect can
+         never exceed 25% of the party's own effective DPS — the same ceiling
          floorDotDps prices — however strong the enemy is. */
       if (ilyaIn && enemyCanAttack) {
-        var reflectDps = Math.min(enemyAtkStat * durnanSlow * hoarfrostMult * 0.10 * skillLevel(ilyaO), effectivePartyDps(s));
+        var reflectDps = Math.min(enemyAtkStat * durnanSlow * hoarfrostMult * 0.10 * skillLevel(ilyaO), 0.25 * effectivePartyDps(s));
         dmgThisTick += reflectDps * dt;
         if (nowMs2 - thornFx.lastFloat > 1100) {
           thornFx.lastFloat = nowMs2;
