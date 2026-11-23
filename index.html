@@ -11324,7 +11324,7 @@
         next.heroes[heroId] = freshOwnedHero(next, heroId);
         if (partyHasRoomFor(next.party, heroId)) seatHeroInParty(next.party, heroId);
       } else {
-        next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
+        next.heroes[heroId] = Object.assign({}, owned, { dupes: owned.dupes + 1 });
       }
       return next;
     }
@@ -11393,7 +11393,7 @@
         next.heroes[heroId] = freshOwnedHero(next, heroId);
         if (partyHasRoomFor(next.party, heroId)) seatHeroInParty(next.party, heroId);
       } else {
-        next.heroes[heroId] = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
+        next.heroes[heroId] = Object.assign({}, owned, { dupes: owned.dupes + 1 });
       }
       return next;
     }
@@ -12685,7 +12685,7 @@
         } else {
           /* Duplicates simply bank now — synthesis is manual, chosen
              from the hero's detail panel once every requirement is met. */
-          var o = { level: owned.level, dupes: owned.dupes + 1, asc: owned.asc };
+          var o = Object.assign({}, owned, { dupes: owned.dupes + 1 });
           next.heroes[def.id] = o;
           results.push({ hero: def, isNew: false, dupeToAsc: false });
         }
@@ -12730,7 +12730,7 @@
       }
       var next = JSON.parse(JSON.stringify(s));
       next.gold -= cost;
-      next.heroes[id] = { level: o.level + 1, dupes: o.dupes, asc: o.asc };
+      next.heroes[id] = Object.assign({}, o, { level: o.level + 1 });
       persist(next);
     }
     /* Bulk level-ups (+5 / +10 / Max): the cost is the sum of each covered
@@ -12760,7 +12760,7 @@
       }
       var next = JSON.parse(JSON.stringify(s));
       next.gold -= bc.cost;
-      next.heroes[id] = { level: o.level + bc.levels, dupes: o.dupes, asc: o.asc };
+      next.heroes[id] = Object.assign({}, o, { level: o.level + bc.levels });
       persist(next);
     }
     /* Gold-limited Max (Rachel, Nov 21): "max as in how much you can
@@ -12797,7 +12797,7 @@
       }
       var next = JSON.parse(JSON.stringify(s));
       next.gold -= m.cost;
-      next.heroes[id] = { level: o.level + m.levels, dupes: o.dupes, asc: o.asc };
+      next.heroes[id] = Object.assign({}, o, { level: o.level + m.levels });
       persist(next);
     }
     /* Manual synthesis: spends banked copies, gems, and (from #3 on)
