@@ -6537,14 +6537,14 @@
       }
     }
     /* 👹 Boss enrage factor (Rachel, Nov 20 + Nov 21 escalation; CAPPED
-       Nov 22, cap lowered to ×1.5 later Nov 22): 1 before 30
-       battle-seconds; ×1.5 from 30s; the formula still steps ADDITIVE
+       Nov 22, cap lowered to ×1.5 later Nov 22): 1 before 60
+       battle-seconds; ×1.5 from 60s; the formula still steps ADDITIVE
        +0.3 of BASE for every full 5 seconds past the enrage — but the
        total NEVER exceeds ×1.5 (Rachel: the ×2 cap was still too OP), so
-       the enrage reaches ×1.5 the moment it starts at 30s and stays
+       the enrage reaches ×1.5 the moment it starts at 60s and stays
        there for the rest of the fight — the old ×1.8 step at 35s and
        the ×2 from 40s are gone. (On the boss's 35%-of-average-max-HP
-       stream that reads 52.5%/s from 30s on, and no higher.) The tower
+       stream that reads 52.5%/s from 60s on, and no higher.) The tower
        loop prices damage with it and the battle view badges it, from
        this one function, so the two can never drift — and because the
        Unmaking's fight at Floor 100 rides this same tower boss path, its
@@ -6552,8 +6552,8 @@
        dungeons have no enrage. */
     var BOSS_ENRAGE_CAP = 1.5;
     function bossEnrageMult(clock) {
-      if (clock < 30) return 1;
-      return Math.min(BOSS_ENRAGE_CAP, 1.5 + 0.3 * Math.floor((clock - 30) / 5));
+      if (clock < 60) return 1;
+      return Math.min(BOSS_ENRAGE_CAP, 1.5 + 0.3 * Math.floor((clock - 60) / 5));
     }
     /* ⏱ Boss time limit (Nov 22): a tower boss fight — Floor Lord or
        Gate Boss — is LOST at 2:00 if the boss still stands. The stage
@@ -6568,8 +6568,8 @@
     var BOSS_TIME_LIMIT = 120; // battle-seconds
     function bossTimerOn(s, f) { return isBossFloor(f) && !(s && s.pendingEnding === "unmaking"); }
     function fmtBossClock(sec) { var t = Math.max(0, Math.ceil(sec)); return Math.floor(t / 60) + ":" + ("0" + (t % 60)).slice(-2); }
-    /* ⛔ Enrage CC immunity (Nov 21): from 60 battle-seconds — 30s into
-       the enrage — a tower boss becomes immune to CC for the rest of the
+    /* ⛔ Enrage CC immunity (Nov 21): from 60 battle-seconds — the moment
+       the boss enrages — a tower boss becomes immune to CC for the rest of the
        fight: CC simply does not land. That immunity is the ONLY thing
        that ever blocks a boss's CC: boss tenacity was REMOVED entirely
        (Nov 21) — no stacks, no per-stack cut, no 1s floor, no reset — so
@@ -6578,11 +6578,11 @@
        have no enrage, so dungeon foes — boss waves included — never gain
        the immunity and always take full CC. The Golden Cradle's +25% CC
        duration is folded into the base a caller passes in, as before. */
-    var BOSS_CC_IMMUNE_AT = 60; // battle-seconds: enrage (30s) + 30s
+    var BOSS_CC_IMMUNE_AT = 60; // battle-seconds: the moment the boss enrages (60s)
     /* Land one CC on a tower foe: returns the duration the foe actually
        suffers — the base duration untouched, EXCEPT when the tower loop
        has set `state.immune` (a tower boss at or past BOSS_CC_IMMUNE_AT
-       — 30s into its enrage), when the CC does not land at all and 0 is
+       — the moment it enrages), when the CC does not land at all and 0 is
        returned, and when `state.held` says the foe is already under a
        CC effect, when the back-to-back halving cuts it to ×0.5. A
        landed CC sets `state.held`, so a second CC landing later in the
@@ -9110,7 +9110,7 @@
       /* Split-HP live reads for this tick: the taunt that currently owns
          the foe (most recent live taunt, taunter standing), the hero the
          foe is focused on (the taunter, or the weighted pick), and
-         whether the boss has enraged (30s on a boss floor). */
+         whether the boss has enraged (60s on a boss floor). */
       var liveTauntNow = null;
       for (var tni = taunts.length - 1; tni >= 0; tni--) {
         var tt = taunts[tni];
@@ -9119,7 +9119,7 @@
       }
       var targetIdxNow = liveTauntNow ? s.party.indexOf(liveTauntNow.id) : targetIdx;
       var targetNameNow = targetIdxNow >= 0 && targetIdxNow < s.party.length ? heroById(s.party[targetIdxNow]).name.split(" ")[0] : null;
-      var bossEnragedNow = isBossFloor(f) && battleElapsed >= 30;
+      var bossEnragedNow = isBossFloor(f) && battleElapsed >= 60;
       var wrenO = s.heroes["wren"];
       var wrenPhoenixActive = !!wrenO && s.party.indexOf("wren") >= 0 && effRank(heroById("wren"), wrenO) >= 7;
       var status = "Party HP " + fmt(pHp) + " / " + fmt(maxHp);
@@ -16581,7 +16581,7 @@
       var cap = capState;
       var bClock = battleElapsed;
       /* ⛔ Enrage CC immunity for this tick: from BOSS_CC_IMMUNE_AT
-         (60 battle-seconds — 30s into the enrage) a tower boss shrugs
+         (60 battle-seconds — the moment the boss enrages) a tower boss shrugs
          off ALL CC for the rest of the fight; applyBossCc reads the
          flag off the boss CC state and lands nothing. Before that
          second, every CC lands at full duration — no tenacity. */
@@ -17875,17 +17875,17 @@
       /* The enemy's damage is a flat stream — 25% of the party's average
          max HP per second (splitEnemyDps), before mitigations — and it
          lands on ONE hero at a time (targetIdx). On boss floors the base
-         is 35% (×1.4), and once the fight has lasted 30 battle-seconds
+         is 35% (×1.4), and once the fight has lasted 60 battle-seconds
          the boss ENRAGES for the rest of the fight: ×1.5 on top (52.5%/s,
          ~73% per lunge interval), and every full 5 seconds past the enrage
          adds another +0.3 OF BASE (bossEnrageMult — additive, not
          compounding; +10.5 points of the 35% stream per step), but the
          total enrage factor is CAPPED at ×1.5 (Rachel, later Nov 22),
-         so it sits at ×1.5 (52.5%/s) from 30s on and never climbs
+         so it sits at ×1.5 (52.5%/s) from 60s on and never climbs
          past — and at 2:00 the boss timer ends the fight outright.
          Regular floors keep the plain 25% and never enrage; the dungeon
          loop's separate stream is untouched. */
-      var bossEnraged = isBossFloor(f) && bClock >= 30;
+      var bossEnraged = isBossFloor(f) && bClock >= 60;
       if (bossEnraged && !enrageAnnounced) {
         enrageAnnounced = true;
         if (tab === "battle") addFloat("😡 ENRAGED! The boss's blows hit ×1.5 harder!", true, 62);
