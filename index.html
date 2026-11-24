@@ -4718,7 +4718,7 @@
       60: [
         { name: "The Amulet", icon: "🟣", desc: "passive — once per battle, at 20% HP, the Amulet wakes: Mara takes 5% less damage and gains a shield of 15% of her max HP" },
         { name: "Lullaby", icon: "🌙", desc: "every 10s (quicker as the fight goes on, down to every 7s), two heroes fall asleep for 2s — they cannot act" },
-        { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, the goddess sings with her: her damage +20% for 10s" }
+        { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, she heals 5% of her max HP and the goddess sings with her: her damage +20% for 10s" }
       ],
       65: [
         { name: "Phantom Army", icon: "⚔", desc: "every 12s, illusionary soldiers strike every hero for 25% of the party's average max HP — he can conjure soldiers, but he cannot heal, shield, or buff" },
@@ -9131,7 +9131,7 @@
       if (f === 55 && bossKit.elegyStacks > 0) status += " · 🎻 Elegy for the Fallen ×" + bossKit.elegyStacks + " — Silas +" + (bossKit.elegyStacks * 10) + "% attack, Dirge deepened +" + (bossKit.elegyStacks * 5) + "%";
       if (f === 60) {
         status += " · 🟣 The Amulet — " + (bossKit.amuletUsed ? "woken: Mara takes 5% less damage" : "sleeping (wakes at 20% HP)");
-        if (battleElapsed < bossKit.accompUntil) status += " · 🎼 Seraphina's Accompaniment — the goddess sings with her: her damage +20%";
+        if (battleElapsed < bossKit.accompUntil) status += " · 🎼 ACCOMPANIMENT — Mara heals 5%, her damage +20%";
       }
       if (f === 65) status += " · 🔔 Veil of Bells — 15% of attacks strike a phantom instead of him";
       if (f === 70) {
@@ -17143,10 +17143,11 @@
           bossHold(lullIdxs, 2);
           if (tab === "battle" && lullIdxs.length) addFloat("🌙 LULLABY — " + lullIdxs.map(bossFirstName).join(" and ") + (lullIdxs.length > 1 ? " fall" : " falls") + " asleep!", true, 30);
         }
-        /* 🎼 Seraphina's Accompaniment (Mara, Floor 60): a buff — every
-           30s her damage +20% for 10s while the goddess sings with her
-           (bossPowerMult above). */
+        /* 🎼 Seraphina's Accompaniment (Mara, Floor 60): every 30s she
+           heals 5% of her max HP and the goddess sings with her — her
+           damage +20% for 10s (bossPowerMult above). */
         if (f === 60 && bClock >= bossKit.accompNext) {
+          enemyHp = Math.min(bossMaxHp(s, f), enemyHp + bossMaxHp(s, f) * 0.05);
           bossKit.accompNext += 30;
           bossKit.accompUntil = bClock + 10;
           if (tab === "battle") addFloat("🎼 SERAPHINA'S ACCOMPANIMENT — the goddess sings with her!", true, 30);
