@@ -4212,7 +4212,7 @@
       // puppeteer daughter, the dragon prince on her thread, and the dancer
       // whose coins she counts. Canon (lore bible Section 9): the four
       // believe they chose to climb together; Aurelia arranged it.
-      { id: "gilded-web", name: "The Gilded Web", kind: "Weavers", members: ["aurelia", "vesper", "draven", "lyra"], bonus: "Party damage +5% · Crit +5%", flavor: "Golden silk, silver strings, a dragon's hoard, a dancer's coins — everything Aurelia touches turns to gold, and everything gold touches, she weaves." },
+      { id: "gilded-web", name: "The Gilded Web", kind: "Weavers", members: ["aurelia", "vesper", "draven", "lyra"], bonus: "Party damage +8% · Crit +8%", flavor: "Golden silk, silver strings, a dragon's hoard, a dancer's coins — everything Aurelia touches turns to gold, and everything gold touches, she weaves." },
       { id: "center-stage", name: "Center Stage", kind: "Performance", members: ["lyra", "orin"], bonus: "Gold from clears +10%", flavor: "A dancer and a songkeeper — the crowd throws coins, and the tower applauds." },
       { id: "twin-walls", name: "Twin Walls", kind: "Frontline", members: ["brynn", "dain"], bonus: "Enemy attack −8%", flavor: "Two walls, no gaps — the Warden and the Wall of Floor Nine, shoulder to shoulder." },
       { id: "market-day", name: "Market Day", kind: "Hearth", members: ["nia", "marlo", "hilda"], bonus: "Gold from clears +10% · Healing +10%", flavor: "Fresh catch, fresh bread, fresh brew — the party eats like the climb is already won." },
@@ -4486,6 +4486,7 @@
           // half is a FLAT ×1.25 on Aurelia's and Vesper's holds (ccMult) and
           // is never scaled — see the synergy def.
           case "golden-cradle": crit += 0.05 * m; cc = 1.25; break;
+          case "gilded-web": dps += 0.08 * m; crit += 0.08 * m; break;
           case "center-stage": gold += 0.10 * m; break;
           case "twin-walls": def += 0.08 * m; break;
           case "market-day": gold += 0.10 * m; heal += 0.10 * m; break;
