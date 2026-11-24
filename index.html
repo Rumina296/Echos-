@@ -3713,8 +3713,11 @@
     }
     /* ---------- Gear synergy (recipe sets) & attunement ----------
        Pieces forged from the same recipe form a set on the hero wearing
-       them: 2 pieces of a set boost those pieces' bonuses by +15%, a
-       full 3-piece set by +35%. Separately, every newly forged (or
+       them: 2 pieces of a set boost those pieces' bonuses, and a full
+       3-piece set boosts them more — by how much depends on the recipe
+       (SET_BONUSES below: Iron +5%/+10%, Moonstone +8%/+18%, Dragonscale
+       +12%/+26%, Starlight +15%/+35%). A mixed-recipe outfit is no set at
+       all and pays nothing. Separately, every newly forged (or
        combined) piece is attuned to a class (+50% bonuses when the
        wearer's class matches), and rarely fated for one specific hero
        (bonuses ×2 on that hero INSTEAD of the class boost). The two
@@ -3730,12 +3733,26 @@
     function gearSetCount(heroId, recipe, ctx) {
       return equippedPiecesOf(heroId, ctx).filter(function (p) { return p.recipe === recipe; }).length;
     }
-    function gearSetMult(count) { return count >= 3 ? 1.35 : count === 2 ? 1.15 : 1; }
+    /* Set bonuses scale by recipe: the richer the stock, the more its
+       pieces reward being worn together. Starlight keeps the original
+       flat rates (+15% / +35%); the others pay less. Keys are the recipe
+       ids in RECIPE_SET_NAMES. */
+    var SET_BONUSES = {
+      iron: { two: 1.05, three: 1.10 },
+      moon: { two: 1.08, three: 1.18 },
+      scale: { two: 1.12, three: 1.26 },
+      essence: { two: 1.15, three: 1.35 }
+    };
+    function gearSetMult(recipe, count) {
+      var b = SET_BONUSES[recipe];
+      if (!b) return 1;
+      return count >= 3 ? b.three : count === 2 ? b.two : 1;
+    }
     function heroGearSynergies(heroId, ctx) {
       var counts = {};
       equippedPiecesOf(heroId, ctx).forEach(function (p) { if (p.recipe) counts[p.recipe] = (counts[p.recipe] || 0) + 1; });
       var out = [];
-      for (var r in counts) if (counts[r] >= 2) out.push({ recipe: r, count: counts[r], pct: Math.round((gearSetMult(counts[r]) - 1) * 100) });
+      for (var r in counts) if (counts[r] >= 2) out.push({ recipe: r, count: counts[r], pct: Math.round((gearSetMult(r, counts[r]) - 1) * 100) });
       return out;
     }
     /* "fated" | "attuned" | null — which attunement state a piece is in
@@ -3770,7 +3787,7 @@
     /* The full effective multiplier on one equipped piece's bonuses for
        one hero: recipe set synergy × attunement. */
     function gearPieceMult(heroId, p, ctx) {
-      var setMult = p.recipe ? gearSetMult(gearSetCount(heroId, p.recipe, ctx)) : 1;
+      var setMult = p.recipe ? gearSetMult(p.recipe, gearSetCount(heroId, p.recipe, ctx)) : 1;
       /* Phase 2 town bonuses on every piece's bonuses: the Enchantment
          Hall's enhancement (+3% per level on THIS piece) and the
          Blacksmith's craft (item stats improved +2% per building level,
@@ -9466,7 +9483,7 @@
       var s = save;
       var h = '<div class="anime-card mt4 card-pad" aria-label="Gear inventory">';
       h += '<div class="panel-head"><h3>🎒 Gear Inventory — ' + s.gearInv.length + ' piece' + (s.gearInv.length === 1 ? "" : "s") + '</h3><p class="xs bold dim" style="margin:0">Sell prices: 1★ 🪙6,667 · 2★ 🪙16,667 · 3★ 🪙40,000 · 4★ 🪙100,000 · 5★ 🪙266,667 · 6★ 🪙666,667 · 7★ 🪙1,666,667 · 👑 7★ can never be sold</p></div>';
-      h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces (+15%, full set +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">Weapons add ATK, Armor adds HP, Accessories add crit chance — bigger stars, bigger bonus. Equip from here (pick a hero) or from a hero\'s detail panel. Equipped pieces can\'t be sold until you unequip them. Pieces remember their forge recipe: 2+ of one set on a hero boosts those pieces, by an amount that scales with the recipe (Iron +5% / +10%, Moonstone +8% / +18%, Dragonscale +12% / +26%, Starlight +15% / +35%), and every piece rolls an attunement — +50% on its class, or ×2 on its one fated hero.</p>';
       if (s.heirloom) {
         h += '<div style="margin-top:0.75rem;border-radius:16px;border:2px dashed rgba(167,139,250,0.55);background:rgba(167,139,250,0.08);padding:0.75rem" role="region" aria-label="Sealed relic — contents unknown">';
         h += '<div style="display:flex;align-items:center;gap:0.75rem"><span style="font-size:1.75rem" aria-hidden="true">🔒</span><span style="min-width:0;flex:1"><span style="display:block;font-size:0.875rem;font-weight:900">??? <span style="margin-left:0.25rem;border-radius:999px;background:rgba(167,139,250,0.2);padding:0.125rem 0.5rem;font-size:9px;font-weight:900;color:#c4b5fd">SEALED RELIC</span></span><span style="display:block;font-size:11px;font-weight:700;color:var(--dim)">Something from a climb half-remembered sleeps inside, sealed tight. It cannot be equipped, sold, or pried open — the tower will decide when, or whether, it wakes.</span></span><span style="font-size:1.5rem" aria-hidden="true">🗝️</span></div>';
@@ -9819,7 +9836,7 @@
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. One exception: Starlight pays a full 5★ for a 5-point game, so its loot steps with your accuracy (5 pts 5★; 4 pts or less lands on its 4★ floor). And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces by <span class="bold" style="color:var(--text)">+15%</span> (a full set: <span class="bold" style="color:var(--text)">+35%</span>) — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
+      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. One exception: Starlight pays a full 5★ for a 5-point game, so its loot steps with your accuracy (5 pts 5★; 4 pts or less lands on its 4★ floor). And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces, by an amount that scales with the recipe: <span class="bold" style="color:var(--text)">Iron +5%</span> for 2 pieces, <span class="bold" style="color:var(--text)">+10%</span> for the full set; <span class="bold" style="color:var(--text)">Moonstone +8% / +18%</span>; <span class="bold" style="color:var(--text)">Dragonscale +12% / +26%</span>; <span class="bold" style="color:var(--text)">Starlight +15% / +35%</span> — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
       /* 👑 The 7★ set tracker — also the locked hint that tells players
          the tier exists and exactly how it unlocks, long before Floor 70. */
       h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
@@ -10895,7 +10912,7 @@
         heroGearSynergies(def.id, s).forEach(function (syn) {
           h += '<p class="small" style="margin-top:0.5rem;border-radius:12px;border:1px solid rgba(125,211,252,0.4);background:rgba(125,211,252,0.08);padding:0.375rem 0.625rem;font-weight:900;color:#7dd3fc">✨ ' + esc(recipeSetName(syn.recipe)) + " " + syn.count + "/3 — +" + syn.pct + "% gear bonuses on this hero</p>";
         });
-        h += '<p class="xs dim" style="margin-top:0.5rem">Weapon +14 ATK per ★ · Armor +90 HP per ★ · Accessory +1.5% crit per ★. Recipe set bonuses (2pc +15% · 3pc +35%) and attunement (+50% class · ×2 fated) stack on top. Gear only counts while its hero is in the party.</p>';
+        h += '<p class="xs dim" style="margin-top:0.5rem">Weapon +14 ATK per ★ · Armor +90 HP per ★ · Accessory +1.5% crit per ★. Recipe set bonuses scale by recipe — Iron 2pc +5% · 3pc +10%, Moonstone +8% · +18%, Dragonscale +12% · +26%, Starlight +15% · +35% — and attunement (+50% class · ×2 fated) stacks on top of the scaled value. Gear only counts while its hero is in the party.</p>';
         h += '<p class="xs dim" style="margin-top:0.5rem">Effective rank ' + effD + "★ caps level at " + maxLevel(def, o) + " — that's " + def.stars + "★ base" + (o.asc > 0 ? " + " + o.asc + " synthesis" : "") + ", and every synthesis adds +10 to the cap. Synthesis " + o.asc + "/" + maxAsc(def) + " — synthesis is in your hands now, Master: duplicates bank as spare copies and nothing fuses on its own. Max out this rank's level, gather the copies, gems, and (from synthesis #3) dungeon materials listed below, then tap Synthesize. Each rank adds +30% stats, +10 level cap, +1 skill level.</p>";
         if (o.asc < maxAsc(def)) {
           var st = synthStatus(def, o);
