@@ -1108,7 +1108,7 @@
         desc: "His own damage +9% per skill level. Every duel makes the next swing wilder.",
         more: [
           { name: "Blood Frenzy", desc: "His own damage +10% per skill level — and his attacks open wounds that BLEED: the enemy takes bleed damage every second equal to 10% of his attack per skill level, for as long as Torin is in the party. Frenzy is the spark; Blood Frenzy is the fire catching — once Torin tastes a real fight, the madness stops being a mood and becomes momentum, and every swing after the first lands harder than the one before it. His second skill, known from the start alongside Frenzy." },
-          { name: "Last Stand", desc: "Torin deals +1% own damage for every 2% of the party's HP missing, up to +50% — the lower the party's pooled HP, the harder he hits. At half HP he is already +25%; with the party on its last legs, he swings at full fury. Wounded is not beaten. Wounded is warming up. His third skill, known from the start alongside Frenzy and Blood Frenzy." },
+          { name: "Bloodlust", desc: "Torin deals +1% own damage for every 2% of the enemy's HP missing, up to +50% — the weaker the enemy, the harder he hits. A fresh Torin is dangerous. A Torin with the smell of blood in his nose — an enemy staggering, bleeding out, one swing from done — is the last thing a great many monsters ever saw. He does not fight to win. He fights to finish, and the closer the finish, the faster he swings." },
           { name: "Blood Pact", unlock: 8, desc: "Torin's bleed also heals the party for 10% of the bleed damage + 5% per skill level. At skill level 6: 40% of bleed damage returned as healing. The mad swordsman's blood feeds his party." }]
       },
       nerissa: {
@@ -4176,7 +4176,7 @@
         case "eldric": return 1 + 0.16 * lv; // Rune of Fury — the rune on his brow burns ember-bright, and his own hammer hits like the mountain
         case "morrigan": return 1 + 0.14 * lv; // Murder of Crows — a whole flock descends at her direction, and her own damage rides with it
         case "yurneth": return 1 + 0.15 * lv; // Night's Edge — the Pale Blade's own cut, the hardest-hitting of the 4★ tier
-        case "velkist": return 1 + 0.19 * lv; // Frenzy (+9%) compounded by Blood Frenzy (+10%) — bleed ticks separately, Last Stand rides the battle loop
+        case "velkist": return 1 + 0.19 * lv; // Frenzy (+9%) compounded by Blood Frenzy (+10%) — bleed ticks separately, Bloodlust rides the battle loop
         /* Nyx has NO self-damage multiplier: her second skill is
            Venom Strike, a poison DoT (see venomDps), not a hit bonus. */
         case "sella": return 1 + 0.15 * lv;
@@ -4957,10 +4957,12 @@
     function healerProcAmount(id, o, baseMaxHp) {
       return 0.10 * (1 + healCoeffPerLevel(id) * skillLevel(o)) * baseMaxHp;
     }
-    /* Last Stand: Torin Kade's third skill — +1% own damage for every
-       2% of the party's pooled HP missing, capped at +50%. Priced off
-       the pooled sum, never a single hero. */
-    function lastStandBonus(curHp, maxHp) {
+    /* Bloodlust: Torin Kade's third skill — +1% own damage for every
+       2% of the enemy's HP missing, capped at +50% (an enemy at death's
+       door). Like Soren's ramp it lives only in the live battle loop,
+       keyed off the enemy's current HP, so it never leaks into
+       idle/offline estimates. */
+    function bloodlustBonus(curHp, maxHp) {
       if (maxHp <= 0) return 0;
       var missing = Math.min(1, Math.max(0, 1 - curHp / maxHp));
       return Math.min(0.5, missing * 0.5);
@@ -5241,20 +5243,6 @@
     function enemyEclipsed() { return performance.now() < (eclipseUntil || 0); }
     function enemySwallowed() { return performance.now() < (amaraSwallowedUntil || 0); }
     function roarActive() { return performance.now() < (roarUntil || 0); }
-    /* ---- Last Stand (Torin): +1% own damage for every 2% of the
-       party's pooled HP missing, up to +50% (half HP → +25%). Party
-       HP is the shared pool (partyHp / partyMaxHp), so the bonus is
-       battle-runtime only: the Heroes tab and dungeons fight at full
-       HP, where the bonus is 0. partyHp 0 means "not set yet" at
-       boot, so it reads as full HP there, matching the HP bar. */
-    function torinLastStandBonus(s) {
-      if (!s || !s.heroes || !s.heroes["velkist"] || s.party.indexOf("velkist") < 0) return 0;
-      var max = partyMaxHp(s);
-      if (!max) return 0;
-      var cur = partyHp || max;
-      var ratio = Math.max(0, Math.min(1, cur / max));
-      return Math.min(0.50, (1 - ratio) * 0.50);
-    }
     function resetBattleTimers() { battleElapsed = 0; hitCounts = {}; stunUntil = 0; frozenUntil = 0; frostTickAcc = 0; stickyTimer = 0; stickyUntil = 0; tollTimer = 0; tollFlashUntil = 0; thornTimer = 0; partySnareUntil = 0; rememberTimer = 0; rememberStacks = 0; if (typeof emberFx !== "undefined" && emberFx) emberFx.lastFloat = 0; entangleUntil = 0; nixStacks = 0; hoarfrostStacks = 0; amaraRollAcc = 0; amaraSwallowedUntil = 0; roarUntil = 0; unbreakableUsed = false; vigilUsed = false; eclipseUntil = 0; starChartCount = 0; if (typeof thornFx !== "undefined" && thornFx) thornFx.lastFloat = 0; /* Split-HP: a new battle clears every shield, every taunt, and the enemy's focus, and Dain's Stand Fast re-arms — pulled to ~3s on a boss floor like the timed capstones below, 20s elsewhere. Hero HP itself is NOT touched here: clears, wipes, and floor switches restore it explicitly at their call sites. The poison stacks, bleed, and chill start over with the new monster. */ heroShields = (save && save.party ? save.party : []).map(function () { return 0; }); taunts = []; targetIdx = 0; targetNextPick = 0; standFastNext = (typeof battleFloor === "number" && isBossFloor(battleFloor)) ? 3 : 20; enrageAnnounced = false; bossCcState.immune = false; bossCcState.held = false; // a new fight starts with no enrage CC immunity standing and no CC on the foe
             bossKit = freshBossSkillState(); ariaHymnFx.lastFloat = 0; heartRegenFx.lastFloat = 0; unmakingRegenFx.lastFloat = 0; // humanoid boss kits + Noctis start cold with the fight
     poison = { perStackDps: 0, expiries: [], lastFloat: 0 }; bleed = { dps: 0, until: 0, lastFloat: 0 }; chill = { dps: 0, until: 0, lastFloat: 0 }; /* The 62 capstones start over with the fight too: timers, windows, shields, marks, and once-per-battle saves all reset on a wipe, a floor change, or a fresh load. */ capState = freshCapstoneState(); capDots = {}; /* Early activation (v146): in a gate or lord fight, every timed capstone's FIRST activation lands at battle-second 3 instead of its full cooldown — capNextIn then schedules from that firing, so normal cooldowns run after it. On lord floors this also guarantees the four ultimates (Seraphina's Voice, Widow's Embrace, Supernova — and Undying Star stays conditional on Soren actually falling, so it is untouched here) fire at least once per lord fight. battleFloor is always set to the incoming fight's floor before this runs. */ if (typeof battleFloor === "number" && isBossFloor(battleFloor)) { for (var capKey in capState.next) capState.next[capKey] = Math.min(capState.next[capKey], 3); } }
@@ -5271,21 +5259,16 @@
        chance-based, not a rate. The battle tick applies every effect
        itself; this number backs the Tower headline and ETA, and —
        through towerBattleDps — the offline / AFK clear-rate price.
-       Dungeons and the Heroes tab keep using raw effectivePartyDps. */
+       Dungeons and the Heroes tab keep using raw effectivePartyDps.
+       Torin's Bloodlust stays out of this number too: it keys off the
+       enemy's live HP, so it only exists in the live battle loop,
+       never in the Tower headline, the ETA, or the idle/offline price. */
     function battleDps(s) {
       var dps = effectivePartyDps(s);
       var hanO = s.heroes["han"];
       if (hanO && s.party.indexOf("han") >= 0 && duelistUnlocked(hanO) && duelistRampBonus() > 0) {
         var hanDef = heroById("han");
         dps += heroAtk(hanDef, hanO) * hanDef.atkSpeed * duelistRampBonus() * synergySelfMult(hanDef, s.party) * partyMods(s).dpsMult;
-      }
-      /* Last Stand (Torin): his hits grow as the party's pooled HP
-         falls — add his growing share the same way the ramp does. */
-      var torO = s.heroes["velkist"];
-      var lsBonus = torinLastStandBonus(s);
-      if (torO && s.party.indexOf("velkist") >= 0 && lsBonus > 0) {
-        var torDef = heroById("velkist");
-        dps += heroAtk(torDef, torO) * torDef.atkSpeed * selfSkillMult(torDef, torO) * lsBonus * synergySelfMult(torDef, s.party) * partyMods(s).dpsMult;
       }
       /* Second Act (Mari): his dance quickens the whole party as the
          fight goes on — lift the hit slice by the ramp, the same fold
@@ -9180,9 +9163,8 @@
       }
       var torO2 = s.heroes["velkist"];
       if (torO2 && s.party.indexOf("velkist") >= 0) {
-        var lsNow = torinLastStandBonus(s);
-        var hpPct = maxHp > 0 ? Math.round(pHp / maxHp * 100) : 100;
-        status += " · 🩸 Last Stand: Torin +" + Math.round(lsNow * 100) + "% damage (party HP " + hpPct + "% — grows +1% per 2% HP missing, up to +50%)";
+        var blPct = Math.round(bloodlustBonus(eHp, eMax) * 100);
+        if (blPct > 0) status += " · 🩸 Torin's Bloodlust +" + blPct + "% — the weaker the enemy, the harder he hits";
       }
       var hanO2 = s.heroes["han"];
       if (hanO2 && s.party.indexOf("han") >= 0 && duelistUnlocked(hanO2)) {
@@ -17042,10 +17024,10 @@
       // dodged — and a held, swallowed, or dodged enemy grows no thorns
       // and earns no counters, exactly like the cocoon/freeze/root rules.
       var enemyCanAttack = !enemyStunned() && !enemyFrozen() && !enemyRooted() && !enemyEclipsed() && !enemySwallowed() && !capHeld && !capEvaded;
-      /* Last Stand (Torin): snapshot the bonus from the party's
-         pooled HP at the start of this tick, so every Torin swing
+      /* Bloodlust (Torin): snapshot the bonus from the enemy's
+         HP at the start of this tick, so every Torin swing
          this tick hits with the same fury. */
-      var lsBonusTick = lastStandBonus(curPooled(), pooledMax);
+      var blBonusTick = bloodlustBonus(enemyHp, bossMaxHp(s, f));
       /* ---- Humanoid boss skills (Floors 50–100) ----
          The high bosses fight with full lore kits (BOSS_SKILL_LISTS):
          every trigger runs on battle-seconds (bClock) against bossKit's
@@ -17410,7 +17392,7 @@
           var diddleShot = false;
           if (cap.diddlePending) { cap.diddlePending = false; crit = true; diddleShot = true; }
           var dmg = heroAtk(def, o) * selfSkillMult(def, o) * (def.id === "han" && duelistUnlocked(o) ? 1 + duelistRampBonus() : 1) * synergySelfMult(def, aliveParty) * (mariIn ? 1 + secondActRampBonus() : 1) * (crit ? 1.8 * mods.critDmgMult : 1) * (0.92 + Math.random() * 0.16) * (id === "silas" ? 1 + 0.10 * cap.elegyStacks : 1) * (id === "lucian" && bClock < cap.lucianStrongUntil ? 2 : 1); // 🎻 Elegy: Silas's attacks swell +10% per fall · ☀️ Strongest Being: Lucian's damage doubles while it lasts
-          if (def.id === "velkist" && lsBonusTick > 0) dmg *= (1 + lsBonusTick);
+          if (def.id === "velkist" && blBonusTick > 0) dmg *= (1 + blBonusTick);
           if (diddleShot) dmg *= 1 + 0.5 + 0.10 * capstoneLv(s, "diddle"); // Checkmate's +50% + 10%/lv, on top of the crit
           /* ᚱ Rune of Echoes: Eldric's runes repeat the party's strongest
              blow — the next party attack after the rune deals +50% + 25%/lv. */
@@ -18369,8 +18351,8 @@
         }
       }
       /* partyHp stays the pooled sum of the per-hero bars — every reader
-         of the pooled number (the bar, the Last Stand display, the
-         offline price) sees the split-HP fight's true total. */
+         of the pooled number (the bar, the offline price)
+         sees the split-HP fight's true total. */
       partyHp = heroHps.reduce(function (a, b) { return a + b; }, 0);
       renderBattleDynamic();
       inBattleTick = false;
