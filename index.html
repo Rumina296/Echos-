@@ -4727,9 +4727,9 @@
         { name: "The Final Dream", icon: "💤", desc: "capstone — every 30s, a blissful dream puts every hero to sleep for 1.5s" }
       ],
       70: [
-        { name: "Beautiful View + Warmth", icon: "🌅", desc: "every 12s he shows the party a beautiful view — light damage (25% of the party's average max HP) to every hero, and a 20% chance each hero is dazzled and cannot act for 1.2s" },
+        { name: "Beautiful View + Warmth", icon: "🌅", desc: "every 12s he shows the party a beautiful view — light damage (15% of the party's average max HP) to every hero, and a 20% chance each hero is dazzled and cannot act for 1.2s" },
         { name: "Wanderer's Luck", icon: "🍀", desc: "passive — a wanderer's luck: 20% of attacks simply miss him" },
-        { name: "The Strongest Being", icon: "⭐", desc: "capstone — every 30s, for 6s he becomes the strongest being: his damage doubles and his attack speed surges — his Beautiful View falls twice as often while it lasts" }
+        { name: "The Strongest Being", icon: "⭐", desc: "capstone — every 45s, for 6s he becomes the strongest being: his damage doubles and his attack speed surges — his Beautiful View falls twice as often while it lasts" }
       ],
       75: [
         { name: "Cracking Note", icon: "🎶", desc: "every 12s, her voice cracks mid-song — 25% of the party's average max HP to every hero, and a 20% chance each hero is disoriented and cannot act for 1.5s" },
@@ -17156,7 +17156,7 @@
           if (tab === "battle") addFloat("💤 THE FINAL DREAM — every hero falls asleep!", true, 30);
         }
         /* 🌅 Beautiful View + Warmth (Lucian, Floor 70): every 12s he
-           shows the party a beautiful view — light damage (25% of the party's
+           shows the party a beautiful view — light damage (15% of the party's
            average max HP) to every hero, and a 20% chance each hero is dazzled
            and cannot act for 1.2s. While the Strongest Being holds, the
            view falls twice as often (the deadline is pulled back by dt
@@ -17164,19 +17164,19 @@
         if (f === 70 && bClock < bossKit.strongestUntil && bossKit.viewNext > bClock) bossKit.viewNext = Math.max(bClock, bossKit.viewNext - dt);
         if (f === 70 && bClock >= bossKit.viewNext) {
           bossKit.viewNext += 12;
-          bossStrikeAll(0.25);
+          bossStrikeAll(0.15);
           var dazzled = [];
           livingIdxs().forEach(function (i) {
             if (Math.random() < 0.2) { bossHold([i], 1.2); dazzled.push(bossFirstName(i)); }
           });
           if (tab === "battle") addFloat("🌅 BEAUTIFUL VIEW — light damage to every hero!" + (dazzled.length ? " " + dazzled.join(", ") + (dazzled.length > 1 ? " are" : " is") + " dazzled!" : ""), true, 30);
         }
-        /* ⭐ The Strongest Being (Lucian, Floor 70): every 30s, for 6s he
+        /* ⭐ The Strongest Being (Lucian, Floor 70): every 45s, for 6s he
            becomes the strongest being — his damage doubles (bossPowerMult
            above) and his attack speed surges, his Beautiful View falling
            twice as often while it lasts. */
         if (f === 70 && bClock >= bossKit.strongestNext) {
-          bossKit.strongestNext += 30;
+          bossKit.strongestNext += 45;
           bossKit.strongestUntil = bClock + 6;
           if (tab === "battle") addFloat("⭐ THE STRONGEST BEING — Lucian's damage doubles for 6s!", true, 30);
         }
