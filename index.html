@@ -1065,7 +1065,7 @@
        so this one text serves every healer; it renders as a collapsed
        "more" expander inside the skill description so the main desc
        stays clean. Description text only — no numbers changed. */
-    var DUNGEON_HEAL_NOTE = "In dungeons, healing runs on the team's pooled HP instead: the party shares one HP pool, and while a healer stands in the party it mends continuously — a passive trickle of 4.8% of the party's pooled max HP per second × the party's heal multiplier (every healing aura in the party feeds that multiplier, this one included), with diminishing returns — each extra healing aura adds less than the last.";
+    var DUNGEON_HEAL_NOTE = "In dungeons, healing runs on the team's pooled HP instead: the party shares one HP pool, and while a healer stands in the party it mends continuously — a passive trickle of 4.8% of the party's pooled max HP per second × the party's heal multiplier (every healing aura in the party feeds that multiplier, this one included), and every healing aura counts in full — the multiplier applies straight, with no diminishing returns.";
     /* The collapsed-by-default "more" expander that carries a healer's
        dungeon healing basis inside their skill description: a native
        <details> element, so it opens and closes with no JS — the
@@ -14501,14 +14501,20 @@
        revert): while a healer-class hero stands in the party, the shared
        pool mends by 1.2% × 4 = 4.8% of the party's max HP per second,
        scaled by the party's healMult (every healing aura in partyMods);
-       zero without a healer. The run loop applies this exact rate to the
+       zero without a healer — except Aria's Unbroken Hymn, which mends
+       the pool at 1% of its max per second whenever she stands in the
+       party. The run loop applies this exact rate to the
        pool every tick, and the Dungeon tab's wave preview and the
        effective-BP survival credit read the same helper, so the three
        can never drift apart. */
-    function dungeonHealPerSec(s) { // healMult enters under a square root (diminishing returns, Nov 23, 2026)
+    function dungeonHealPerSec(s) { // healMult applies in full — linear again (the Nov 23 square root came out Nov 24, 2026)
+      // 🎵 Unbroken Hymn (hero Aria): 1% of the pooled max HP per second,
+      // on top of the healer trickle — in pooled combat her per-hero hymn
+      // reads as a share of the one pool the party shares.
+      var hymn = s.party.indexOf("aria") >= 0 && s.heroes["aria"] ? partyMaxHp(s) * 0.01 : 0;
       var hasHealer = s.party.some(function (id) { return s.heroes[id] && isHealerDef(heroById(id)); });
-      if (!hasHealer) return 0;
-      return partyMaxHp(s) * 0.012 * 4 * Math.sqrt(partyMods(s).healMult);
+      if (!hasHealer) return hymn;
+      return partyMaxHp(s) * 0.012 * 4 * partyMods(s).healMult + hymn;
     }
     /* The current party's Battle Power (BP): heroPower — a hero's battle
        DPS plus 5% of their HP, gear and synergy included — summed over
@@ -15406,8 +15412,7 @@
          lands, the healers' trickle mends the pool (dungeonHealPerSec),
          so a wave the trickle covers never drains the pool. */
       var waveDmg = foeHeld ? 0 : dungeonWaveAtk(dg, dungeonBattle.wave, diffMult) * mods.enemyAtkMult * capSlowMultD * hoarfrostMult * capWeakenMultD * mods.dmgTakenMult * tauntDrMultD * (fx.clock < fx.accompDefUntil ? 0.9 : 1); // 🎵 Seraphina's Accompaniment: the party takes 10% less damage while it stands
-      if (trickleD > 0) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + trickleD * dt);
-      if (ariaInD) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + pooledMaxD * 0.01 * dt); // 🎶 Unbroken Hymn: the shared pool regains 1% of its max every second while Aria stands
+      if (trickleD > 0) dungeonBattle.partyHp = Math.min(pooledMaxD, dungeonBattle.partyHp + trickleD * dt); // trickleD already carries Aria's Unbroken Hymn (1% of pool/s) inside dungeonHealPerSec — no separate hymn line here, or it would count twice
       if (waveDmg > 0) {
         var waveDmgTaken = waveDmg * dt;
         var waveAbsorbed = Math.min(dungeonBattle.shield, waveDmgTaken);
