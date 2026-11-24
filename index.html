@@ -4715,7 +4715,7 @@
         { name: "The Last Dirge", icon: "🎵", desc: "capstone — every 30s, a massive final verse strikes every hero for 45% of the party's average max HP" }
       ],
       60: [
-        { name: "The Amulet", icon: "🟣", desc: "passive — once per battle, at 20% HP, the Amulet wakes: Mara takes 30% less damage and gains a shield of 15% of her max HP" },
+        { name: "The Amulet", icon: "🟣", desc: "passive — once per battle, at 20% HP, the Amulet wakes: Mara takes 5% less damage and gains a shield of 15% of her max HP" },
         { name: "Lullaby", icon: "🌙", desc: "every 10s (quicker as the fight goes on, down to every 7s), two heroes fall asleep for 2s — they cannot act" },
         { name: "Seraphina's Accompaniment", icon: "🎼", desc: "capstone — every 30s, she heals 10% of her max HP and the goddess sings with her: her damage +20% for 10s" }
       ],
@@ -9129,7 +9129,7 @@
          from the same bossKit the battle loop prices with. */
       if (f === 55 && bossKit.elegyStacks > 0) status += " · 🎻 Elegy for the Fallen ×" + bossKit.elegyStacks + " — Silas +" + (bossKit.elegyStacks * 10) + "% attack, Dirge deepened +" + (bossKit.elegyStacks * 5) + "%";
       if (f === 60) {
-        status += " · 🟣 The Amulet — " + (bossKit.amuletUsed ? "woken: Mara takes 30% less damage" : "sleeping (wakes at 20% HP)");
+        status += " · 🟣 The Amulet — " + (bossKit.amuletUsed ? "woken: Mara takes 5% less damage" : "sleeping (wakes at 20% HP)");
         if (battleElapsed < bossKit.accompUntil) status += " · 🎼 Seraphina's Accompaniment — the goddess sings with her: her damage +20%";
       }
       if (f === 65) status += " · 🔔 Veil of Bells — 15% of attacks strike a phantom instead of him";
@@ -17124,13 +17124,13 @@
           if (tab === "battle") addFloat("🎵 THE LAST DIRGE — a final verse strikes every hero!", true, 30);
         }
         /* 🟣 The Amulet (Mara, Floor 60): once per battle, at 20% HP,
-           the Amulet wakes — Mara takes 30% less damage (amuletUsed,
+           the Amulet wakes — Mara takes 5% less damage (amuletUsed,
            read in the damage landing below) and gains a shield of 15%
            of her max HP. */
         if (f === 60 && !bossKit.amuletUsed && enemyHp <= bossMaxHp(s, f) * 0.2) {
           bossKit.amuletUsed = true;
           bossKit.bossShield += bossMaxHp(s, f) * 0.15;
-          if (tab === "battle") addFloat("🟣 THE AMULET WAKES — Mara takes 30% less damage!", true, 30);
+          if (tab === "battle") addFloat("🟣 THE AMULET WAKES — Mara takes 5% less damage!", true, 30);
         }
         /* 🌙 Lullaby (Mara, Floor 60): every 10s, two heroes fall asleep
            for 2s — and the song quickens as the fight goes on, down to
@@ -17782,8 +17782,8 @@
           distributeHeal(heroHps, maxes, dmgThisTick * (0.02 + 0.005 * capstoneLv(s, "lyra")) * mawHealMult);
         }
         /* 🟣 The Amulet (Mara, Floor 60): once it has woken, Mara takes
-           30% less damage for the rest of the battle. */
-        if (f === 60 && bossKit.amuletUsed && dmgThisTick > 0) dmgThisTick *= 0.7;
+           5% less damage for the rest of the battle. */
+        if (f === 60 && bossKit.amuletUsed && dmgThisTick > 0) dmgThisTick *= 0.95;
         /* 🛡 The boss's own shield (Caelum's Holy Shield / Unbreakable
            Wall, Mara's Amulet shield) drinks the party's damage before
            the boss's HP does — and while Caelum's shield stands, he
