@@ -3550,14 +3550,27 @@
     var NIGHTMARE_UNLOCK_FLOOR = 60;
     var TORMENT_UNLOCK_FLOOR = 70;
     var DUNGEON_DIFFICULTIES = [
-      { id: "normal", label: "Normal", emoji: "🍀", mult: 1, rewardMult: 1, jackpotGems: 5 },
-      { id: "hard", label: "Hard", emoji: "🔥", mult: 4.75, rewardMult: 1.5, jackpotGems: 8 },
-      { id: "nightmare", label: "Nightmare", emoji: "💀", mult: 5.5, rewardMult: 2.25, jackpotGems: 15, unlockFloor: NIGHTMARE_UNLOCK_FLOOR },
-      { id: "torment", label: "Torment", emoji: "👹", mult: 6.5, rewardMult: 3.375, jackpotGems: 20, unlockFloor: TORMENT_UNLOCK_FLOOR }
+      { id: "normal", label: "Normal", emoji: "🍀", mult: 1, rewardMult: 1, jackpotGems: 5, secondsPerWave: 12 },
+      { id: "hard", label: "Hard", emoji: "🔥", mult: 4.75, rewardMult: 1.5, jackpotGems: 8, secondsPerWave: 18 },
+      { id: "nightmare", label: "Nightmare", emoji: "💀", mult: 5.5, rewardMult: 2.25, jackpotGems: 15, unlockFloor: NIGHTMARE_UNLOCK_FLOOR, secondsPerWave: 24 },
+      { id: "torment", label: "Torment", emoji: "👹", mult: 6.5, rewardMult: 3.375, jackpotGems: 20, unlockFloor: TORMENT_UNLOCK_FLOOR, secondsPerWave: 30 }
     ];
     function dungeonDifficultyDef(id) {
       for (var i = 0; i < DUNGEON_DIFFICULTIES.length; i++) if (DUNGEON_DIFFICULTIES[i].id === id) return DUNGEON_DIFFICULTIES[i];
       return DUNGEON_DIFFICULTIES[0];
+    }
+    /* ⏱ Dungeon run timer (Nov 23, 2026, Rachel's pick): a played run has a
+       hard time budget of secondsPerWave × the dungeon's wave count —
+       Ember 36/54/72/90s, Frostwood 48/72/96/120s, Starlight 60/90/120/150s
+       across Normal / Hard / Nightmare / Torment. The battle loop drains
+       it by dt (battle seconds, so the 2x toggle drains it twice as fast
+       in real time), and when it runs out mid-fight the run fails exactly
+       like a wipe: no rewards, no clear recorded, the daily run already
+       spent. NOTE: the Recommended BP model keeps pricing waves at
+       DUNGEON_BP_SECONDS_PER_WAVE (12s) — the timer never feeds the BP
+       equation. */
+    function dungeonTimeLimit(dg, diff) {
+      return dg.waves * dungeonDifficultyDef(diff).secondsPerWave;
     }
     /* Player-facing text for a reward multiplier: the exact step values
        (1, 1.5, 2.25) print as-is; Torment's 3.375 is shown rounded to
@@ -8307,6 +8320,7 @@
     var lastDungeonReward = null;
     var lastDungeonLuck = null;
     var lastDungeonLost = null;
+    var lastDungeonTimedOut = false;
     var forgeGame = null;
     var forgeTimer = null;
 
@@ -9665,6 +9679,12 @@
         h += '<div class="panel-head"><h3>' + dg0.icon + " " + esc(dg0.name) + ' — Wave <span id="dg-wave">' + dungeonBattle.wave + "/" + dungeonBattle.waves + "</span>" + (runDiff.id !== "normal" ? ' · <span style="color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label).toUpperCase() + " ×" + runDiff.mult + "</span>" : "") + '</h3><p class="xs bold dim" style="margin:0">Auto-battle · your party fights on its own</p></div>';
         if (dungeonBattle.status === "fighting") {
           h += '<button type="button" class="btn-pill anime-btn-sky" id="dg-speed-toggle" style="margin-top:0.5rem" aria-pressed="' + (dungeonSpeed === 2) + '" aria-label="' + (dungeonSpeed === 2 ? "Dungeon battle speed is 2x — tap to return to 1x" : "Speed up the dungeon battle to 2x") + '">' + (dungeonSpeed === 2 ? "⏩ 2x — tap for 1x" : "▶ 1x — tap for 2x") + "</button>";
+          var dgTimeLeft = Math.max(0, dungeonBattle.timeLeft || 0);
+          var dgTimeLimit = dungeonBattle.timeLimit || 0;
+          var dgTimeText = Math.floor(dgTimeLeft / 60) + ":" + String(Math.floor(dgTimeLeft % 60)).padStart(2, "0");
+          var dgLimitText = Math.floor(dgTimeLimit / 60) + ":" + String(Math.floor(dgTimeLimit % 60)).padStart(2, "0");
+          var dgTimePct = dgTimeLimit > 0 ? Math.max(0, Math.min(100, (dgTimeLeft / dgTimeLimit) * 100)) : 0;
+          h += '<div style="margin-top:0.5rem"><p class="xs bold" id="dg-time-text" style="font-weight:800;color:' + (dgTimeLeft <= 10 ? "#fda4af" : "var(--dim)") + '">⏱ ' + dgTimeText + " left of " + dgLimitText + '</p><div style="margin-top:0.25rem;height:0.5rem;width:7rem;overflow:hidden;border-radius:999px;border:1px solid rgba(255,255,255,0.25);background:rgba(0,0,0,0.5);padding:1px" role="progressbar" aria-label="Dungeon run time remaining"><div id="dg-time-bar" style="height:100%;border-radius:999px;background:' + (dgTimeLeft <= 10 ? "linear-gradient(90deg,#fb7185,#f43f5e)" : "linear-gradient(90deg,#7dd3fc,#2dd4bf)") + ";width:" + dgTimePct + '%"></div></div></div>';
         }
         if (runDiff.id !== "normal") h += '<p class="xs" style="margin-top:0.375rem;font-weight:900;color:#fda4af">' + runDiff.emoji + " " + esc(runDiff.label) + " difficulty — rewards ×" + dungeonRewardMultText(runDiff.rewardMult) + ", with the luck roll applied on top</p>";
         h += '<div class="battlefield"><div id="dg-shots-layer" class="shots-layer"></div><div class="bf-row"><ul class="party-row" aria-label="Your party">';
@@ -9693,8 +9713,8 @@
         }
         h += '<p class="small" style="margin-top:0.375rem;font-weight:800">You hauled out: ' + esc(lastDungeonReward) + '</p><button type="button" class="btn-pill anime-btn-gold" id="dg-reward-ok" style="margin-top:0.5rem">Nice!</button></div>';
       } else if (lastDungeonLost) {
-        h += '<div class="anime-card mt4 card-pad center" aria-label="Dungeon run lost"><p style="font-size:2rem;margin:0" aria-hidden="true">💫</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">The depths win this time…</h3>';
-        h += '<p class="small dim" style="margin-top:0.375rem;font-weight:600">The party regroups at the mouth of ' + esc(lastDungeonLost) + ", empty-handed. Level up, forge better gear, and try again.</p><button type=\"button\" class=\"btn-pill anime-btn-primary\" id=\"dg-lost-ok\" style=\"margin-top:0.5rem\">REGROUP</button></div>";
+        h += '<div class="anime-card mt4 card-pad center" aria-label="Dungeon run lost"><p style="font-size:2rem;margin:0" aria-hidden="true">' + (lastDungeonTimedOut ? "⏱" : "💫") + '</p><h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.25rem 0 0">' + (lastDungeonTimedOut ? "Time ran out!" : "The depths win this time…") + '</h3>';
+        h += '<p class="small dim" style="margin-top:0.375rem;font-weight:600">' + (lastDungeonTimedOut ? "Time ran out — the depths close over the party, empty-handed. " : "") + 'The party regroups at the mouth of ' + esc(lastDungeonLost) + ", empty-handed. Level up, forge better gear, and try again.</p><button type=\"button\" class=\"btn-pill anime-btn-primary\" id=\"dg-lost-ok\" style=\"margin-top:0.5rem\">REGROUP</button></div>";
       }
 
       h += '<div class="dungeon-grid">';
@@ -9873,6 +9893,23 @@
       if (wl) wl.textContent = dungeonWaveLine(dungeonById(dungeonBattle.dungeonId), dungeonBattle.wave, dungeonFoeHeld(fx), dungeonDifficultyDef(dungeonBattle.diff || "normal").mult);
       var badges = document.getElementById("dg-status-badges");
       if (badges) badges.innerHTML = dungeonStatusBadges(fx);
+      /* ⏱ Keep the run-timer readout live: text, bar width, and the
+         red-at-10s-or-less flip, all from the run's own fields. */
+      var dgTimeTextEl = document.getElementById("dg-time-text");
+      var dgTimeBarEl = document.getElementById("dg-time-bar");
+      if (dgTimeTextEl || dgTimeBarEl) {
+        var dgTimeLeftNow = Math.max(0, dungeonBattle.timeLeft || 0);
+        var dgTimeLimitNow = dungeonBattle.timeLimit || 0;
+        var dgTimePctNow = dgTimeLimitNow > 0 ? Math.max(0, Math.min(100, (dgTimeLeftNow / dgTimeLimitNow) * 100)) : 0;
+        if (dgTimeTextEl) {
+          dgTimeTextEl.textContent = "⏱ " + Math.floor(dgTimeLeftNow / 60) + ":" + String(Math.floor(dgTimeLeftNow % 60)).padStart(2, "0") + " left of " + Math.floor(dgTimeLimitNow / 60) + ":" + String(Math.floor(dgTimeLimitNow % 60)).padStart(2, "0");
+          dgTimeTextEl.style.color = dgTimeLeftNow <= 10 ? "#fda4af" : "var(--dim)";
+        }
+        if (dgTimeBarEl) {
+          dgTimeBarEl.style.width = dgTimePctNow + "%";
+          dgTimeBarEl.style.background = dgTimeLeftNow <= 10 ? "linear-gradient(90deg,#fb7185,#f43f5e)" : "linear-gradient(90deg,#7dd3fc,#2dd4bf)";
+        }
+      }
     }
 
     /* ============================== RENDER: QUESTS TAB ============================== */
@@ -11581,7 +11618,7 @@
       var dgOk = document.getElementById("dg-reward-ok");
       if (dgOk) dgOk.addEventListener("click", function () { lastDungeonReward = null; lastDungeonLuck = null; renderMain(); });
       var dgLost = document.getElementById("dg-lost-ok");
-      if (dgLost) dgLost.addEventListener("click", function () { lastDungeonLost = null; renderMain(); });
+      if (dgLost) dgLost.addEventListener("click", function () { lastDungeonLost = null; lastDungeonTimedOut = false; renderMain(); });
       /* --- shop bindings (Tower-screen boost + Shop tab) --- */
       var boostBtn = document.getElementById("boost-buy");
       if (boostBtn) boostBtn.addEventListener("click", function () { buyOfflineBoost(); });
@@ -14686,11 +14723,13 @@
       /* Pooled combat (Nov 21, 2026 revert): one shared party HP pool,
          no per-hero HP, no fallen heroes, no revives — the tower's
          split-HP state does not live on this object. */
-      dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), partyHp: partyMaxHp(save), shield: 0, status: "fighting", fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
+      var dgTimeLimit = dungeonTimeLimit(dg, diff);
+      dungeonBattle = { dungeonId: dgId, diff: diff, wave: 1, waves: dg.waves, enemyMax: dungeonWaveHp(dg, 1, diffDef.mult), enemyHp: dungeonWaveHp(dg, 1, diffDef.mult), partyHp: partyMaxHp(save), shield: 0, status: "fighting", timeLeft: dgTimeLimit, timeLimit: dgTimeLimit, timedOut: false, fx: freshDungeonStatus(), lastTick: performance.now(), atkTimers: {}, skillTimers: {} };
       dungeonSpeed = 1;
       lastDungeonReward = null;
       lastDungeonLuck = null;
       lastDungeonLost = null;
+      lastDungeonTimedOut = false;
       renderMain();
       if (dungeonTimer) window.clearInterval(dungeonTimer);
       dungeonTimer = window.setInterval(dungeonTick, 120);
@@ -14763,6 +14802,7 @@
       lastDungeonLuck = { tier: luck, gold: luckGold, gems: luckGems, drops: drops };
       lastDungeonReward = dropsText(drops) + " · 🪙 " + luckGold.toLocaleString("en-US") + " gold" + (luckGems > 0 ? " · 💎 " + luckGems + " gems" : "");
       lastDungeonLost = null;
+      lastDungeonTimedOut = false;
       playClearSfx();
       renderMain();
     }
@@ -14802,6 +14842,12 @@
          1.5s cap, so 2x truly doubles the fight's pace. */
       var dt = Math.min(1.5, (now - dungeonBattle.lastTick) / 1000) * dungeonSpeed;
       dungeonBattle.lastTick = now;
+      /* ⏱ The run timer drains by dt — battle seconds, not wall-clock —
+         so at 2x speed it runs out twice as fast in real time. The
+         timeout itself is judged in the outcome chain below, AFTER the
+         wave-kill branch, so a kill landing on the very tick the timer
+         hits zero still counts as the win. */
+      dungeonBattle.timeLeft -= dt;
       var dg = dungeonById(dungeonBattle.dungeonId);
       var s = save;
       /* The run's difficulty multipliers (both 1 on Normal): the enemy
@@ -15231,6 +15277,21 @@
         dungeonBattle.fx = freshDungeonStatus(); /* a new wave is a new foe — every status timer starts over */
         dungeonBattle.shield = 0; /* the shield falls with the wave; the shared pool carries over */
         playHitSfx();
+      } else if (dungeonBattle.timeLeft <= 0) {
+        /* ⏱ Time's up, mid-fight: the run fails exactly like a wipe —
+           no drops, no clear recorded, no persist; the daily run was
+           already spent in startDungeonRun. This branch sits AFTER the
+           wave-kill branch above, so a kill landing on the same tick
+           the timer hits zero still counts as the win. */
+        dungeonBattle.timeLeft = 0;
+        if (dungeonTimer) window.clearInterval(dungeonTimer);
+        dungeonTimer = null;
+        lastDungeonLost = dg.name;
+        lastDungeonTimedOut = true;
+        dungeonBattle = null;
+        dungeonSpeed = 1;
+        renderMain();
+        return;
       }
       /* Visual only: on their own attack cadence (the same period the
          Tower uses) each hero plays its attack visual — melee heroes
