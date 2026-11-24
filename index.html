@@ -1555,7 +1555,7 @@
        the climb loops, the world being built does not. */
     function freshParadise() {
       return {
-        treePlanted: false, fragments: 0, buildings: {}, training: {}, trainingActive: null,
+        treePlanted: false, fragments: 0, buildings: {}, training: {}, trainingSinceAttempt: {}, trainingActive: null,
         breakthroughUnlocked: false, firstBreakthroughDone: false, breakthroughStones: 0, lastStoneBuy: "",
         happiness: {}, happinessAt: 0, foodUntil: 0, foodKind: "",
         restDay: "", restCounts: {},
@@ -1722,6 +1722,25 @@
                   def: typeof tt.def === "number" && tt.def > 0 ? Math.floor(tt.def) : 0,
                   skill: typeof tt.skill === "number" && tt.skill > 0 ? Math.floor(tt.skill) : 0
                 };
+              }
+            }
+            if (rp.trainingSinceAttempt && typeof rp.trainingSinceAttempt === "object") {
+              for (var swid in rp.trainingSinceAttempt) {
+                var swt = rp.trainingSinceAttempt[swid];
+                if (!swt || typeof swt !== "object") continue;
+                clean.trainingSinceAttempt[swid] = {
+                  atk: typeof swt.atk === "number" && swt.atk > 0 ? Math.floor(swt.atk) : 0,
+                  def: typeof swt.def === "number" && swt.def > 0 ? Math.floor(swt.def) : 0,
+                  skill: typeof swt.skill === "number" && swt.skill > 0 ? Math.floor(swt.skill) : 0
+                };
+              }
+            }
+            // Migration (Nov 23): saves from before the fresh-course rule carry no
+            // window — seed it from the hero's cumulative training, capped at 3/3/3,
+            // so a hero who already earned a full course doesn't lose their first attempt.
+            for (var mhid in clean.training) {
+              if (!clean.trainingSinceAttempt[mhid]) {
+                clean.trainingSinceAttempt[mhid] = { atk: Math.min(3, clean.training[mhid].atk), def: Math.min(3, clean.training[mhid].def), skill: Math.min(3, clean.training[mhid].skill) };
               }
             }
             if (rp.trainingActive && typeof rp.trainingActive === "object" && typeof rp.trainingActive.heroId === "string"
@@ -5551,11 +5570,30 @@
        from the shop's "???" shelf: 50,000 💎, ONE per day, run 2 onward
        only, and they are kept across run resets (paradise persists). */
     var BREAKTHROUGH_ATTEMPT_STONES = 10;
+    /* 12★ is the absolute ceiling (Rachel, Nov 23): a hero whose base
+       stars plus syntheses already reach 12 — a natural 7★, Soren with
+       11 syntheses, Lucian with 6 — has nowhere further to break to,
+       so no breakthrough attempt is possible for them at all. Read off
+       base stars + asc, BEFORE any breakthrough rank. */
+    function atMaxRank(s, id) {
+      var o = s.heroes[id];
+      if (!o) return true;
+      return heroById(id).stars + o.asc >= 12;
+    }
+    /* The FRESH course (Rachel, Nov 23): since the hero's last
+       breakthrough attempt, they must have completed a full 3/3/3
+       course again — the since-last-attempt window, not the cumulative
+       record, is what counts here. */
+    function freshCourseSinceAttempt(s, id) {
+      var t = s.paradise && s.paradise.trainingSinceAttempt ? s.paradise.trainingSinceAttempt[id] : null;
+      return !!t && t.atk >= 3 && t.def >= 3 && t.skill >= 3;
+    }
     /* Starting a session for this hero right now would be a BREAKTHROUGH
-       ATTEMPT: max stat, full course done, not yet broken through. */
+       ATTEMPT: max stat, full course done, a fresh 3/3/3 since the last
+       attempt, not yet broken through, and not already at the 12★ cap. */
     function isBreakthroughAttempt(s, id) {
       var o = s.heroes[id];
-      return !!o && !o.breakthrough && heroAtMaxStat(s, id) && trainingCourseDone(s, id);
+      return !!o && !o.breakthrough && !atMaxRank(s, id) && heroAtMaxStat(s, id) && trainingCourseDone(s, id) && freshCourseSinceAttempt(s, id);
     }
     /* THE HIDDEN ROUTE: Luna becomes fully herself. The conditions:
        Luna at her absolute max, wearing a full set of gear FATED for
@@ -5677,10 +5715,21 @@
         if (ta.aspect === "atk") rec.atk += 1;
         else if (ta.aspect === "def") rec.def += 1;
         else rec.skill += 1;
+        /* The since-last-attempt window (Rachel, Nov 23): ordinary sessions
+           count toward the next attempt's fresh course; an attempt session
+           itself RESETS the window — it is not one of the next course's 9,
+           so after any attempt lands (win or lose) a fresh 3/3/3 is owed. */
+        var win = Object.assign({ atk: 0, def: 0, skill: 0 }, (par.trainingSinceAttempt || {})[ta.heroId] || {});
+        if (wasAttempt) { win.atk = 0; win.def = 0; win.skill = 0; }
+        else if (ta.aspect === "atk") win.atk += 1;
+        else if (ta.aspect === "def") win.def += 1;
+        else win.skill += 1;
         (function () {
           var r = rec;
+          var w = win;
           editPar(function (d) {
             var tr = Object.assign({}, d.training); tr[ta.heroId] = r; d.training = tr;
+            var tw = Object.assign({}, d.trainingSinceAttempt || {}); tw[ta.heroId] = w; d.trainingSinceAttempt = tw;
             d.trainingActive = null;
           });
         })();
@@ -5696,7 +5745,7 @@
            10% per session. Sessions before 3/3/3 never roll — they
            change nothing about the timing. */
         var o2 = next.heroes[ta.heroId];
-        if (wasCourse && wasAttempt && o2 && !o2.breakthrough && heroAtMaxStat(next, ta.heroId)) {
+        if (wasCourse && wasAttempt && o2 && !o2.breakthrough && heroAtMaxStat(next, ta.heroId) && !atMaxRank(next, ta.heroId)) {
           var guaranteed = !par.firstBreakthroughDone;
           if (guaranteed || Math.random() < 0.10) {
             var nh2 = Object.assign({}, next.heroes); nh2[ta.heroId] = Object.assign({}, o2, { breakthrough: true }); next = Object.assign({}, next, { heroes: nh2 });
@@ -5777,7 +5826,7 @@
       var s = save;
       if (!s || !s.paradise.breakthroughUnlocked) return;
       var o = s.heroes[heroId];
-      if (!o || o.breakthrough || !heroAtMaxStat(s, heroId) || !trainingCourseDone(s, heroId)) return;
+      if (!o || !isBreakthroughAttempt(s, heroId)) return;
       /* Making it certain is still a breakthrough ATTEMPT — the same 10
          stones an attempt by session costs, consumed as it is made. */
       if (s.paradise.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES) {
@@ -5788,6 +5837,8 @@
       next.heroes[heroId].breakthrough = true;
       next.paradise.breakthroughStones -= BREAKTHROUGH_ATTEMPT_STONES;
       next.paradise.firstBreakthroughDone = true;
+      next.paradise.trainingSinceAttempt = Object.assign({}, next.paradise.trainingSinceAttempt || {});
+      next.paradise.trainingSinceAttempt[heroId] = { atk: 0, def: 0, skill: 0 };
       persist(next);
       renderMain();
       setNotice("✨ The stones were never stones. They break like shells in " + heroById(heroId).name + "'s hands — and what was inside was theirs all along. BREAKTHROUGH: " + heroById(heroId).name + " stands one rank beyond their ceiling, level cap and skill grown with them. Potential, unleashed.");
@@ -11040,7 +11091,7 @@
               h += '<button type="button" class="btn-pill anime-btn-sky" data-train-aspect="' + pair[0] + '" ' + (isBreakthroughAttempt(s, selHero) && par.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES ? "disabled " : "") + 'aria-label="Start a 3-hour ' + pair[1] + ' training session for ' + esc(selDef.name) + '">' + pair[1] + " — 3h</button>";
             });
             h += "</div>";
-            if (par.breakthroughUnlocked && heroAtMaxStat(s, selHero) && trainingCourseDone(s, selHero) && !selOwned.breakthrough) {
+            if (par.breakthroughUnlocked && isBreakthroughAttempt(s, selHero)) {
               h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;border-radius:1rem;background:var(--surface2);padding:0.75rem">';
               h += '<p class="small" style="font-weight:700;margin:0">✨ Breakthrough stands revealed for ' + esc(selDef.name) + ".</p>";
               h += '<p class="xs dim" style="margin-top:0.125rem;font-weight:500">A hero at max stat, put through the hall AGAIN after the full course, can unleash their potential — one rank beyond their ceiling. Each such session is a breakthrough attempt: ' + BREAKTHROUGH_ATTEMPT_STONES + ' Breakthrough stones, paid when the session begins. The first attempt in the town\'s history is guaranteed; after that, one session in ten. Or spend ' + BREAKTHROUGH_ATTEMPT_STONES + ' Breakthrough stones (' + par.breakthroughStones + " held) and make it certain, now.</p>";
