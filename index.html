@@ -14536,9 +14536,22 @@
          same). The party's OWN h and c are measured, not assumed: h is
          dungeonHealPerSec ÷ pool (zero without a healer-class hero, the
          loop's exact trickle otherwise), and c is partyHoldShare above.
-         Both are CAPPED at the reference rates (HEAL_PER_SEC,
-         HOLD_SHARE): healing and holds beyond the reference party's
-         only make a real run kinder than the number, never inflate it.
+         Holds are CAPPED at the reference rate (HOLD_SHARE): control
+         beyond the reference party's — like the shields, lifesteal,
+         Aldric's Levy, and Roar / Aegis / Second Act windows the
+         recommendation itself leaves unpriced — only makes a real run
+         kinder than the number, never inflates it. Healing is NOT
+         capped (Nov 23, 2026, Rachel's call — "recalculate BP to
+         include healing; I just want to see actual BP now"): h enters
+         at the party's real trickle rate, so the survival credit
+         scales with the party's actual healing instead of being
+         clipped to the reference healer's rate — the old cap is what
+         made a strong-healer party read far weaker on the card than
+         it plays (the 14%-clear finding).
+         A reference clone (a healer at healMult 1, holds at 80%, DoTs
+         at 20% of its damage, hit DPS read the way heroPower reads it)
+         lands on the same scale the recommendation is quoted in, by
+         construction.
 
        Recomputed from the live save on every render, so swapping the
        party, its gear, or its levels moves every card's number at once —
@@ -14549,7 +14562,10 @@
       var pool = partyMaxHp(s);
       var runSeconds = dg.waves * DUNGEON_BP_SECONDS_PER_WAVE;
       var healFrac = pool > 0 ? dungeonHealPerSec(s) / pool : 0;
-      var healCredited = Math.min(healFrac, DUNGEON_BP_HEAL_PER_SEC);
+      /* Healing is credited at the party's REAL rate — no reference cap
+         (Nov 23, 2026, Rachel's call: the card shows the party's actual
+         BP). Holds stay capped at the reference rate. */
+      var healCredited = healFrac;
       var holdCredited = Math.min(partyHoldShare(s), DUNGEON_BP_HOLD_SHARE);
       var partySurvival = ((1 - DUNGEON_BP_HP_RESERVE) + healCredited * runSeconds) / (1 - holdCredited);
       var refSurvival = ((1 - DUNGEON_BP_HP_RESERVE) + DUNGEON_BP_HEAL_PER_SEC * runSeconds) / (1 - DUNGEON_BP_HOLD_SHARE);
