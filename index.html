@@ -15491,6 +15491,21 @@
       updateForgeModal();
       if (forgeGame.strikes.length >= 3) showForgeResult();
     }
+    /* ⌨️ Spacebar strikes the hammer (Rachel, Nov 23, 2026): the same
+       forgeStrike() path as the STRIKE button. Forge-screen-only by the
+       guard — forgeGame is null outside a forge and done once the result
+       screen shows, so Space never strikes there and the result screen's
+       name input types spaces normally. preventDefault stops the page
+       scrolling (and a focused STRIKE button firing again on keyup);
+       the repeat guard means holding Space can't burn all three strikes. */
+    function onForgeSpaceKey(e) {
+      if (!forgeGame || forgeGame.done) return;
+      if (e.code !== "Space" && e.key !== " ") return;
+      e.preventDefault();
+      if (e.repeat) return;
+      forgeStrike();
+    }
+    window.addEventListener("keydown", onForgeSpaceKey);
     function updateForgeModal() {
       if (!forgeGame) return;
       var dots = document.getElementById("forge-strikes");
@@ -15534,6 +15549,7 @@
       h += '<p class="center small bold" id="forge-score" style="margin-top:0.625rem">Score: 0 / 6 · Strike 1 of 3</p>';
       h += '<div class="forge-strikes" id="forge-strikes"><span class="forge-dot">Strike 1 · —</span><span class="forge-dot">Strike 2 · —</span><span class="forge-dot">Strike 3 · —</span></div>';
       h += '<button type="button" class="btn-wide anime-btn-gold" id="forge-strike-btn" aria-label="Strike the hammer now">🔨 STRIKE!</button>';
+      h += '<p class="center small bold dim" style="margin-top:0.5rem">⌨️ Or press <span style="color:var(--text)">Space</span> to strike!</p>';
       h += '<button type="button" class="btn-ghost" id="forge-quit" style="margin-top:0.5rem;width:100%;border-radius:999px">Abandon (materials &amp; gold are spent)</button>';
       h += "</div></div>";
       root.innerHTML = h;
