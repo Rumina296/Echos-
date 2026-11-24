@@ -1578,6 +1578,7 @@
         durnanGuardianGear: true,
         ticket6: { date: "", stocked: false, bought: false },
         shopMaterials: { date: "", bought: {}, starlightStocked: false },
+        captainCache: { date: "", bought: {} },
         shopGearShelf: { date: "", pieces: [] },
         shopSale: { date: "", item: "", pct: 0 },
         shards: 0,
@@ -1964,6 +1965,24 @@
             date: merged.shopMaterials.date,
             bought: cleanBought,
             starlightStocked: merged.shopMaterials.starlightStocked
+          };
+        }
+        // Migration: older saves have no Captain's Cache — nothing bought
+        // today (the first load rolls it). Sanitize: bought counts are
+        // whole bundles, clamped to each bundle's daily cap (3), and only
+        // known bundle ids survive.
+        if (!merged.captainCache || typeof merged.captainCache.date !== "string"
+          || !merged.captainCache.bought || typeof merged.captainCache.bought !== "object") {
+          merged.captainCache = { date: "", bought: {} };
+        } else {
+          var cleanCacheBought = {};
+          CAPTAIN_CACHE_BUNDLES.forEach(function (b) {
+            var v = merged.captainCache.bought[b.id];
+            if (typeof v === "number" && v > 0) cleanCacheBought[b.id] = Math.min(b.cap, Math.floor(v));
+          });
+          merged.captainCache = {
+            date: merged.captainCache.date,
+            bought: cleanCacheBought
           };
         }
         // Migration: older saves have no named-gear shelf — it rolls on first
@@ -11664,6 +11683,9 @@
       main.querySelectorAll("[data-shop-mat-qty]").forEach(function (el) {
         el.addEventListener("click", function () { buyShopMaterialQty(el.getAttribute("data-shop-mat-qty"), qtyFromInput("shopmat:" + el.getAttribute("data-shop-mat-qty"))); });
       });
+      main.querySelectorAll("[data-captain-cache]").forEach(function (el) {
+        el.addEventListener("click", function () { buyCaptainCache(el.getAttribute("data-captain-cache")); });
+      });
       main.querySelectorAll("[data-shop-gear]").forEach(function (el) {
         el.addEventListener("click", function () { buyRandomGear(el.getAttribute("data-shop-gear")); });
       });
@@ -12089,6 +12111,47 @@
       };
       return next;
     }
+
+    /* ========================= CAPTAIN'S CACHE ==============================
+       Rachel's call, Nov 23, 2026 — the Captain's Cache: a bulk-materials
+       shelf that opens only after Floor 80 is cleared (floor > 80 — the
+       player has beaten Caelum, captain of the holy knights, on Floor 80,
+       so the frontier sits at 81). Four fixed bundles, each buyable 3
+       times a day under its OWN daily cap — the cache never touches the
+       regular Materials shelf's caps or its Starlight stock roll:
+       Starlight is ALWAYS stocked here (no 20% roll), and NO sale can
+       ever apply — the flat price is charged directly, never through
+       shopPriceNow. Prices are the main game's per-unit prices scaled by
+       the bundle size, so a cache costs the same per unit as the
+       Materials shelf, just in bulk:
+         Iron Cache:      100 Iron Shard       — 100 × 1.3 × 100 = 13,000 💎
+         Moonstone Cache: 100 Moonstone        — 400 × 1.3 × 100 = 52,000 💎
+         Dragon Cache:    50 Dragon Scale      — 1,000 × 1.4 × 50 = 70,000 💎
+         Starlight Cache: 25 Starlight Essence — flat 150,000 💎
+       (the whole cache, all four bundles × 3, is 855,000 💎 a day).
+       Material grants use this copy's own material keys (iron / moon /
+       scale / essence); display names and icons come from MATERIALS. */
+    var CAPTAIN_CACHE_MIN_FLOOR = 80;
+    var CAPTAIN_CACHE_BUNDLES = [
+      { id: "iron", name: "Iron Cache", mat: "iron", qty: 100, price: 13000, cap: 3 },
+      { id: "moonstone", name: "Moonstone Cache", mat: "moon", qty: 100, price: 52000, cap: 3 },
+      { id: "dragon", name: "Dragon Cache", mat: "scale", qty: 50, price: 70000, cap: 3 },
+      { id: "starlight", name: "Starlight Cache", mat: "essence", qty: 25, price: 150000, cap: 3 }
+    ];
+    function captainCacheBundle(id) { for (var i = 0; i < CAPTAIN_CACHE_BUNDLES.length; i++) if (CAPTAIN_CACHE_BUNDLES[i].id === id) return CAPTAIN_CACHE_BUNDLES[i]; return null; }
+    function captainCacheUnlocked(s) { return s.floor > CAPTAIN_CACHE_MIN_FLOOR; }
+    function ensureCaptainCacheToday(s, now) { var today = dailyDateStr(new Date(now)); if (s.captainCache && s.captainCache.date === today) return s; var next = shopClone(s); next.captainCache = { date: today, bought: {} }; return next; }
+    function captainCacheBoughtToday(s, id, now) { if (!s.captainCache || s.captainCache.date !== dailyDateStr(new Date(now))) return 0; return s.captainCache.bought[id] || 0; }
+    function captainCacheLeft(s, id, now) { var b = captainCacheBundle(id); if (!b) return 0; return Math.max(0, b.cap - captainCacheBoughtToday(s, id, now)); }
+    /** Pure purchase: one whole bundle of `id` at its FLAT price — null
+        when the cache is locked (Floor 80 not cleared), when the bundle
+        is unknown, when today's 3-buy cap for it is spent, or when gems
+        are short. Otherwise deducts exactly the bundle price, adds
+        exactly the bundle quantity to the material inventory, and counts
+        one buy against today's cache cap. NEVER touches shopMaterials
+        (its date, bought, or starlightStocked) and NEVER routes the
+        price through shopPriceNow — no sale can ever discount a cache. */
+    function applyCaptainCachePurchase(s, id, now) { if (!captainCacheUnlocked(s)) return null; var b = captainCacheBundle(id); if (!b) return null; if (captainCacheLeft(s, id, now) < 1) return null; if (s.gems < b.price) return null; var today = dailyDateStr(new Date(now)); var sameDay = !!s.captainCache && s.captainCache.date === today; var next = shopClone(s); next.gems = s.gems - b.price; if (!next.materials) next.materials = { iron: 0, moon: 0, scale: 0, essence: 0 }; next.materials[b.mat] = (next.materials[b.mat] || 0) + b.qty; var bought = sameDay ? JSON.parse(JSON.stringify(s.captainCache.bought)) : {}; bought[id] = captainCacheBoughtToday(s, id, now) + 1; next.captainCache = { date: today, bought: bought }; return next; }
 
     /* ============================== SHOP GEAR ================================
        The Shop tab also sells gear for gems, as a mix of both formats —
@@ -12612,12 +12675,13 @@
     }
 
     /** The full lazy daily reset, in the main game's order: 6★ ticket
-        stock, shop materials, named-gear shelf, then the sale — rolled
-        last, from today's freshly stocked pool. */
+        stock, shop materials, Captain's Cache, named-gear shelf, then
+        the sale — rolled last, from today's freshly stocked pool. */
     function ensureShopTodayAll(s, now, rand) {
       rand = rand || Math.random;
       var next = ensureTicket6Today(s, now, rand);
       next = ensureShopMaterialsToday(next, now, rand);
+      next = ensureCaptainCacheToday(next, now);
       next = ensureShopGearShelfToday(next, now, rand);
       next = ensureShopSaleToday(next, now, rand);
       return next;
@@ -12628,9 +12692,10 @@
        in memory so battle re-renders never lose a half-finished buy. */
     var ticketArmed = false;
     var ticketPickerOpen = false;
-    // Which Shop view is showing: the storefront hub (four category
-    // tiles + Today's Deal banner) or one shelf — Tickets, Materials,
-    // Gear (all gems) or the Dupe Exchange (Universal Shards only).
+    // Which Shop view is showing: the storefront hub (category tiles +
+    // Today's Deal banner) or one shelf — Tickets, Materials, Gear, or
+    // the Captain's Cache (all gems; the Cache tile only appears once
+    // Floor 80 is cleared) or the Dupe Exchange (Universal Shards only).
     // The hub replaces the old Gem Shop / Dupe Exchange top switch.
     var shopView = "hub";
     // The sale item key whose card wears the gold ring after the player
@@ -12754,6 +12819,13 @@
         h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Exchange</span>';
         h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">Trade spares for shards</span>';
         h += "</button>";
+        if (captainCacheUnlocked(s)) {
+          h += '<button type="button" class="anime-card card-pad" data-shop-tile="cache" aria-label="Captain\'s Cache shelf — bulk materials for gems, unlocked after clearing Floor 80" style="display:block;width:100%;text-align:center;cursor:pointer;font:inherit;color:var(--text)">';
+          h += '<span style="display:block;font-size:2.5rem" aria-hidden="true">⚓</span>';
+          h += '<span class="font-display" style="display:block;margin-top:0.5rem;font-size:1.125rem;font-weight:700">Captain\'s Cache</span>';
+          h += '<span class="xs dim" style="display:block;margin-top:0.25rem;font-weight:600">Bulk materials · Starlight always stocked</span>';
+          h += "</button>";
+        }
         h += "</div>";
         h += "</section>";
         return h;
@@ -12876,6 +12948,39 @@
       });
       h += "</div>";
       h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Caps and the Starlight stock roll reset at midnight. Dungeon runs still pay far more per hour — the shop is for topping up.</p>';
+      h += "</div>";
+
+        h += "</section>";
+        return h;
+      }
+      if (shopView === "cache") {
+        h += shopShelfBar("⚓ Captain's Cache", "💎 " + s.gems.toLocaleString("en-US") + " gems");
+      /* ---------- Captain's Cache ---------- */
+      h += '<div class="anime-card mt4 card-pad" style="text-align:center" aria-label="Captain\'s Cache">';
+      h += '<p style="font-size:2.5rem;margin:0" aria-hidden="true">⚓</p>';
+      h += '<h3 class="font-display" style="font-size:1.25rem;font-weight:700;margin:0.25rem 0 0">Captain\'s Cache</h3>';
+      h += '<p class="small dim" style="margin:0.25rem auto 0;max-width:28rem;font-weight:500">Caelum\'s own stores, opened to a Master who beat the captain and cleared Floor 80 — bulk bundles, one tap, no haggling. Starlight is always stocked here, and the price never goes on sale.</p>';
+      if (!captainCacheUnlocked(s)) {
+        h += '<p class="small" style="margin-top:1rem;font-weight:800;color:#ffd94d">🔒 The cache opens once Floor 80 is cleared — beat Caelum, captain of the holy knights, and his stores are yours.</p>';
+      } else {
+        h += '<div style="margin:1rem auto 0;max-width:32rem;display:grid;gap:0.5rem;grid-template-columns:repeat(2,1fr)">';
+        CAPTAIN_CACHE_BUNDLES.forEach(function (bundle) {
+          var m = materialById(bundle.mat);
+          var left = captainCacheLeft(s, bundle.id, now);
+          var soldOut = left <= 0;
+          var short = s.gems < bundle.price;
+          var blocked = soldOut || short;
+          h += '<div style="border-radius:24px;border:2px solid var(--border);background:var(--surface2);padding:0.75rem;text-align:left">';
+          h += '<p class="font-display" style="font-size:1rem;font-weight:700;margin:0">' + m.icon + " " + esc(bundle.name) + "</p>";
+          h += '<p class="xs dim" style="margin:0.125rem 0 0">' + bundle.qty.toLocaleString("en-US") + " " + esc(m.name) + " · You hold " + (s.materials[bundle.mat] || 0).toLocaleString("en-US") + "</p>";
+          if (soldOut) h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">Sold out today — the captain restocks at midnight.</p>';
+          else h += '<p class="xs" style="margin:0.25rem 0 0;font-weight:800;color:#ffd94d">' + left + " left today</p>";
+          h += '<button type="button" class="btn-pill anime-btn-gold" data-captain-cache="' + bundle.id + '" style="margin-top:0.5rem;width:100%" ' + (blocked ? "disabled" : "") + ' aria-label="' + (soldOut ? esc(bundle.name) + " — sold out today, daily cap reached" : short ? "Buy the " + esc(bundle.name) + " for " + bundle.price.toLocaleString("en-US") + " gems — you only have " + s.gems.toLocaleString("en-US") + " gems" : "Buy the " + esc(bundle.name) + " — " + bundle.qty.toLocaleString("en-US") + " " + esc(m.name) + " for " + bundle.price.toLocaleString("en-US") + " gems — " + left + " left today") + '">Buy — ' + bundle.price.toLocaleString("en-US") + "💎</button>";
+          h += "</div>";
+        });
+        h += "</div>";
+        h += '<p class="xs dim" style="margin-top:0.75rem;font-weight:600">Each bundle can be bought 3 times a day. Caps reset at midnight and never touch the Materials shelf.</p>';
+      }
       h += "</div>";
 
         h += "</section>";
@@ -13182,6 +13287,27 @@
       if (!next) return;
       persist(next);
       writeSave();
+      renderMain();
+    }
+
+    /* Captain's Cache: one tap buys one whole bundle at its flat price
+       (never a sale price, never a typed quantity). Refusals are named —
+       locked, sold out today, or short on gems — via setNotice, which
+       lives outside #main and so survives the re-render. */
+    function buyCaptainCache(id) {
+      var s = save;
+      if (!s) return;
+      var bundle = captainCacheBundle(id);
+      if (!bundle) return;
+      if (!captainCacheUnlocked(s)) { setNotice("🔒 The Captain's Cache opens once Floor " + CAPTAIN_CACHE_MIN_FLOOR + " is cleared — beat Caelum, captain of the holy knights, and the cache is yours."); return; }
+      if (captainCacheLeft(s, id, Date.now()) <= 0) { setNotice("⚓ The " + bundle.name + " is sold out today — the captain restocks at midnight (3 a day)."); return; }
+      if (s.gems < bundle.price) { setNotice("💎 Not enough gems — the " + bundle.name + " costs " + bundle.price.toLocaleString("en-US") + " gems and you hold " + s.gems.toLocaleString("en-US") + "."); return; }
+      var next = applyCaptainCachePurchase(s, id, Date.now());
+      if (!next) return;
+      persist(next);
+      writeSave();
+      var m = materialById(bundle.mat);
+      setNotice("⚓ " + bundle.name + " secured — " + bundle.qty.toLocaleString("en-US") + " " + m.name + " for " + bundle.price.toLocaleString("en-US") + " 💎.");
       renderMain();
     }
 
