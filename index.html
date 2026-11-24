@@ -2311,6 +2311,52 @@
             });
             merged.forgedSevenCount = forged;
           }
+          /* 👑 Migration (equipped OoK auto-fate, Nov 23, 2026): equipGear
+             fates a marked One-of-a-Kind 7★ to whoever wears it the moment it
+             is equipped — but pieces equipped BEFORE that rule landed never
+             passed through it, so they still sit on their wearers merely
+             attuned, not fated. This pass applies the same move at load: any
+             marked 7★ the equipment map says a hero is wearing is fated to
+             that wearer and its attunement dropped, exactly as equipGear does
+             ({...g, fatedHero: wearer} + delete attunedClass). It runs AFTER
+             the grandfathering migration above, so legacy 7★s carry their
+             One-of-a-Kind stamp by the time this pass looks, and BEFORE the
+             carryover migration below. Only equipped pieces are touched: bag
+             pieces never appear in the equipment map, and sealed pieces
+             (sealedOok, the heirloom) live outside merged.gearInv entirely, so
+             they stay exactly as stored. Idempotent — a piece already fated
+             to its wearer with no attunement is left as the identical object,
+             and a piece fated to someone else is moved to its actual wearer,
+             the same as re-equipping it in equipGear. */
+          (function () {
+            var wearerOf = {};
+            var gearUids = {};
+            merged.gearInv.forEach(function (g) { gearUids[g.uid] = true; });
+            var eq = merged.equipped || {};
+            for (var heroId in eq) {
+              if (!HEROES.some(function (hd) { return hd.id === heroId; }) && !RUN2_HEROES.some(function (hd) { return hd.id === heroId; })) continue; // unknown hero — not a real wearer
+              var slots = eq[heroId];
+              if (!slots || typeof slots !== "object") continue;
+              for (var sl in slots) {
+                var pieceUid = slots[sl];
+                if (typeof pieceUid !== "string" || !gearUids[pieceUid]) continue; // dangling reference — no such piece
+                if (!wearerOf[pieceUid]) wearerOf[pieceUid] = heroId; // first wearer found wins
+              }
+            }
+            var hasWearer = false;
+            for (var k in wearerOf) { hasWearer = true; break; }
+            if (hasWearer) {
+              merged.gearInv = merged.gearInv.map(function (g) {
+                if (!g.oneOfAKind || g.stars < 7) return g;
+                var wearer = wearerOf[g.uid];
+                if (!wearer) return g;
+                if (g.fatedHero === wearer && !g.attunedClass) return g; // already fated to its wearer — untouched
+                var next = Object.assign({}, g, { fatedHero: wearer });
+                delete next.attunedClass;
+                return next;
+              });
+            }
+          })();
           /* Carryover migration (1): a One-of-a-Kind piece still sitting
              in the heirloom slot — the tower's granted 7★, or a genuine
              forged 7★ that was the old rule's single survivor — belongs
