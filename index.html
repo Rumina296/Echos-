@@ -9855,7 +9855,7 @@
       /* Forge */
       h += '<div class="anime-card mt4 card-pad" aria-label="The Forge">';
       h += '<div class="panel-head"><h3>🔨 The Forge — Hammer-Timing Crafting</h3><p class="xs bold dim" style="margin:0">🪙 ' + fmt(s.gold) + " gold</p></div>";
-      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. One exception: Starlight pays a full 5★ for a 5-point game, so its loot steps with your accuracy (5 pts 5★; 4 pts or less lands on its 4★ floor). And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces, by an amount that scales with the recipe: <span class="bold" style="color:var(--text)">Iron +5%</span> for 2 pieces, <span class="bold" style="color:var(--text)">+10%</span> for the full set; <span class="bold" style="color:var(--text)">Moonstone +8% / +18%</span>; <span class="bold" style="color:var(--text)">Dragonscale +12% / +26%</span>; <span class="bold" style="color:var(--text)">Starlight +15% / +35%</span> — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
+      h += expanderHTML("forging", "How forging works", '<p class="small dim" style="margin-top:0.25rem">Forging is a <span class="bold" style="color:var(--text)">hammer-timing skill puzzle</span>, not a dice roll. Pick a slot and a recipe, then strike as the marker crosses the bar — tap <span class="bold" style="color:var(--text)">Strike!</span> to land each of 3 hits. Gold zone = <span class="bold" style="color:#ffd94d">Perfect (+2)</span>, teal zone = <span class="bold" style="color:#5eead4">Good (+1)</span>, outside = Miss (0). Score → stars: <span class="bold" style="color:var(--text)">5 pts 4★ · 4 pts 3★ · 2–3 pts 2★ · 0–1 pts 1★</span>. Each recipe also guarantees a minimum star floor — the final rating is whichever is higher. Two exceptions: <span class="bold" style="color:var(--text)">Iron pays 3★ for a 5-point game</span> — its accuracy steps are 4–5 pts 3★, so only a perfect game lifts Iron to 4★ — and <span class="bold" style="color:var(--text)">Starlight pays a full 5★ for a 5-point game</span>, so its loot steps with your accuracy (5 pts 5★; 4 pts or less lands on its 4★ floor). And a <span class="bold" style="color:var(--text)">perfect game (6 pts, all 3 Perfect)</span> climbs the perfect-forge ladder instead: <span class="bold" style="color:var(--text)">recipe minimum + 3★</span> — Iron 4★ · Moonstone 5★ · Dragonscale 6★ · Starlight 7★ when its gate is met, 6★ when it isn\'t. Pieces forged at <span class="bold" style="color:var(--text)">5★ or higher</span> can be given a custom name on the result screen. Every piece also remembers its recipe — wearing <span class="bold" style="color:var(--text)">2+ pieces of one set</span> on a hero boosts those pieces, by an amount that scales with the recipe: <span class="bold" style="color:var(--text)">Iron +5%</span> for 2 pieces, <span class="bold" style="color:var(--text)">+10%</span> for the full set; <span class="bold" style="color:var(--text)">Moonstone +8% / +18%</span>; <span class="bold" style="color:var(--text)">Dragonscale +12% / +26%</span>; <span class="bold" style="color:var(--text)">Starlight +15% / +35%</span> — and rolls an attunement at the forge: a class it empowers (<span class="bold" style="color:var(--text)">+50%</span> on that class), or rarely, one <span class="bold" style="color:var(--text)">fated hero</span> (<span class="bold" style="color:var(--text)">×2</span> on them). Anyone can wear anything — attunement only adds.</p>', "0.25rem");
       /* 👑 The 7★ set tracker — also the locked hint that tells players
          the tier exists and exactly how it unlocks, long before Floor 70. */
       h += '<div style="margin-top:0.75rem;border:2px solid rgba(255,217,77,0.4);background:rgba(255,217,77,0.05);border-radius:16px;padding:0.625rem 0.75rem" aria-label="The one-of-a-kind 7-star set">';
@@ -15545,6 +15545,17 @@
     var FORGE_PERFECT = { lo: 46, hi: 54 };
     var FORGE_GOOD = { lo: 36, hi: 64 };
     function forgePuzzleStars(score) { return score >= 6 ? 5 : score === 5 ? 4 : score === 4 ? 3 : score >= 2 ? 2 : 1; }
+    /* Iron's carve-out (Rachel, Nov 23, 2026): Iron pays 3 stars for BOTH 4 and
+       5 points — its accuracy steps are 0–1 → 1 star, 2–3 → 2 stars, 4–5 → 3 stars, with
+       only a perfect game reaching 4 stars (via the ladder in forgeResultStars).
+       The forgePuzzleStars table itself stays untouched, so Moonstone and
+       Dragonscale still pay 4 stars for 5 points and Starlight's 5-point 5-star
+       special case is unaffected. Every what-the-hammer-pays display and
+       the forge result both route through this helper so they can't drift. */
+    function hammerStars(score, recipe) {
+      if (recipe.id === "iron" && (score === 4 || score === 5)) return 3;
+      return forgePuzzleStars(score);
+    }
     /* The final star rating of a finished forge. The perfect-forge ladder
        and the 7★ rules live here so the minigame's result screen and the
        piece actually saved can never disagree. A perfect game (6 pts)
@@ -15569,7 +15580,7 @@
       // forges a full 5★, so Starlight's loot varies with accuracy below
       // perfection instead of every non-perfect game paying its 4★ floor.
       if (recipe.id === "essence" && score === 5) return 5;
-      return Math.min(5, Math.max(forgePuzzleStars(score), recipe.floor));
+      return Math.min(5, Math.max(hammerStars(score, recipe), recipe.floor));
     }
     function startForge(recipeId) {
       var rc = recipeById(recipeId);
@@ -15745,10 +15756,10 @@
         h += '<p class="small dim" style="margin-top:0.375rem">Flawless — all 3 strikes Perfect at Very Fast! A true 7★ — but a regular one, not One of a Kind: it follows the normal per-star formula.</p>';
       } else if (score >= 6) {
         h += '<p class="small dim" style="margin-top:0.375rem">PERFECT GAME — all 3 strikes Perfect! The perfect-forge ladder lifts this piece to ' + stars + "★ (recipe minimum " + rc.floor + "★ + 3).</p>";
-      } else if (stars > forgePuzzleStars(score) && stars > rc.floor) {
+      } else if (stars > hammerStars(score, rc) && stars > rc.floor) {
         h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + stars + "★ — Starlight rewards a near-perfect game in full.</p>";
       } else {
-        h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + forgePuzzleStars(score) + "★ from the hammer" + (rc.floor > forgePuzzleStars(score) ? ", raised to the recipe floor of " + rc.floor + "★" : "") + ".</p>";
+        h += '<p class="small dim" style="margin-top:0.375rem">Score ' + score + " pts → " + hammerStars(score, rc) + "★ from the hammer" + (rc.floor > hammerStars(score, rc) ? ", raised to the recipe floor of " + rc.floor + "★" : "") + ".</p>";
       }
       if (sevenBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but this slot\'s 7★ already exists, and only one can ever be made, so this masterpiece settles at 6★.</p>';
       if (sevenFloorBlocked) h += '<p class="xs dim" style="margin-top:0.375rem;font-weight:700">A flawless game — but 7★ gear can only be forged from Floor ' + SEVEN_STAR_MIN_FLOOR + " onwards, so this masterpiece settles at 6★. Reach Floor " + SEVEN_STAR_MIN_FLOOR + " and forge flawlessly again!</p>";
