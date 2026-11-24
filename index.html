@@ -11009,6 +11009,7 @@
       var selDef = selHero ? heroById(selHero) : null;
       var selOwned = selHero ? s.heroes[selHero] : null;
       var selTrain = selHero ? (par.training[selHero] || { atk: 0, def: 0, skill: 0 }) : { atk: 0, def: 0, skill: 0 };
+      var selFresh = selHero ? ((par.trainingSinceAttempt || {})[selHero] || { atk: 0, def: 0, skill: 0 }) : { atk: 0, def: 0, skill: 0 };
       var layoutLines = [
         "A single tree on quiet ground, and the whole sky to grow into.",
         "Paths now — worn by real feet, between the tree and the first roofs.",
@@ -11083,6 +11084,9 @@
           h += "</select></div>";
           if (selDef && selOwned) {
             h += '<p class="small" style="margin-top:0.5rem;font-weight:600">Course: Attack ' + selTrain.atk + "/3 · Defense " + selTrain.def + "/3 · Skill " + selTrain.skill + "/3 → boosts ×" + trainMult(selTrain.atk).toFixed(2) + " ATK · ×" + trainMult(selTrain.def).toFixed(2) + " HP · ×" + trainMult(selTrain.skill).toFixed(2) + " skill" + (heroAtMaxStat(s, selHero) ? " · at MAX STAT" : " · max stat at Lv " + maxLevel(selDef, selOwned) + " with " + maxAsc(selDef) + " syntheses") + (selOwned.breakthrough ? " · ✨ BROKEN THROUGH" : "") + "</p>";
+            if (heroAtMaxStat(s, selHero) && trainingCourseDone(s, selHero) && !selOwned.breakthrough && !atMaxRank(s, selHero)) {
+              h += '<p class="small" style="margin-top:0.5rem;font-weight:600">✨ Breakthrough course — fresh sessions since the last attempt: ATK ' + selFresh.atk + '/3 · DEF ' + selFresh.def + '/3 · SKL ' + selFresh.skill + '/3</p>';
+            }
             if (isBreakthroughAttempt(s, selHero)) {
               h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">✨ ' + esc(selDef.name) + " stands at max stat with the full course done — a session now is a BREAKTHROUGH ATTEMPT: " + BREAKTHROUGH_ATTEMPT_STONES + " Breakthrough stones (you hold " + par.breakthroughStones + "), paid when the session begins." + (par.firstBreakthroughDone ? " One session in ten finds the way through." : " The town's first attempt cannot fail.") + (par.breakthroughStones < BREAKTHROUGH_ATTEMPT_STONES ? " The hall needs the stones in hand before it will begin." : "") + "</p>";
             }
