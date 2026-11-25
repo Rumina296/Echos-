@@ -2683,6 +2683,16 @@
         else setAccountMsg("⚠️ Sync didn't go through — check your connection. Your progress is safe in this browser.", true);
       });
     }
+    /* SIDE / LEGACY UTILITY — PRESERVED INTENTIONALLY. DO NOT REMOVE.
+       unlinkAccount() is NOT dead code: it is kept on purpose so the
+       Unlink flow can be brought back if ever needed. There is no
+       Unlink in the game today — no button, no UI presence; Logout is
+       the only account flow. This function detaches the browser from
+       the linked cloud account (cancels any pending sync, drops the
+       in-memory link, removes the stored account key) while the cloud
+       copy stays parked under its code, loadable any time.
+       Currently NO caller: gift-redeem and start-over inline the same
+       steps instead of calling it (see their one-line markers). */
     function unlinkAccount(code) {
       if (accountCode !== code) return;
       /* The same unlink the gift-redeem flow performs internally:
@@ -2696,7 +2706,7 @@
       try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) { /* session-only link */ }
       setCloudStatus("");
       renderMain();
-      setAccountMsg("🔓 Unlinked. This browser now saves locally only — your cloud copy stays parked under " + code + " whenever you want it back.", false);
+      setAccountMsg("🔓 Disconnected. This browser now saves locally only — your cloud copy stays parked under " + code + " whenever you want it back.", false);
     }
     /* 🚪 Logout (Nov 24, 2026, Rachel's call — main v345): replaces the
        old Unlink button. Logging out parks this climb in
@@ -3185,9 +3195,9 @@
         '<p class="small" style="margin-top:0.5rem;font-weight:800">Floor ' + imp.floor + " · " + Object.keys(imp.heroes).length + " heroes · 🪙 " + fmt(imp.gold) + " · 💎 " + imp.gems.toLocaleString("en-US") + "<br />" + imp.totalSummons + " summons · " + imp.totalClears + " clears</p>" +
         '<p class="small dim" style="margin-top:0.5rem">Redeeming <span class="bold" style="color:var(--text)">replaces the progress saved in this browser</span> (currently Floor ' + save.floor + ') — and the gift code is spent for good: nobody can redeem it again.</p>';
       if (accountCode) {
-        h += '<p class="small dim" style="margin-top:0.5rem">This browser is linked to ' + esc(accountCode) + ' — it will unlink <span class="bold" style="color:var(--text)">before</span> importing, so your cloud copy stays parked safely under that code and the gifted save can never overwrite it.</p>';
+        h += '<p class="small dim" style="margin-top:0.5rem">This browser is linked to ' + esc(accountCode) + ' — it will disconnect <span class="bold" style="color:var(--text)">before</span> importing, so your cloud copy stays parked safely under that code and the gifted save can never overwrite it.</p>';
       }
-      h += '<p class="small dim" style="margin-top:0.5rem">The copy becomes yours alone: it starts unlinked from any account code, and your friend\'s own game is never touched.</p>' +
+      h += '<p class="small dim" style="margin-top:0.5rem">The copy becomes yours alone: it starts disconnected from any account code, and your friend\'s own game is never touched.</p>' +
         '<div style="display:flex;gap:0.5rem;margin-top:1rem">' +
         '<button type="button" class="btn-ghost" id="gift-redeem-cancel" style="flex:1;border-radius:999px">Keep mine</button>' +
         '<button type="button" class="btn-pill anime-btn-gold" id="gift-redeem-confirm" style="flex:1">Yes, redeem gift</button>' +
@@ -3214,10 +3224,12 @@
           setGiftRedeemMsg("⚠️ This gift code was just redeemed — each gift code works once, for one friend. Nothing was changed.", true);
           return;
         }
-        /* Unlink BEFORE importing, so the gifted save's first autosave
+        /* Disconnect BEFORE importing, so the gifted save's first autosave
            can't write over the player's old cloud copy — and it never
            carries the giver's code either. The old cloud save stays
-           parked under its code, loadable any time. */
+           parked under its code, loadable any time.
+           Same steps as the preserved unlinkAccount() utility — inlined
+           here, not called. */
         if (accountCode) {
           accountCode = null;
           cloudLastSyncAt = null;
@@ -3256,7 +3268,7 @@
       h += '<button type="button" class="btn-pill anime-btn-gold" id="gift-redeem-btn"' + busyAttr + ">🎁 Redeem Gift Code</button>";
       h += "</div>";
       h += '<p class="save-msg ' + (giftRedeemMsgIsErr ? "err" : "ok") + '" id="gift-redeem-msg" role="status">' + esc(giftRedeemMsg) + "</p>";
-      h += '<p class="small dim" style="margin-top:0.25rem">The copy you receive is yours alone: it starts unlinked from the giver\'s account code, your friend\'s own game is never touched by redeeming, and you can create your own account code in My Account above whenever you like.</p>';
+      h += '<p class="small dim" style="margin-top:0.25rem">The copy you receive is yours alone: it starts disconnected from the giver\'s account code, your friend\'s own game is never touched by redeeming, and you can create your own account code in My Account above whenever you like.</p>';
       h += "</div>";
       return h;
     }
@@ -3362,7 +3374,7 @@
       h += '<p class="small" style="margin-top:0.5rem;font-weight:800">Current save: Floor ' + s.floor + " · " + Object.keys(s.heroes).length + " heroes · 🪙 " + fmt(s.gold) + " · 💎 " + s.gems.toLocaleString("en-US") + " · " + s.totalSummons + " summons</p>";
       if (accountCode) {
         h += '<div class="restart-key-box"><p class="ac-label">YOUR RECOVERY KEY — OLD ACCOUNT CODE</p><p class="account-code-text" style="color:#fda4af">' + esc(accountCode) + "</p></div>";
-        h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ Your current climb stays parked in the cloud under ' + esc(accountCode) + ' — starting over unlinks this browser <span style="color:var(--text)">before</span> anything is cleared, so the fresh save can never overwrite it. Your old climb stays loadable any time: come back to this tab, enter the code above under “Load a save by account code”, and it\'s yours again. Write the code down somewhere safe before you start over.</p>';
+        h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ Your current climb stays parked in the cloud under ' + esc(accountCode) + ' — starting over disconnects this browser <span style="color:var(--text)">before</span> anything is cleared, so the fresh save can never overwrite it. Your old climb stays loadable any time: come back to this tab, enter the code above under “Load a save by account code”, and it\'s yours again. Write the code down somewhere safe before you start over.</p>';
       } else {
         h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">⚠️ This browser isn\'t linked to a cloud account, so there is no cloud copy of this climb and no other backup — starting over would be permanent. Create an account code above first if you want a way back.</p>';
       }
@@ -14208,7 +14220,7 @@
         '<p class="small" style="margin-top:0.5rem;font-weight:800">This save: Floor ' + s.floor + " · " + Object.keys(s.heroes).length + " heroes · 🪙 " + fmt(s.gold) + " · 💎 " + s.gems.toLocaleString("en-US") + " · " + s.totalSummons + " summons</p>";
       if (oldCode) {
         h += '<div class="restart-key-box"><p class="ac-label">YOUR RECOVERY KEY — OLD ACCOUNT CODE</p><p class="account-code-text" style="color:#fda4af">' + esc(oldCode) + "</p></div>" +
-          '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ Your current climb is parked in the cloud under this code and stays loadable — starting over unlinks this browser first, so the fresh save can never overwrite it. Keep this code somewhere safe: after the restart, enter it under “Load a save by account code” in the Save tab to get this climb back.</p>' +
+          '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ Your current climb is parked in the cloud under this code and stays loadable — starting over disconnects this browser first, so the fresh save can never overwrite it. Keep this code somewhere safe: after the restart, enter it under “Load a save by account code” in the Save tab to get this climb back.</p>' +
           '<div class="save-actions" style="justify-content:center"><button type="button" class="btn-pill anime-btn-gold" id="restart-copy-acct">📋 Copy recovery key</button></div>';
       }
       if (!oldCode) {
@@ -14240,7 +14252,7 @@
         '<p class="small dim" style="margin-top:0.5rem">The save in this browser will be wiped and replaced with a fresh climb at Floor 1 with 0 summons. There is no undo inside the game' + (oldCode ? " — your only way back is the cloud copy parked under your recovery key." : " — and with no cloud account, there is no way back at all.") + "</p>";
       if (oldCode) {
         h += '<div class="restart-key-box"><p class="ac-label">YOUR RECOVERY KEY — OLD ACCOUNT CODE</p><p class="account-code-text" style="color:#fda4af">' + esc(oldCode) + "</p></div>" +
-          '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ This browser unlinks from ' + esc(oldCode) + ' <span style="color:var(--text)">before</span> anything is cleared, and your old climb stays saved in the cloud under that code, loadable any time from the Save tab.</p>';
+          '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">☁️ This browser disconnects from ' + esc(oldCode) + ' <span style="color:var(--text)">before</span> anything is cleared, and your old climb stays saved in the cloud under that code, loadable any time from the Save tab.</p>';
       }
       h += '<div style="margin-top:0.75rem;text-align:left"><label class="small bold" for="restart-type-input">Type RESTART to unlock the button</label>' +
         '<input class="account-input" id="restart-type-input" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="RESTART" /></div>' +
@@ -14285,10 +14297,12 @@
          interval write, visibility flush, or beforeunload handler may
          write the old save back or push it anywhere. */
       restarting = true;
-      /* 1) Unlink the cloud account BEFORE clearing anything — cancel
+      /* 1) Disconnect the cloud account BEFORE clearing anything — cancel
          any pending debounced sync, drop the in-memory link, then
          remove the stored account key. The parked cloud row under the
-         old MOON code is never touched and stays loadable. */
+         old MOON code is never touched and stays loadable.
+         Same steps as the preserved unlinkAccount() utility — inlined
+         here, not called. */
       if (cloudSyncTimer) { window.clearTimeout(cloudSyncTimer); cloudSyncTimer = null; }
       cloudUploadQueued = false;
       accountCode = null;
