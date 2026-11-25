@@ -3997,6 +3997,26 @@
       }
       return rollCombineAttunement();
     }
+    /* One fused result for a combine triple (Rachel's call, Nov 24, 2026):
+       the ONLY place a combine result is built — manual tray (combineGear),
+       combine-all and quick combine (doQuickCombine) all call this, so
+       every triple rolls independently. The donor's recipe (set) carries
+       over only 70% of the time; on a failed roll the result gets NO
+       recipe field at all, so it can never join a set. Donor selection
+       is the caller's job and is unchanged per path: manual tray passes
+       the first picked piece; quick combine / combine-all pass their
+       triple's recipe donor (first piece carrying a recipe, else the
+       first piece). Fated inheritance and the fresh attunement roll live
+       in combineBonusFor and are untouched here. */
+    function fuseCombineResult(pieces, donor) {
+      var first = pieces[0];
+      var keepsRecipe = !!donor && !!donor.recipe && Math.random() < 0.7;
+      var piece = { uid: gearUidNew(), slot: first.slot, stars: first.stars + 1 };
+      if (keepsRecipe) piece.recipe = donor.recipe;
+      var att = combineBonusFor(pieces);
+      if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
+      return piece;
+    }
     function normalizeDungeon() {
       if (!save) return;
       var today = dailyDateStr(new Date());
@@ -9679,7 +9699,7 @@
         var nameValue = combineName !== null ? combineName : defaultName;
         h += '<div style="margin-top:0.75rem;border:2px solid #ff7eb6;background:rgba(255,126,182,0.07);border-radius:16px;padding:0.75rem" role="region" aria-label="Combine gear — pick 3 matching pieces">';
         h += '<p class="small" style="font-weight:900;margin:0">🔀 Combine tray — ' + picked.length + ' of 3 picked</p>';
-        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Tap pieces below to fill the tray. All 3 must share a slot and a star rank; the FIRST piece picked lends its recipe (set) to the result. A 🌟 fated link on any picked piece carries over — the result is fated for the first fated piece\'s hero; an attunement does not survive the fuse, and with no fated pick the result rolls a fresh attunement. Equipped pieces can\'t be fodder — unequip them first. Combining tops out at 6★ (3× 5★ → 1× 6★): 6★ pieces can\'t be combined further, and 7★ pieces are never fodder — 7★ still comes only from a flawless Starlight forge.</p>';
+        h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">Tap pieces below to fill the tray. All 3 must share a slot and a star rank; the FIRST piece picked lends its recipe (set) to the result — 70% chance it carries over, otherwise the result has no set. A 🌟 fated link on any picked piece carries over — the result is fated for the first fated piece\'s hero; an attunement does not survive the fuse, and with no fated pick the result rolls a fresh attunement. Equipped pieces can\'t be fodder — unequip them first. Combining tops out at 6★ (3× 5★ → 1× 6★): 6★ pieces can\'t be combined further, and 7★ pieces are never fodder — 7★ still comes only from a flawless Starlight forge.</p>';
         /* READY SETS — grouped by slot & rank: one card per slot + rank
            group holding 3+ pieces (free/equipped split, triples counted),
            with one-tap Fill tray and Combine all per group. Slots in forge
@@ -9728,7 +9748,7 @@
           h += '<p class="font-display" style="margin-top:0.25rem;font-size:1.125rem;font-weight:600">' + GEAR_SLOT_ICON[first.slot] + " " + esc(resultStars >= 5 ? (nameValue.trim() || defaultName) : defaultName) + ' <span style="' + starTextStyle(resultStars) + '">' + starsStr(resultStars) + "</span></p>";
           var fatedSrc = null;
           picked.forEach(function (pp) { if (!fatedSrc && pp.fatedHero) fatedSrc = pp; });
-          h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#5eead4">' + gearBonusText({ slot: first.slot, stars: resultStars }) + " · " + GEAR_SLOT_LABEL[first.slot] + (first.recipe ? " · " + esc(recipeSetName(first.recipe)) + " set (from the first piece)" : " · No set (first piece has no recipe)") + (fatedSrc ? " · 🌟 Fated: " + esc(heroById(fatedSrc.fatedHero).name) + " (carried over from pick " + (picked.indexOf(fatedSrc) + 1) + ")" : " · attunement rolls fresh") + "</p>";
+          h += '<p class="xs" style="margin-top:0.25rem;font-weight:700;color:#5eead4">' + gearBonusText({ slot: first.slot, stars: resultStars }) + " · " + GEAR_SLOT_LABEL[first.slot] + (first.recipe ? " · " + esc(recipeSetName(first.recipe)) + " set (from the first piece — 70% chance it carries over)" : " · No set (first piece has no recipe)") + (fatedSrc ? " · 🌟 Fated: " + esc(heroById(fatedSrc.fatedHero).name) + " (carried over from pick " + (picked.indexOf(fatedSrc) + 1) + ")" : " · attunement rolls fresh") + "</p>";
           if (resultStars >= 5) {
             h += '<div style="margin-top:0.75rem;text-align:left"><label for="combine-name" class="xs bold dim" style="letter-spacing:0.15em">✒️ NAME THE RESULT, MASTER (OPTIONAL)</label>';
             h += '<input id="combine-name" type="text" maxlength="40" value="' + esc(nameValue) + '" placeholder="' + esc(defaultName) + '" aria-label="Name for your combined ' + resultStars + '-star ' + first.slot + ' (optional)" style="margin-top:0.375rem;width:100%;border-radius:16px;border:2px solid var(--border);background:var(--surface2);padding:0.625rem 0.875rem;font-size:0.875rem;font-weight:700;color:var(--text)" />';
@@ -9756,7 +9776,7 @@
         if (combineQuickPlan) {
           h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;background:rgba(255,217,77,0.07);border-radius:16px;padding:0.75rem" role="alertdialog" aria-label="Confirm quick combine — review the full plan before anything is fused">';
           h += '<p class="small" style="font-weight:900;margin:0">⚡ Quick combine — here\'s the whole plan</p>';
-          h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + (combineQuickPlan.specials && combineQuickPlan.specials.length ? "Plain pieces first — but this plan also eats the special pieces named below. A 🌟 fated link carries over to its result; an attunement does not survive the fuse, and a result with no fated fodder rolls a fresh attunement. Each result keeps the set of its triple's recipe donor." : "Bag pieces only, plain pieces first. Each result keeps the set of its triple's first piece. A 🌟 fated link would carry over to its result; attunement never survives — with no fated fodder the result rolls a fresh attunement.") + '</p>';
+          h += '<p class="xs dim" style="margin-top:0.25rem;font-weight:700">' + (combineQuickPlan.specials && combineQuickPlan.specials.length ? "Plain pieces first — but this plan also eats the special pieces named below. A 🌟 fated link carries over to its result; an attunement does not survive the fuse, and a result with no fated fodder rolls a fresh attunement. Each result has a 70% chance to keep the set of its triple's recipe donor (otherwise no set)." : "Bag pieces only, plain pieces first. Each result has a 70% chance to keep the set of its triple's first piece (otherwise no set). A 🌟 fated link would carry over to its result; attunement never survives — with no fated fodder the result rolls a fresh attunement.") + '</p>';
           h += '<ul style="margin-top:0.5rem;display:grid;gap:0.25rem;list-style:none;padding:0">';
           combineQuickPlan.lines.forEach(function (l) {
             h += '<li class="small" style="font-weight:700">' + GEAR_SLOT_ICON[l.slot] + " " + l.stars + "★ " + GEAR_SLOT_LABEL[l.slot] + "s: " + l.inCount + " in → " + l.outCount + " × " + (l.stars + 1) + "★</li>";
@@ -14438,10 +14458,10 @@
       return { runs: runs, lines: lines, skippedTriples: skippedTriples };
     }
     /* Run a confirmed Quick combine plan: fuse every planned triple at
-       once, plain bag pieces only. Each result takes its recipe from its
-       triple's first piece and rolls a fresh attunement, exactly like a
-       manual combine — but the mode stays open afterwards, so the player
-       can keep combining. */
+       once, plain bag pieces only. Each result has a 70% chance to keep
+       the set of its triple's recipe donor (otherwise no set) and rolls
+       a fresh attunement, exactly like a manual combine — but the mode
+       stays open afterwards, so the player can keep combining. */
     function doQuickCombine() {
       var plan = combineQuickPlan;
       if (!plan || !plan.runs.length) return;
@@ -14454,12 +14474,9 @@
         if (pieces.some(function (p) { return p.slot !== first.slot || p.stars !== first.stars; })) return;
         if (first.stars < 1 || first.stars > 5) return;
         if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
-        var att = combineBonusFor(pieces);
-        var piece = { uid: gearUidNew(), slot: first.slot, stars: first.stars + 1 };
         var donor = run.recipeId ? gearByUid(run.recipeId) : null;
-        if (donor && donor.recipe) piece.recipe = donor.recipe;
-        else if (first.recipe) piece.recipe = first.recipe;
-        if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
+        if (!donor || !donor.recipe) donor = first;
+        var piece = fuseCombineResult(pieces, donor);
         run.ids.forEach(function (uid) { spent[uid] = true; });
         results.push(piece);
       });
@@ -14478,7 +14495,8 @@
        unequipped pieces, plain pieces consumed first so special (fated /
        attuned) pieces are eaten last — and only after the warning. Each
        triple's recipe donor is its first piece that carries a recipe, so a
-       set survives the fuse whenever one can. */
+       set survives the fuse only 70% of the time (otherwise no set) — the
+       donor is still chosen the same way (see fuseCombineResult). */
     function combineRunsForGroup(sv, slot, stars) {
       var free = (sv.gearInv || []).filter(function (g) { return g.slot === slot && g.stars === stars && !gearHolder(g.uid, sv); });
       var ordered = free.slice().sort(function (a, b) { return Number(gearPieceIsSpecial(a)) - Number(gearPieceIsSpecial(b)); });
@@ -14550,11 +14568,8 @@
       if (pieces.some(function (p) { return gearHolder(p.uid); })) return;
       var stars = first.stars + 1;
       var custom = stars >= 5 && typeof combineName === "string" ? combineName.trim().slice(0, 40) : "";
-      var att = combineBonusFor(pieces);
-      var piece = { uid: gearUidNew(), slot: first.slot, stars: stars };
-      if (first.recipe) piece.recipe = first.recipe;
+      var piece = fuseCombineResult(pieces, first);
       if (custom && custom !== gearDefaultName(piece)) piece.name = custom;
-      if (att.fatedHero) piece.fatedHero = att.fatedHero; else if (att.attunedClass) piece.attunedClass = att.attunedClass;
       var spent = {};
       combineSel.forEach(function (uid) { spent[uid] = true; });
       var next = JSON.parse(JSON.stringify(save));
