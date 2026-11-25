@@ -2455,6 +2455,16 @@
     var accountLoadMsg = "";
     var accountLoadMsgIsErr = true;
     var accountBusy = false;
+    /* 🚪 Logout state (Nov 24, 2026, Rachel's call): the My Account
+       LOGOUT section shows only when this browser is linked. logoutArmed
+       opens the confirm view; logoutResult holds the post-logout codes
+       (recoveryCode = the old climb, newCode = the fresh account) and is
+       set by the post-reload consume step, not by performLogout itself
+       (which reloads). logoutError carries any failure message. */
+    var logoutArmed = false;
+    var logoutResult = null;
+    var logoutError = null;
+    var PENDING_LOGOUT_KEY = "echoria.pendingLogout.v1";
     /* Save-tab gift-code panel state — same in-memory treatment, so a
        battle re-render never wipes a half-typed gift code or the
        message under it. */
@@ -2600,7 +2610,7 @@
     }
     function setAccountBusy(busy) {
       accountBusy = busy;
-      ["create-account-btn", "load-account-btn", "sync-now-btn", "unlink-account-btn"].forEach(function (id) {
+      ["create-account-btn", "load-account-btn", "sync-now-btn", "logout-confirm-btn"].forEach(function (id) {
         var el = document.getElementById(id);
         if (el) el.disabled = busy;
       });
@@ -2673,27 +2683,6 @@
         else setAccountMsg("⚠️ Sync didn't go through — check your connection. Your progress is safe in this browser.", true);
       });
     }
-    function showUnlinkConfirmModal() {
-      if (!accountCode || accountBusy) return;
-      var code = accountCode;
-      var root = document.getElementById("modal-root");
-      root.innerHTML =
-        '<div class="overlay" role="dialog" aria-modal="true" aria-label="Unlink this browser?">' +
-        '<div class="anime-card modal-card center" style="max-width:24rem;border-color:#7dd3fc">' +
-        '<p style="font-size:2.5rem;margin:0" aria-hidden="true">🔓</p>' +
-        '<h2 class="font-display" style="margin-top:0.5rem;font-size:1.5rem;font-weight:700">Unlink this browser?</h2>' +
-        '<p class="small dim" style="margin-top:0.5rem">This browser will stop autosaving to <span class="bold" style="color:var(--text)">' + esc(code) + '</span>. Your cloud save stays parked under that code, untouched — and the save in this browser stays right here too; it just becomes a browser-only save again.</p>' +
-        '<p class="small dim" style="margin-top:0.5rem">You can link again any time by entering the code under “Load a save by account code” below. Keep the code somewhere safe — without it, the cloud copy can\'t be reached.</p>' +
-        '<div style="display:flex;gap:0.5rem;margin-top:1rem">' +
-        '<button type="button" class="btn-ghost" id="unlink-cancel" style="flex:1;border-radius:999px">Keep the link</button>' +
-        '<button type="button" class="btn-pill anime-btn-sky" id="unlink-confirm" style="flex:1">Yes, unlink</button>' +
-        "</div></div></div>";
-      document.getElementById("unlink-cancel").addEventListener("click", function () { root.innerHTML = ""; });
-      document.getElementById("unlink-confirm").addEventListener("click", function () {
-        root.innerHTML = "";
-        unlinkAccount(code);
-      });
-    }
     function unlinkAccount(code) {
       if (accountCode !== code) return;
       /* The same unlink the gift-redeem flow performs internally:
@@ -2708,6 +2697,103 @@
       setCloudStatus("");
       renderMain();
       setAccountMsg("🔓 Unlinked. This browser now saves locally only — your cloud copy stays parked under " + code + " whenever you want it back.", false);
+    }
+    /* 🚪 Logout (Nov 24, 2026, Rachel's call — main v345): replaces the
+       old Unlink button. Logging out parks this climb in
+       the cloud under its code, then starts a brand-new account here
+       with a freshly generated code — no extra tap. The old climb stays
+       loadable any time under its code.
+       Order matters, mirroring performStartOver: the new code is minted
+       (generate + collision-check) BEFORE anything is wiped, so a
+       failed mint aborts the logout with the old account untouched. The
+       wipe itself reuses the start-over steps (unlink first, clear the
+       local save, reload); the pending-logout flag carries both codes
+       across the reload, and consumePendingLogout (called from init)
+       uploads the fresh save under the new code and shows the result.
+       The old code's cloud row is never touched after the park. */
+    function performLogout() {
+      if (!accountCode || accountBusy || !save || restarting) return;
+      var oldCode = accountCode;
+      /* Park the current save under its existing code right away, so
+         the cloud copy the player may come back to is fully current —
+         same fire-and-forget as showStartOverModal. */
+      uploadCloudSave(false);
+      setAccountBusy(true);
+      logoutError = null;
+      renderMain();
+      /* Mint the new code first: generate + collision-check, up to 4
+         attempts, exactly like createAccountCode. A failed mint aborts
+         the logout with the old account untouched. */
+      var attempt = function (n) {
+        var code = generateAccountCode();
+        return cloudFetchSave(code).then(function (existing) {
+          if (existing !== null && existing !== undefined) {
+            if (n < 4) return attempt(n + 1);
+            throw new Error("collision");
+          }
+          return code;
+        });
+      };
+      attempt(0).then(function (newCode) {
+        try { localStorage.setItem(PENDING_LOGOUT_KEY, JSON.stringify({ recoveryCode: oldCode, newCode: newCode })); } catch (e) { /* storage unavailable — the logout still proceeds; the result panel just can't be shown */ }
+        /* Stand every save path down, unlink, clear, reload — the exact
+           performStartOver steps, so the fresh save can never autosave
+           over the parked cloud copy. */
+        restarting = true;
+        if (cloudSyncTimer) { window.clearTimeout(cloudSyncTimer); cloudSyncTimer = null; }
+        cloudUploadQueued = false;
+        accountCode = null;
+        cloudLastSyncAt = null;
+        try { localStorage.removeItem(ACCOUNT_KEY); } catch (e) {}
+        try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+        save = null;
+        dirty = false;
+        window.location.reload();
+      }).catch(function () {
+        setAccountBusy(false);
+        logoutError = "⚠️ Couldn't reach the cloud save server — check your connection and try again. Your account is untouched.";
+        renderMain();
+      });
+    }
+    /* Consumes the pending-logout flag written by performLogout before
+       its reload: uploads the fresh save under the pre-minted new code,
+       links this browser to it, and shows the result panel (old code +
+       new code, each with a copy button) in the My Account LOGOUT
+       section. The daily popup is held back this load so it can't cover
+       the result. If the upload fails, the fresh climb stays local-only
+       and the result still shows the old code, with a note to create a
+       new code from My Account. */
+    function consumePendingLogout() {
+      var raw = null;
+      try { raw = localStorage.getItem(PENDING_LOGOUT_KEY); } catch (e) { raw = null; }
+      if (!raw) return;
+      try { localStorage.removeItem(PENDING_LOGOUT_KEY); } catch (e) {}
+      var pending = null;
+      try { pending = JSON.parse(raw); } catch (e) { pending = null; }
+      if (!pending || !pending.recoveryCode || !pending.newCode) return;
+      /* Only link when the save on disk is actually the fresh one the
+         logout dealt — otherwise show the recovery code and stop. */
+      if (!save || save.floor !== 1 || save.totalSummons !== 0) {
+        logoutResult = { recoveryCode: pending.recoveryCode, newCode: null };
+        logoutError = "⚠️ Something went wrong finishing the logout — your old climb is safe under the code above. Tap “✨ Create my account code” to give this climb a cloud code.";
+        dailyScene = false;
+        renderMain();
+        return;
+      }
+      dailyScene = false;
+      cloudUploadSave(pending.newCode, false).then(function () {
+        accountCode = pending.newCode;
+        try { localStorage.setItem(ACCOUNT_KEY, pending.newCode); } catch (e) {}
+        cloudLastSyncAt = Date.now();
+        logoutResult = { recoveryCode: pending.recoveryCode, newCode: pending.newCode };
+        logoutError = null;
+        setCloudStatus(cloudStatusDefault());
+        renderMain();
+      }).catch(function () {
+        logoutResult = { recoveryCode: pending.recoveryCode, newCode: null };
+        logoutError = "⚠️ The new account code couldn't be created — the cloud couldn't be reached. Your old climb is safe under the code above, and this fresh climb is saving in this browser only for now. Tap “✨ Create my account code” above to give it a cloud code.";
+        renderMain();
+      });
     }
     function loadAccountSave() {
       if (accountBusy || !save) return;
@@ -3186,7 +3272,6 @@
         h += '<div class="save-actions">';
         h += '<button type="button" class="btn-pill anime-btn-gold" id="copy-account-btn">📋 Copy Code</button>';
         h += '<button type="button" class="btn-pill anime-btn-sky" id="sync-now-btn"' + busyAttr + ">☁️ Sync Now</button>";
-        h += '<button type="button" class="btn-pill btn-ghost" id="unlink-account-btn"' + busyAttr + ">🔓 Unlink this browser</button>";
         h += "</div>";
         h += '<p class="cloud-status" id="cloud-status" role="status">' + esc(cloudStatusText || cloudStatusDefault()) + "</p>";
       } else {
@@ -3196,6 +3281,7 @@
         h += "</div>";
         h += '<p class="cloud-status" id="cloud-status" role="status">' + esc(cloudStatusText) + "</p>";
       }
+      h += logoutSectionHTML();
       h += '<p class="save-msg ' + (accountMsgIsErr ? "err" : "ok") + '" id="account-msg" role="status">' + esc(accountMsg) + "</p>";
       h += '<p class="small" style="margin-top:0.25rem;font-weight:700;color:#ffd94d">🔒 Keep your code private, like a password — anyone who has it can load your save.</p>';
       h += '<div class="account-divider">';
@@ -3208,6 +3294,55 @@
       h += "</div>";
       h += '<p class="save-msg ' + (accountLoadMsgIsErr ? "err" : "ok") + '" id="account-load-msg" role="status">' + esc(accountLoadMsg) + "</p>";
       h += "</div>";
+      h += "</div>";
+      return h;
+    }
+
+    /* 🚪 LOGOUT section (Nov 24, 2026, Rachel's call — main v345):
+       replaces the old Unlink button. Renders "" unless
+       this browser is linked or a post-logout result is showing
+       (local-only saves see nothing new — except the result case, which
+       is deliberate: the recovery code must stay visible even if the new
+       code couldn't be created). Three states: the post-logout result
+       (old code + new code, each with a copy button), the armed confirm
+       view, and the plain blurb + button. */
+    function logoutSectionHTML() {
+      if (!accountCode && !logoutResult) return "";
+      var busyAttr = accountBusy ? " disabled" : "";
+      var h = '<div style="margin-top:1rem;border-top:2px dashed var(--border);padding-top:1rem">';
+      h += '<p class="xs bold" style="letter-spacing:0.1em;color:var(--dim);margin:0">🚪 LOGOUT</p>';
+      if (logoutResult) {
+        h += '<h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0.5rem 0 0">🚪 Logged out — welcome to your brand-new account, Master!</h3>';
+        h += '<div class="account-code-box" style="margin-top:0.75rem"><p class="ac-label">🛟 YOUR OLD CLIMB\'S CODE</p><p class="account-code-text">' + esc(logoutResult.recoveryCode) + "</p></div>";
+        h += '<div class="save-actions">';
+        h += '<button type="button" class="btn-pill anime-btn-gold" id="logout-copy-old-btn">📋 COPY OLD CODE</button>';
+        h += "</div>";
+        h += '<p class="small dim" style="margin-top:0.5rem">Your old climb is parked in the cloud under this code, exactly as you left it — floors, heroes, gems, everything. Load it here any time under “Load a save by account code” to go back. Write it down somewhere safe!</p>';
+        if (logoutResult.newCode) {
+          h += '<div class="account-code-box" style="margin-top:0.75rem"><p class="ac-label">🔑 YOUR NEW ACCOUNT\'S CODE</p><p class="account-code-text">' + esc(logoutResult.newCode) + "</p></div>";
+          h += '<div class="save-actions">';
+          h += '<button type="button" class="btn-pill anime-btn-gold" id="logout-copy-new-btn">📋 COPY NEW CODE</button>';
+          h += "</div>";
+          h += '<p class="small dim" style="margin-top:0.5rem">Auto-save now writes to the new code — the old code above stays frozen on your previous climb.</p>';
+        } else {
+          h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">⚠️ This fresh climb has no cloud code yet — tap “✨ Create my account code” above to give it one.</p>';
+        }
+        h += '<p class="save-msg ' + (logoutError ? "err" : "ok") + '" id="logout-result-msg" role="status">' + esc(logoutError || "") + "</p>";
+      } else if (logoutArmed) {
+        h += '<p class="small dim" style="margin-top:0.5rem">Logging out parks this climb in the cloud under the code below and immediately starts a brand-new account here, with a freshly generated code.</p>';
+        h += '<div class="account-code-box" style="margin-top:0.75rem"><p class="ac-label">THIS CLIMB\'S ACCOUNT CODE</p><p class="account-code-text">' + esc(accountCode) + "</p></div>";
+        h += '<p class="small" style="margin-top:0.5rem;font-weight:700;color:#ffd94d">⚠️ Write this code down — it\'s the only way back to this climb. Once you log out, this browser starts over on a new account; you can load this climb again any time under “Load a save by account code”, but only with this code.</p>';
+        h += '<div class="save-actions">';
+        h += '<button type="button" class="btn-pill btn-ghost" id="logout-cancel-btn">KEEP MY ACCOUNT</button>';
+        h += '<button type="button" class="btn-pill btn-danger" id="logout-confirm-btn"' + busyAttr + ">" + (accountBusy ? "✨ LOGGING OUT…" : "🚪 LOGOUT & START NEW") + "</button>";
+        h += "</div>";
+        h += '<p class="save-msg ' + (logoutError ? "err" : "ok") + '" id="logout-error-msg" role="status">' + esc(logoutError || "") + "</p>";
+      } else {
+        h += '<p class="small dim" style="margin-top:0.5rem">Done with this climb on this browser? Logging out parks this account in the cloud under its code and starts a brand-new account here, with a freshly generated code.</p>';
+        h += '<div class="save-actions">';
+        h += '<button type="button" class="btn-pill btn-ghost" id="logout-btn">🚪 LOGOUT…</button>';
+        h += "</div>";
+      }
       h += "</div>";
       return h;
     }
@@ -11466,8 +11601,20 @@
       if (copyAcctBtn) copyAcctBtn.addEventListener("click", copyAccountCode);
       var syncBtn = document.getElementById("sync-now-btn");
       if (syncBtn) syncBtn.addEventListener("click", syncNow);
-      var unlinkBtn = document.getElementById("unlink-account-btn");
-      if (unlinkBtn) unlinkBtn.addEventListener("click", showUnlinkConfirmModal);
+      var logoutBtn = document.getElementById("logout-btn");
+      if (logoutBtn) logoutBtn.addEventListener("click", function () { logoutArmed = true; logoutError = null; renderMain(); });
+      var logoutCancelBtn = document.getElementById("logout-cancel-btn");
+      if (logoutCancelBtn) logoutCancelBtn.addEventListener("click", function () { logoutArmed = false; logoutError = null; renderMain(); });
+      var logoutConfirmBtn = document.getElementById("logout-confirm-btn");
+      if (logoutConfirmBtn) logoutConfirmBtn.addEventListener("click", performLogout);
+      var logoutCopyOldBtn = document.getElementById("logout-copy-old-btn");
+      if (logoutCopyOldBtn) logoutCopyOldBtn.addEventListener("click", function () {
+        restartCopyText(logoutResult.recoveryCode, "logout-result-msg", "📋 Old code copied! Anyone with this code can load your old climb — keep it private.");
+      });
+      var logoutCopyNewBtn = document.getElementById("logout-copy-new-btn");
+      if (logoutCopyNewBtn) logoutCopyNewBtn.addEventListener("click", function () {
+        restartCopyText(logoutResult.newCode, "logout-result-msg", "📋 New code copied! Keep it private — anyone with this code can load your new climb.");
+      });
       var loadBtn = document.getElementById("load-account-btn");
       if (loadBtn) loadBtn.addEventListener("click", loadAccountSave);
       var startOverBtn = document.getElementById("start-over-btn");
@@ -18771,6 +18918,7 @@
       renderShell();
       renderMain();
       writeSave();
+      consumePendingLogout();
       maybeShowPendingModals();
       document.addEventListener("pointerdown", function () { ensureAudio(); });
       window.setInterval(battleTick, 120);
