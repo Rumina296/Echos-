@@ -5001,9 +5001,10 @@
         { name: "The Song That Remains", icon: "🌟", desc: "capstone — every 30s, the song swells: every hero is healed for 15% of their max HP, and her hope holds — her whole party's damage +20% for 10s (she sings alone on this floor, so here the song lifts only her)" }
       ],
       80: [
-        { name: "Holy Shield", icon: "🛡", desc: "every 15s he raises a shield of 10% of his max HP — while a shield stands, he takes 20% less damage" },
+        { name: "Holy Shield", icon: "🛡", desc: "every 15s he raises a shield of 11.2% of his max HP — while a shield stands, he takes 20% less damage" },
         { name: "Steadfast", icon: "⚖", desc: "passive — he maintains the status quo: no debuff can touch him — vulnerability, weaken, slows, and frost all fail" },
-        { name: "Unbreakable Wall", icon: "🧱", desc: "capstone — every 30s he becomes an unbreakable wall: a shield of 25% of his max HP" }
+        { name: "Unbreakable Wall", icon: "🧱", desc: "capstone — every 30s he becomes an unbreakable wall: a shield of 28% of his max HP" },
+        { name: "Retaliation", icon: "🧱", desc: "when his Unbreakable Wall shatters, Caelum strikes back: 25% of the party's average max HP to every hero" }
       ],
       85: [
         { name: "Echo of the Beginning", icon: "🔆", desc: "every 12s, an echo of the first memory strikes every hero for 25% of the party's average max HP" },
@@ -8668,7 +8669,9 @@
        the fight in resetBattleTimers. holds maps a party hero's id to
        the battle-second until which that hero cannot act (boss CC);
        bossShield is the boss's current shield pool (Mara's Amulet,
-       Caelum's Holy Shield / Unbreakable Wall); lastShieldFloat and
+       Caelum's Holy Shield / Unbreakable Wall); `wallArmed` is Caelum's
+       Retaliation latch: set when the Unbreakable Wall is cast,
+       consumed the moment the shield pool drains to zero; lastShieldFloat and
        lastDodgeFloat throttle the shield-absorb and dodge float text;
        the rest are each kit's timers, windows and counters. */
     function freshBossSkillState() {
@@ -8699,6 +8702,7 @@
         devourNext: 12, mawNext: 30, mawHalvedUntil: 0, stolenNext: 20, stolenLightStacks: 0,
         holyShieldNext: 15,
         wallNext: 15,
+        wallArmed: false,
         echoNext: 12,
         echoCapNext: 15,
         echoSurgeUntil: 0,
@@ -17685,19 +17689,22 @@
           if (tab === "battle") addFloat("🌟 THE SONG THAT REMAINS — every hero is healed, and her hope holds!", true, 30);
         }
         /* 🛡 Holy Shield (Caelum, Floor 80): every 15s he raises a shield
-           of 10% of his max HP — while a shield stands, he takes 20%
+           of 11.2% of his max HP — while a shield stands, he takes 20%
            less damage (read in the damage landing below). */
         if (f === 80 && bClock >= bossKit.holyShieldNext) {
           bossKit.holyShieldNext += 15;
-          bossKit.bossShield = Math.max(bossKit.bossShield, bossMaxHp(s, f) * 0.1);
-          if (tab === "battle") addFloat("🛡 HOLY SHIELD — Caelum raises a shield of 10% of his max HP!", true, 30);
+          bossKit.bossShield = Math.max(bossKit.bossShield, bossMaxHp(s, f) * 0.112);
+          if (tab === "battle") addFloat("🛡 HOLY SHIELD — Caelum raises a shield of 11.2% of his max HP!", true, 30);
         }
         /* 🧱 Unbreakable Wall (Caelum, Floor 80): every 30s he becomes an
-           unbreakable wall — a shield of 25% of his max HP. */
+           unbreakable wall — a shield of 28% of his max HP. Casting it
+           also arms Retaliation: when the shield pool later drains to
+           zero, he strikes back once (priced where party damage lands). */
         if (f === 80 && bClock >= bossKit.wallNext) {
           bossKit.wallNext += 30;
-          bossKit.bossShield += bossMaxHp(s, f) * 0.25;
-          if (tab === "battle") addFloat("🧱 UNBREAKABLE WALL — Caelum's shield grows by 25% of his max HP!", true, 30);
+          bossKit.bossShield += bossMaxHp(s, f) * 0.28;
+          bossKit.wallArmed = true;
+          if (tab === "battle") addFloat("🧱 UNBREAKABLE WALL — Caelum's shield grows by 28% of his max HP!", true, 30);
         }
         /* 🔆 Echo of the Beginning (First Echo, Floor 85): every 12s, an
            echo of the first memory strikes every hero for 25% of the party's
@@ -18258,6 +18265,19 @@
           if (bossAbsorbed > 0 && nowMs2 - bossKit.lastShieldFloat > 1100) {
             bossKit.lastShieldFloat = nowMs2;
             pendingFloats.push({ text: "🛡 THE SHIELD ABSORBS THE BLOW!", big: true, x: 62 });
+          }
+          /* 🧱 Retaliation (Floor 80): if that drain emptied the pool
+             while the Unbreakable Wall's latch stood armed, Caelum
+             strikes back once — 25% of the party's average max HP to
+             every hero, priced through bossStrikeAll like every other
+             boss strike (hero shields drink it first, via hitHero; the
+             tower enrage never scales priced strikes). A Holy Shield
+             break never arms the latch, and the Wall re-arms it at
+             most every 30s, so this fires at most once per Wall. */
+          if (f === 80 && bossKit.wallArmed && bossKit.bossShield <= 0) {
+            bossKit.wallArmed = false;
+            bossStrikeAll(0.25);
+            pendingFloats.push({ text: "🧱 RETALIATION — the Wall shatters, and Caelum strikes back!", big: true, x: 62 });
           }
         }
         enemyHp -= dmgThisTick;
