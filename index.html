@@ -9146,7 +9146,7 @@
           h += "</div>";
         } else {
           h += '<div style="margin-top:0.5rem;display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">';
-          h += '<button type="button" class="btn-pill" id="mem-reset-arm" ' + (memTotal <= 0 || s.gems < MEMORY_RESET_COST ? "disabled" : "") + ' aria-label="' + (memTotal <= 0 ? "Reset Tower Memory on floor " + f + " — this floor has no memory to reset" : s.gems < MEMORY_RESET_COST ? "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems — you only have " + s.gems + " gems" : "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems") + '" style="border:2px solid #a78bfa;background:#a78bfa26;color:#ddd6fe">🧠 Reset memory — ' + MEMORY_RESET_COST + '💎</button>';
+          h += '<button type="button" class="btn-pill" id="mem-reset-arm" data-mem-floor="' + f + '" ' + (memTotal <= 0 || s.gems < MEMORY_RESET_COST ? "disabled" : "") + ' aria-label="' + (memTotal <= 0 ? "Reset Tower Memory on floor " + f + " — this floor has no memory to reset" : s.gems < MEMORY_RESET_COST ? "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems — you only have " + s.gems + " gems" : "Reset Tower Memory on floor " + f + " for " + MEMORY_RESET_COST + " gems") + '" style="border:2px solid #a78bfa;background:#a78bfa26;color:#ddd6fe">🧠 Reset memory — ' + MEMORY_RESET_COST + '💎</button>';
           h += '<span class="xs bold dim">' + (memTotal > 0 ? "Tower Memory: " + mem.deaths + " fall" + (mem.deaths === 1 ? "" : "s") + " · " + mem.reClears + " repeat clear" + (mem.reClears === 1 ? "" : "s") + " — this boss has grown stronger for them." + (s.gems < MEMORY_RESET_COST ? " You need " + MEMORY_RESET_COST + " 💎 to reset it." : "") : "The tower holds no memory of this floor — its boss fights at base strength.") + "</span>";
           h += "</div>";
         }
@@ -11588,9 +11588,9 @@
       var back = document.getElementById("grind-back");
       if (back) back.addEventListener("click", function () { setFightFloor(Math.max(1, save.floor - 1)); });
       var memArm = document.getElementById("mem-reset-arm");
-      if (memArm) memArm.addEventListener("click", function () { memoryResetArmed = save.fightFloor; renderMain(); });
+      if (memArm) memArm.addEventListener("click", function () { memoryResetArmed = Number(memArm.getAttribute("data-mem-floor")); renderMain(); });
       var memYes = document.getElementById("mem-reset-yes");
-      if (memYes) memYes.addEventListener("click", function () { resetFloorMemory(save.fightFloor); renderMain(); });
+      if (memYes) memYes.addEventListener("click", function () { resetFloorMemory(memoryResetArmed); renderMain(); });
       var memNo = document.getElementById("mem-reset-no");
       if (memNo) memNo.addEventListener("click", function () { memoryResetArmed = null; renderMain(); });
       var s1 = document.getElementById("summon-1");
@@ -13935,6 +13935,7 @@
       var clamped = Math.max(1, Math.min(s.floor, Math.floor(target) || 1));
       var current = s.fightFloor;
       if (clamped === current) return;
+      memoryResetArmed = null; // a pending memory-reset confirmation belongs to the old floor
       var next = JSON.parse(JSON.stringify(s));
       next.fightFloor = clamped;
       battleFloor = clamped;
