@@ -1634,7 +1634,7 @@
         bossFates: {}, bossKind: {}, dialogueLog: [], kindChoices: 0,
         legacyBonus: {},
         unmakingShards: 0, unmakingDamage: 0, protectEndings: 0,
-        firstEchoCompanion: false, pendingEnding: "", storyComplete: false, bossRageFloor: 0,
+        firstEchoCompanion: false, pendingEnding: "", endingReady: false, storyComplete: false, bossRageFloor: 0,
         keeperSceneSeen: false, ariaSceneSeen: false, ossianSceneSeen: false,
         /* ---- Paradise (run 2, Phase 2) — see freshParadise ---- */
         paradise: freshParadise(),
@@ -1723,6 +1723,9 @@
         // 🌅 THE END survives only as a true boolean — older saves have
         // never finished the story.
         merged.storyComplete = merged.storyComplete === true;
+        /* 🌀 endingReady survives only as a true boolean — older saves
+           have never deferred a Floor 100 ending. */
+        merged.endingReady = merged.endingReady === true;
         merged.bossRageFloor = typeof merged.bossRageFloor === "number" && merged.bossRageFloor > 0 ? Math.floor(merged.bossRageFloor) : 0;
         merged.keeperSceneSeen = merged.keeperSceneSeen === true;
         merged.ariaSceneSeen = merged.ariaSceneSeen === true;
@@ -16586,18 +16589,24 @@
       });
     }
     /* The destroy-choice confirmation — "FACE THE UNMAKING… Only one
-       attempt". ENTER spends the round's single shot; NOT YET backs out
-       and spends nothing. */
+       attempt". ENTER spends the round's single shot; NOT YET steps all
+       the way out to the tower, one floor below the Heart — the choice
+       is not re-shown in a loop. endingReady stands, so re-clearing
+       Floor 100 re-opens the choice whenever the player wants. */
     function showEnterModal() {
       var root = document.getElementById("modal-root");
+      /* NOT YET backs out one floor below the Heart (Floor 100 → 99 in
+         the normal case); the guard keeps it at Floor 1 if the modal
+         ever opens above Floor 100. */
+      var backFloor = Math.max(1, (save.fightFloor || save.floor) - 1);
       var h = '<div class="overlay" role="dialog" aria-modal="true" aria-label="Enter the Unmaking">';
       h += '<div class="anime-card modal-card center" style="max-width:26rem;border-color:#7e72ad;box-shadow:0 0 54px rgba(90,70,160,0.55)">';
       h += '<p class="anim-wiggle" style="font-size:3rem;margin:0" aria-hidden="true">🌀</p>';
       h += '<h2 class="font-display" style="margin-top:0.5rem;font-size:1.875rem;font-weight:700;color:#efe8ff">Enter?</h2>';
       h += '<p class="small" style="margin-top:0.5rem;font-weight:600">Only one attempt. This is the round\'s single shot at the Unmaking — if your party falls, the round ends and the climb loops to the next run. Its strength now: ' + fmt(unmakingMaxHp(save)) + ' HP, worn down by ' + (save.unmakingShards || 0) + ' shard' + ((save.unmakingShards || 0) === 1 ? '' : 's') + ' and ' + fmt(save.unmakingDamage || 0) + ' remembered damage.</p>';
       h += '<button type="button" class="btn-wide" id="enter-go" style="background:linear-gradient(to right,#7e72ad,#4a3a7d);color:#efe8ff;border:none;box-shadow:0 4px 0 #2a1e52" aria-label="Enter — face the Unmaking, using this round&#39;s one attempt">🌀 ENTER</button>';
-      h += '<button type="button" class="btn-wide btn-ghost" id="enter-no" style="margin-top:0.5rem" aria-label="Not yet — back out without using the attempt">NOT YET</button>';
-      h += '<p class="xs bold dim" style="margin-top:0.5rem">Backing out spends nothing. You return to Floor 100 and the choice — destroy, or protect — whenever you are ready.</p>';
+      h += '<button type="button" class="btn-wide btn-ghost" id="enter-no" style="margin-top:0.5rem" aria-label="Not yet — back out to the tower without using the attempt">NOT YET</button>';
+      h += '<p class="xs bold dim" style="margin-top:0.5rem">Backing out spends nothing. You return to Floor ' + backFloor + ' — the choice waits at Floor ' + (backFloor + 1) + ' whenever you are ready.</p>';
       h += "</div></div>";
       root.innerHTML = h;
       document.getElementById("enter-go").addEventListener("click", function () {
@@ -16607,9 +16616,12 @@
       });
       document.getElementById("enter-no").addEventListener("click", function () {
         var next = JSON.parse(JSON.stringify(save));
-        next.pendingEnding = "choice";
+        next.pendingEnding = "";
+        next.endingReady = true;
         persist(next);
         root.innerHTML = "";
+        setFightFloor(backFloor);
+        setNotice("🌀 You step back from the threshold. The attempt is unspent — you return to Floor " + backFloor + ". The choice waits at Floor " + (backFloor + 1) + " whenever you are ready.");
         maybeShowPendingModals();
       });
     }
