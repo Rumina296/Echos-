@@ -965,10 +965,15 @@
     }
     /* ================= RUN-2 HEROES (Phase 1, ported from main) =================
        The seven saveable humanoid bosses, in hero form — run 2 only, granted
-       DIRECTLY by the boss-saving system, never in HEROES, never in any summon
-       pool, never in the Dupe Exchange (see SUMMON_EXCLUDED). parseSave strips
-       any of them whose bossFates entry is not "saved" this run. Stats and
-       blurbs are main's exact values (App.tsx RUN2_HEROES). */
+       DIRECTLY by the boss-saving system, never in HEROES, never in the Dupe
+       Exchange (see SUMMON_EXCLUDED). SUMMON RULE (Rachel, Nov 27, 2026 —
+       "Only once saved — earn them first"): a boss in this table ALSO joins
+       the random summon pool at its natural star tier, but only while it is
+       saved in the CURRENT run (bossFates[id] === "saved" this run) — see
+       summonPool. Current-run, NOT lifetime: parseSave strips any of them
+       whose bossFates entry is not "saved" this run, so a dupe of an
+       unsaved boss would be useless. Stats and blurbs are main's exact
+       values (App.tsx RUN2_HEROES). */
     var RUN2_HEROES = [
       { id: "silas", name: "Silas Thorne", title: "The Hollow Cantor", cls: "Bard", job: "The Dirge", stars: 6, color: "#a78bfa", baseHp: 980, baseAtk: 97, atkSpeed: 0.8,
         blurb: "He was a songkeeper once, like Orin — until the foreign entity found his music first and hollowed him out, note by note, memory by memory. Now Silas Thorne, the Hollow Cantor, is Orin Vale's dark mirror: ashen-white hair falling over one eye, a cracked black lute, tattered dark robes, and sheet music that dissolves into ash as it leaves his hands, trailing a violet void-glow. Where Orin's songs keep memories, the Cantor's erase them — every verse of his dirge unmakes a little more of whoever hears it, until even monsters forget how the fight was supposed to go. He does not remember being anything else. That, Orin would say, is the saddest part of the song." },
@@ -989,11 +994,13 @@
       for (var i = 0; i < RUN2_HEROES.length; i++) if (RUN2_HEROES[i].id === id) return RUN2_HEROES[i];
       return null;
     }
-    /* Heroes the summoning circle can NEVER call: the Cantors will be
-       granted directly by boss-saving on run 2 — never by random pull,
-       pity, or starter. Luna is NOT excluded: she is in the 7★ pool
-       like Aurelia Vey, and Floor 25 remains her story-grant fallback
-       for Masters who haven't summoned her by then. */
+    /* Heroes the summoning circle can NEVER call by default: the seven
+       saveable bosses are granted directly by boss-saving on run 2 — never
+       by random pull, pity, or starter, UNLESS saved in the current run
+       (see summonPool: a saved boss joins the pool at its natural tier).
+       Luna is NOT excluded: she is in the 7★ pool like Aurelia Vey, and
+       Floor 25 remains her story-grant fallback for Masters who haven't
+       summoned her by then. */
     var SUMMON_EXCLUDED = { silas: true, mara: true, vex: true, lucian: true, aria: true, caelum: true, ossian: true };
     /* Retired from the summoning circle (Nov 20, 2026, Rachel-approved):
        twelve low-star everyday heroes no longer answer summons — the
@@ -1004,11 +1011,37 @@
        read the trimmed pool; HEROES itself never shrinks (roster stays 63).
        None of the twelve is in any synergy, so no bond is lost. */
     var RETIRED_FROM_SUMMONS = { dun: true, ivo: true, bram: true, odo: true, greta: true, hugo: true, tam: true, joss: true, ash: true, milo: true, agatha: true, zinnia: true };
+    /* The ids of the saveable bosses saved in the CURRENT run — the set
+       summonPool admits to the pool (see below). A plain object map, not
+       a Set, to match this file's ES5 style. */
+    function savedBossIdSet(bossFates) {
+      var set = {};
+      if (bossFates) {
+        for (var i = 0; i < RUN2_HEROES.length; i++) {
+          if (bossFates[RUN2_HEROES[i].id] === "saved") set[RUN2_HEROES[i].id] = true;
+        }
+      }
+      return set;
+    }
     /* The heroes a summon of `stars` can actually call — the tier's roster
-       minus the retired twelve. 1★: 17 → 11, 2★: 16 → 10; every other tier
-       unchanged. Star rates are untouched (they are per tier, not per hero). */
-    function summonPool(stars) {
-      return HEROES.filter(function (h) { return h.stars === stars && !SUMMON_EXCLUDED[h.id] && !RETIRED_FROM_SUMMONS[h.id]; });
+       minus the retired twelve, PLUS any saveable boss (RUN2_HEROES) whose
+       natural tier this is and who is saved in the CURRENT run (Rachel,
+       Nov 27, 2026: "Only once saved — earn them first"). Current-run,
+       not lifetime: a boss not saved this run isn't in the roster
+       (parseSave strips it), so a dupe of it would be useless. 1★: 17 → 11,
+       2★: 16 → 10; the 6★ pool gains up to five saved bosses (Silas, Vex,
+       Lucian, Aria, Caelum) and the 7★ pool up to two (Mara, Ossian).
+       Star rates are untouched (they are per tier, not per hero).
+       Callers that pass no saved set — the new-run starter roll — get
+       the old behaviour: no bosses, ever. */
+    function summonPool(stars, savedBosses) {
+      var pool = HEROES.filter(function (h) { return h.stars === stars && !SUMMON_EXCLUDED[h.id] && !RETIRED_FROM_SUMMONS[h.id]; });
+      if (savedBosses) {
+        for (var i = 0; i < RUN2_HEROES.length; i++) {
+          if (RUN2_HEROES[i].stars === stars && savedBosses[RUN2_HEROES[i].id]) pool.push(RUN2_HEROES[i]);
+        }
+      }
+      return pool;
     }
     /* The seven 3★/4★ heroes above join the regular summon pools
        only — never the starter draw. The main game's starter is
@@ -7324,14 +7357,14 @@
       }
       return 1;
     }
-    function rollHero(stars) {
-      // The run-2 Cantors (Silas/Mara) will be granted directly by
-      // boss-saving — the circle can never call them (see
-      // SUMMON_EXCLUDED) — and the twelve retired heroes no longer
-      // answer it either (see RETIRED_FROM_SUMMONS). Every other hero
-      // in the rolled star tier — Luna included at 7★, alongside
-      // Aurelia Vey — is picked uniformly at random from the pool.
-      var pool = summonPool(stars);
+    function rollHero(stars, savedBosses) {
+      // The run-2 bosses join the pool only while saved in the current
+      // run (see summonPool) — unsaved ones can never be called, and
+      // the twelve retired heroes no longer answer it either (see
+      // RETIRED_FROM_SUMMONS). Every other hero in the rolled star
+      // tier — Luna included at 7★, alongside Aurelia Vey — is picked
+      // uniformly at random from the pool.
+      var pool = summonPool(stars, savedBosses);
       return pool[Math.floor(Math.random() * pool.length)] || HEROES[0];
     }
 
@@ -10438,6 +10471,10 @@
     /* ============================== RENDER: SUMMON TAB ============================== */
     function summonHTML() {
       var s = save;
+      /* The summon pool as THIS run sees it: bosses saved in the current
+         run join at their natural tier (see summonPool), so the rates
+         list and 7★ note below read the same pool the rolls use. */
+      var savedBossSet = savedBossIdSet(s.bossFates);
       var h = '<section aria-label="Summoning">';
       h += '<div class="anime-card mt4" style="position:relative;overflow:hidden;padding:1.25rem;text-align:center">';
       h += '<div class="halftone" aria-hidden="true" style="position:absolute;inset:0;opacity:0.3;pointer-events:none"></div>';
@@ -10465,13 +10502,24 @@
       }
       h += "<ul>";
       displayRates.forEach(function (r) {
-        var names = summonPool(r.stars).map(function (x) { return x.name.split(" ")[0]; }).join(", ");
+        var names = summonPool(r.stars, savedBossSet).map(function (x) { return x.name.split(" ")[0]; }).join(", ");
         h += '<li><span style="' + starTextStyle(r.stars) + '">' + starsStr(r.stars) + " " + esc(names) + "</span><span>" + r.pct + "%</span></li>";
       });
       h += "</ul>";
       h += '<p style="margin-top:0.5rem;font-size:11px;font-weight:600;color:var(--dim)">Twelve everyday heroes no longer answer the circle — Dunstan, Ivo, Bram, Odo, Greta, Hugo, Tamsin, Joss, Ash, Milo, Agatha, Zinnia — but anyone who already owns them keeps them, and they can still be bought with shards in the Dupe Exchange.</p>';
       h += '<p style="margin-top:0.75rem;font-size:11px;font-weight:600;color:#c9b8ff">🌙 Rumor: the 7★ Lunar Oracle answers the circle like any hero — and if she still hasn\'t by Floor 25, she comes to find her Master herself.</p>';
-      h += '<p style="margin-top:0.75rem;font-size:11px;font-weight:600;color:#c9b8ff">🌙 The 7★ pool holds three legends: Luna, the Moonlit Guide, Aurelia Vey, the Golden Weaver, and Aldric, the Oathbound King — a 7★ pull may call any of the three. And if Luna hasn\'t answered by Floor 25, she joins you there herself.</p>';
+      /* The 7★ note reads the same live pool the rolls use: with Mara
+         and/or Ossian saved this run the pool grows past three legends. */
+      var sevenPool = summonPool(7, savedBossSet);
+      var sevenNames = sevenPool.map(function (hh) {
+        if (hh.id === "luna") return "Luna, the Moonlit Guide";
+        if (hh.id === "aurelia") return "Aurelia Vey, the Golden Weaver";
+        if (hh.id === "aldric") return "Aldric, the Oathbound King";
+        return hh.name + ", " + hh.title;
+      });
+      var sevenList = sevenNames.length > 1 ? sevenNames.slice(0, -1).join(", ") + ", and " + sevenNames[sevenNames.length - 1] : (sevenNames[0] || "");
+      var sevenCount = sevenPool.length === 3 ? "three legends" : sevenPool.length + " legends";
+      h += '<p style="margin-top:0.75rem;font-size:11px;font-weight:600;color:#c9b8ff">🌙 The 7★ pool holds ' + sevenCount + ': ' + sevenList + ' — a 7★ pull may call any of them. And if Luna hasn\'t answered by Floor 25, she joins you there herself.</p>';
       h += "</div></div>";
       /* The Redeem Code card is NOT built here — it is an isolated
          component in its own slot below #main (see ensureRedeemCard),
@@ -13774,11 +13822,16 @@
       var results = [];
       var pity = next.pity;
       var pity4 = typeof next.pity4 === "number" ? next.pity4 : 0;
+      /* Bosses saved in THIS run join the pool at their natural tier for
+         every roll in this batch — normal pulls and both pities alike
+         (see summonPool). Derived from the passed-in save's per-run
+         bossFates, so a boss saved only in a past run stays out. */
+      var savedBosses = savedBossIdSet(next.bossFates);
       for (var i = 0; i < count; i++) {
         var stars = rollStars(pity, pity4, next.totalSummons);
         pity = stars >= 5 ? 0 : pity + 1;
         pity4 = stars >= 4 ? 0 : pity4 + 1;
-        var def = rollHero(stars);
+        var def = rollHero(stars, savedBosses);
         var owned = next.heroes[def.id];
         if (!owned) {
           next.heroes[def.id] = freshOwnedHero(next, def.id);
