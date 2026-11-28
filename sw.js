@@ -1,8 +1,12 @@
 /* Echoes of Echoria service worker.
-   Network-first for the game itself (new builds must always land fresh),
-   cache-first only for the install assets (icons + manifest), and Supabase
-   save traffic always goes straight to the network, never the cache. */
-const CACHE_NAME = 'echoria-pwa-v1';
+   Stale-while-revalidate for the game itself: repeat visits open instantly
+   from the cached copy while a fresh build downloads in the background.
+   When the background refresh lands a NEWER build (Last-Modified moved),
+   open pages get an ECHORIA_UPDATE_READY message and show a
+   "new version available — reload" prompt. Cache-first only for the
+   install assets (icons + manifest), and Supabase save traffic always
+   goes straight to the network, never the cache. */
+const CACHE_NAME = 'echoria-pwa-v2';
 const INSTALL_ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -42,15 +46,33 @@ self.addEventListener('fetch', (event) => {
   const isInstallAsset = INSTALL_ASSETS.some((a) => url.pathname.endsWith('/' + a));
 
   if (isNavigation || isIndex) {
-    // Network-first: a fresh build must win; fall back to cache only offline.
+    // Stale-while-revalidate: serve the cached copy at once; refresh it
+    // in the background. First visit has no cache, so the network wins.
     event.respondWith(
-      fetch(event.request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+      caches.match(event.request).then((cached) => {
+        const network = fetch(event.request).then((res) => {
+          if (res && res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              return cache.match(event.request).then((old) => {
+                const oldStamp = old ? old.headers.get('last-modified') : null;
+                const newStamp = res.headers.get('last-modified');
+                return cache.put(event.request, copy).then(() => {
+                  // A newer build landed (and one was already cached):
+                  // tell open pages a reload is waiting.
+                  if (old && oldStamp && newStamp && oldStamp !== newStamp) {
+                    return self.clients.matchAll({ type: 'window' }).then((clients) => {
+                      clients.forEach((client) => client.postMessage({ type: 'ECHORIA_UPDATE_READY' }));
+                    });
+                  }
+                });
+              });
+            }).catch(() => {});
+          }
           return res;
-        })
-        .catch(() => caches.match(event.request))
+        }).catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }
