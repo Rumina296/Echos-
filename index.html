@@ -5968,9 +5968,13 @@
        leader; only stronger champions, stage by stage. */
     var SURVIVOR_NAMES = ["Ash-Walker Ren", "Sister Pollen", "Old Fenwick", "Ilsa of the Salt Flats", "Brother Tallow", "Grandmother Vesna", "The Cartographer", "Nixie the Ferryman"];
     var SURVIVOR_WORLDS = ["the Drowned Reaches", "a world of endless orchards", "the Salt Flats", "a city that floated on a warm sea", "the Ember Coast", "a world where it always rained gently", "a valley of bells", "the Last Orchard"];
-    /* Invasion stage power (Phase 2): the party's summed heroPower
-       must meet it. Every 5th stage is a champion — a boss stage —
-       and only boss stages grow the paradise layout. */
+    /* Invasion stage power (Phase 2): the party's EFFECTIVE BP must
+       meet it — paradiseEffectiveBp, the dungeon measure (auras,
+       happiness, meals, DoTs, healing, holds), since Nov 27, 2026; the
+       demand numbers themselves are unchanged, because a reference
+       party's effective BP equals its old plain heroPower sum (see the
+       note at paradiseEffectiveBp). Every 5th stage is a champion — a
+       boss stage — and only boss stages grow the paradise layout. */
     function invasionPower(stage) {
       return Math.round(600 * Math.pow(1.32, stage - 1) * (stage % 5 === 0 ? 1.6 : 1));
     }
@@ -6235,7 +6239,7 @@
       var stage = s.paradise.invasionStage;
       var boss = stage % 5 === 0;
       var need = invasionPower(stage);
-      var power = s.party.reduce(function (sum, id) { return sum + heroPower(s, id); }, 0);
+      var power = paradiseEffectiveBp(s);
       var next = JSON.parse(JSON.stringify(s));
       if (power >= need) {
         var frags = boss ? 5 : 2;
@@ -6253,7 +6257,7 @@
         renderMain();
         setNotice(boss
           ? "⚔️ THE CHAMPION FALLS. Stage " + stage + " was a champion of the consumed worlds — no leader, just the strongest of the desperate — and your party turned them back. +" + frags + " 🧩 fragments. And paradise GROWS: new ground, new light, room for more life (layout tier " + next.paradise.paradiseTier + "). They were not evil, Master. Remember that, even in victory." + offerNote
-          : "⚔️ The invaders of stage " + stage + " are turned back — survivors of a world the Unmaking ate, come for fragments to rebuild their own. Desperate, not evil. +" + frags + " 🧩 fragments. Your party's power " + fmt(Math.round(power)) + " met the " + fmt(need) + " the stage demanded." + offerNote);
+          : "⚔️ The invaders of stage " + stage + " are turned back — survivors of a world the Unmaking ate, come for fragments to rebuild their own. Desperate, not evil. +" + frags + " 🧩 fragments. Your party's effective power " + fmt(Math.round(power)) + " met the " + fmt(need) + " the stage demanded." + offerNote);
       } else {
         s.party.forEach(function (id) {
           var cur = typeof next.paradise.happiness[id] === "number" ? next.paradise.happiness[id] : 80;
@@ -6261,7 +6265,7 @@
         });
         persist(next);
         renderMain();
-        setNotice("⚔️ Stage " + stage + " holds. The invaders wanted the fragments badly enough to bleed for them — and your party (power " + fmt(Math.round(power)) + ") could not meet the " + fmt(need) + " the stage demanded. The party comes home shaken (−10 happiness). Grow stronger — train, level, gear — and hold the tree.");
+        setNotice("⚔️ Stage " + stage + " holds. The invaders wanted the fragments badly enough to bleed for them — and your party (effective power " + fmt(Math.round(power)) + ") could not meet the " + fmt(need) + " the stage demanded. The party comes home shaken (−10 happiness). Grow stronger — train, level, gear — and hold the tree.");
       }
     }
     function acceptShelter() {
@@ -11362,7 +11366,7 @@
       ];
       var layoutLine = layoutLines[Math.min(layoutLines.length - 1, par.paradiseTier)];
       var invasionBoss = par.invasionStage % 5 === 0;
-      var partyPowerNow = s.party.reduce(function (sum, id) { return sum + heroPower(s, id); }, 0);
+      var partyPowerNow = paradiseEffectiveBp(s);
       var h = '<section aria-label="Paradise — the World Tree town">';
       if (!par.treePlanted) {
         h += '<div class="anime-card mt4 card-pad" style="text-align:center">';
@@ -11395,7 +11399,7 @@
       h += '<div class="anime-card mt4 card-pad">';
       h += '<h3 class="font-display" style="font-size:1.125rem;font-weight:600;margin:0">⚔️ Invasions — the Survivors\' War</h3>';
       h += '<p class="small dim" style="margin-top:0.25rem;font-weight:500">They come from worlds the Unmaking consumed, and they want the fragments to rebuild their own. They are desperate, not evil. They have no leader — only stronger champions. Not all of them come peacefully, and stage by stage, they come stronger.</p>';
-      h += '<p class="small" style="margin-top:0.5rem;font-weight:800">Next: Stage ' + par.invasionStage + (invasionBoss ? " — a CHAMPION (boss stage: winning grows the paradise layout)" : "") + " · demands party power " + fmt(invasionPower(par.invasionStage)) + " · your party: " + fmt(Math.round(partyPowerNow)) + "</p>";
+      h += '<p class="small" style="margin-top:0.5rem;font-weight:800">Next: Stage ' + par.invasionStage + (invasionBoss ? " — a CHAMPION (boss stage: winning grows the paradise layout)" : "") + " · demands effective party power " + fmt(invasionPower(par.invasionStage)) + " · your party: " + fmt(Math.round(partyPowerNow)) + "</p>";
       h += '<button type="button" class="btn-pill anime-btn-primary" id="fight-invasion-btn" aria-label="Fight invasion stage ' + par.invasionStage + '" style="margin-top:0.75rem">⚔️ Hold the Tree — Stage ' + par.invasionStage + "</button>";
       if (par.shelterOffer) {
         h += '<div style="margin-top:0.75rem;border:2px solid #ffd94d;border-radius:1rem;background:var(--surface2);padding:0.75rem">';
@@ -14944,11 +14948,45 @@
        Recomputed from the live save on every render, so swapping the
        party, its gear, or its levels moves every card's number at once —
        it is always the team that would actually delve. */
-    function partyEffectiveBp(s, dg) {
+    /* ---------- Paradise invasions: effective BP, like dungeons ----------
+       (Nov 27, 2026, Rachel's call — "use effective BP like dungeons".)
+       The invasion gate used to sum plain heroPower over the party —
+       hit DPS + 5% of HP per hero, nothing else — so the number on the
+       Invasions card never matched the team the Tower tab fights with:
+       no party-damage auras, no synergies, no happiness bonus, no meal
+       bonus, no DoTs, and no credit for healing or holds. The gate now
+       reads paradiseEffectiveBp: the party measured by the dungeon
+       model exactly (partyEffectiveBpForRun), priced over a fixed
+       60-second reference defense — the longest dungeon reference run
+       (Starlight Abyss, 5 waves × 12s) — because holding the Tree is a
+       sustained stand, not a single wave. The stage demands
+       (invasionPower) are NOT retuned: by the dungeon model's own
+       construction a reference party (DoTs at 20% of its damage, a
+       healer at healMult 1, holds at 80%) reads the same effective BP
+       as its old plain BP, so the ladder's intended difficulty stands —
+       what changes is that a real party is finally credited for
+       everything it actually brings: its auras and synergies, its
+       happiness (partyMods: +20% at full, −15% below half), a live meal
+       (+10%), its DoTs, its healing (at its real rate, uncapped, as on
+       the dungeon cards), and its holds (capped at the reference 80%,
+       as on the dungeon cards). It is always the CURRENT tower party —
+       s.party is the one party every fight uses. */
+    var PARADISE_BP_RUN_SECONDS = 60;
+    function paradiseEffectiveBp(s) {
+      return partyEffectiveBpForRun(s, PARADISE_BP_RUN_SECONDS);
+    }
+    /** The effective-BP core above, priced over an arbitrary reference
+        run length — partyEffectiveBp passes the dungeon's own reference
+        run (waves × SECONDS_PER_WAVE); Paradise passes its fixed defense
+        length (paradiseEffectiveBp below). Every term is the dungeon
+        model's: total damage (auras, happiness, and meals ride inside
+        effectivePartyDps via partyMods; DoTs ride dungeonDotDps) on the
+        hit scale, plus the pool converted at the party's real healing
+        rate and its holds capped at the reference share. */
+    function partyEffectiveBpForRun(s, runSeconds) {
       var totalDps = effectivePartyDps(s) + dungeonDotDps(s);
       var dmgBp = totalDps * (1 - DUNGEON_BP_DOT_SHARE);
       var pool = partyMaxHp(s);
-      var runSeconds = dg.waves * DUNGEON_BP_SECONDS_PER_WAVE;
       var healFrac = pool > 0 ? dungeonHealPerSec(s) / pool : 0;
       /* Healing is credited at the party's REAL rate — no reference cap
          (Nov 23, 2026, Rachel's call: the card shows the party's actual
@@ -14958,6 +14996,9 @@
       var partySurvival = ((1 - DUNGEON_BP_HP_RESERVE) + healCredited * runSeconds) / (1 - holdCredited);
       var refSurvival = ((1 - DUNGEON_BP_HP_RESERVE) + DUNGEON_BP_HEAL_PER_SEC * runSeconds) / (1 - DUNGEON_BP_HOLD_SHARE);
       return Math.round(dmgBp + pool * (partySurvival / refSurvival) * 0.05);
+    }
+    function partyEffectiveBp(s, dg) {
+      return partyEffectiveBpForRun(s, dg.waves * DUNGEON_BP_SECONDS_PER_WAVE);
     }
     /* The DoT slice for dungeons — the same raw DoTs the tower folds
        in (poison, bleed, chill, burn, snare, tidal, comet), WITHOUT
